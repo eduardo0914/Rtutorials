@@ -1,0 +1,514 @@
+---
+title: Basics of Stock Returns
+author: Eduardo Villarreal
+date: '2022-02-07'
+slug: basics-of-stock-returns
+categories:
+  - Finance
+tags:
+  - R
+  - Finance
+---
+
+<script src="{{< blogdown/postref >}}index_files/header-attrs/header-attrs.js"></script>
+
+
+<div id="returns-introduction" class="section level1">
+<h1>Returns Introduction</h1>
+<p>The dollar change based solely on the closing price of a security is called capital
+gains and the percentage price in the closing price of a security is its price return. The
+price return is measured over some investment horizon (e.g., 1 day, 1 month, 1 year,
+etc.). The length of the period depends on the application, but the return calculations
+should be consistent such that cumulating all the 1-day returns in a given year should
+equal the annual return.</p>
+<p>The daily price return is the percentage change in the price of a security today
+relative to its price yesterday. That is,</p>
+<p>$$
+R_t =  =  - 1</p>
+<p>$$</p>
+<p>Were <span class="math inline">\(P_t\)</span> is the <em>Price</em> of an asset at time <span class="math inline">\(t\)</span>, <span class="math inline">\(P_{t-1}\)</span> is the <em>Price¨</em> of an asset at time <span class="math inline">\(t-1\)</span> and <span class="math inline">\(R_t\)</span> is the <em>Aritmetic Return</em> at time <span class="math inline">\(t\)</span></p>
+<p>Returns over time are not <em>aditive</em>. If you have 2 periods, the 2-period compounding return is:</p>
+<p><span class="math display">\[
+R_{t,t+2} = (1+R_{t,t+1})(1+R_{t,t+1,t+2}) - 1
+\]</span>
+As an Example, let´s assume we hace a <strong>stock</strong> that gained <span class="math inline">\(10%\)</span> on dat 1 and lost <span class="math inline">\(-5%\)</span> in day 2. The *compounded return** is:</p>
+<pre class="r"><code>r1 = 0.1
+r2 = -0.05
+#The total compounded return is
+r = (1 + r1) * (1 + r2) - 1
+print(r)</code></pre>
+<pre><code>## [1] 0.045</code></pre>
+<p>When evaluating investments, we are typically concerned with how our investment
+has performed over a particular time horizon. Put differently, we are interested in
+cumulative multi-day returns. Extending our 2 period example to n-period for an <strong>Amazon</strong> stock from Dec 31 2010 to Dec 31 2013:</p>
+<div id="loading-the-require-libraries-and-gething-the-data" class="section level2">
+<h2>Loading the require libraries and Gething the Data</h2>
+<p>For this example we will get the <strong>Amazon (AMZN)</strong> ticker for <strong>yahoo finance</strong></p>
+<pre class="r"><code>library(tidyverse)
+library(tidyquant)
+library(timetk)
+library(quantmod)
+
+#Get the data
+AMZN &lt;- tq_get(&#39;AMZN&#39;,
+               from = &#39;2010-12-31&#39;,
+               to = &#39;2013-12-31&#39;,
+               get = &#39;stock.prices&#39;,
+               complete_cases = T)
+
+#Let´s plot the series
+AMZN %&gt;%
+  ggplot(aes(x = date, y = close)) +
+  geom_line() +
+  labs(title = &#39;AMAZON Daily Price&#39;) +
+  theme_bw()</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
+</div>
+<div id="computing-the-return" class="section level2">
+<h2>Computing the Return</h2>
+<p>Now let´s compute the return of the stock:</p>
+<pre class="r"><code>AMZN_ret = AMZN %&gt;%
+  tq_transmute(
+    select = adjusted,
+    mutate_fun = periodReturn,
+    period = &#39;daily&#39;,
+    col_rename = &#39;AMZN_ret&#39;)
+
+#Computing Groos Return
+AMZN_ret$AMZN_Gret = 1 + AMZN_ret$AMZN_ret
+
+#Compute Comulative Returns
+AMZN_ret$AMZN_GCummRet = cumprod(AMZN_ret$AMZN_Gret)
+
+#Compute Net Cumulative Return
+AMZN_ret$AMZN_NetCummRet = AMZN_ret$AMZN_GCummRet - 1
+
+#Plot commulative Returns
+AMZN_ret %&gt;%
+  ggplot(aes(x = date, y = AMZN_NetCummRet)) +
+  geom_line() +
+  labs(title = &#39;AMAZON Cumulative Return&#39;) +
+  theme_bw()</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+<p>What we just did is to compute the Net Commulative Return by daily compounding:</p>
+<p><span class="math display">\[
+R_{t, t+N} = \prod_{t=1}^N(1+R_t) - 1
+\]</span></p>
+</div>
+<div id="log-returns" class="section level2">
+<h2>Log Returns</h2>
+<p>Another way to represent returns is by it´s <em>log form</em> given by:</p>
+<p><span class="math display">\[
+r_t = \text{ln}\frac{P_t}{P_{t-1}} = \ln(P_t) - \ln(P_{t-1})
+\]</span></p>
+<p>where ln is the natural logarithm operator. Therefore, we can take the difference of the log prices
+to calculate log returns</p>
+<p>Now, we can just follow the same equation for <strong>cumulative log net returns</strong>:</p>
+<p><span class="math display">\[
+r_{t, t+N} = \sum_{t=1}^N r_t -1
+\]</span></p>
+<pre class="r"><code>AMZN_LogRet = AMZN %&gt;%
+  tq_transmute(
+    select = adjusted,
+    mutate_fun = periodReturn,
+    period = &#39;daily&#39;,
+    type = &#39;log&#39;,
+    col_rename = &#39;AMZN_log_ret&#39;)
+
+#Computing log Net Ret 
+AMZN_LogRet$AMZN_log_NetRet = cumsum(AMZN_LogRet$AMZN_log_ret)
+AMZN_LogRet$AMZN_log_NetRet = AMZN_LogRet$AMZN_log_NetRet
+
+#Conberting Log Returns to Aritmethic
+AMZN_LogRet$AMZN_log_NetRet = exp(AMZN_LogRet$AMZN_log_NetRet) - 1
+
+AMZN_LogRet %&gt;%
+  ggplot(aes(x = date, y = AMZN_log_NetRet)) +
+  geom_line() +
+  labs(title = &#39;AMAZON Cumulative Return&#39;) +
+  theme_bw()</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+<p>Now let´s compare both data frames:</p>
+<pre class="r"><code>tail(AMZN_ret$AMZN_NetCummRet)</code></pre>
+<pre><code>## [1] 1.234445 1.238445 1.217778 1.246611 1.211555 1.185389</code></pre>
+<pre class="r"><code>tail(AMZN_ret$AMZN_NetCummRet)</code></pre>
+<pre><code>## [1] 1.234445 1.238445 1.217778 1.246611 1.211555 1.185389</code></pre>
+</div>
+<div id="annualizing-returns" class="section level2">
+<h2>Annualizing Returns</h2>
+<p>Let´s assume we have an asset with 1% return by month. Annualizing this is equivalent to compound 12 times (1 year has 12 months). So, the annualized return is:</p>
+<pre class="r"><code>r = 0.01
+r_yr = (r + 1)^12 - 1
+print(r_yr)</code></pre>
+<pre><code>## [1] 0.126825</code></pre>
+<p>Thus, a <strong>1%</strong> monthly return is a <strong>12.68%</strong> annualized return.</p>
+</div>
+<div id="comparing-multiple-assets" class="section level2">
+<h2>Comparing Multiple Assets</h2>
+<p>Now let´s expand what we learned to multiple assets: <strong>AMZN, GSPC, GE, IBM</strong> or <strong>amazon, sp500 index, general eletric and IBM</strong></p>
+<p>First, lets get the data:</p>
+<pre class="r"><code>symbols = c(&#39;AMZN&#39;, &#39;^GSPC&#39;, &#39;GE&#39;, &#39;IBM&#39;)
+
+stocks &lt;- tq_get(symbols,
+               from = &#39;2010-12-31&#39;,
+               to = &#39;2013-12-31&#39;,
+               get = &#39;stock.prices&#39;,
+               complete_cases = T)
+
+head(stocks)</code></pre>
+<pre><code>## # A tibble: 6 x 8
+##   symbol date        open  high   low close  volume adjusted
+##   &lt;chr&gt;  &lt;date&gt;     &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;
+## 1 AMZN   2010-12-31  182.  182.  180.  180  3451900     180 
+## 2 AMZN   2011-01-03  181.  186   181.  184. 5331400     184.
+## 3 AMZN   2011-01-04  186.  188.  184.  185. 5031800     185.
+## 4 AMZN   2011-01-05  184.  187.  184.  187. 3418800     187.
+## 5 AMZN   2011-01-06  186.  187.  185.  186. 3179700     186.
+## 6 AMZN   2011-01-07  188.  188.  184.  185. 5221700     185.</code></pre>
+<pre class="r"><code>#Plot the data
+stocks %&gt;%
+  ggplot(aes(x = date, y = adjusted, color = symbol)) +
+  geom_line() +
+  facet_wrap(~symbol, scales = &#39;free&#39;, nrow = 1) +
+  theme_bw() +
+  theme(legend.position = &#39;none&#39;) +
+  labs(title = &#39;Stock Price Evolutions for Multiple Assets&#39;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+<p>Now we can compute de returns for each of the assets:</p>
+<pre class="r"><code>stocks_ret = stocks %&gt;%
+  group_by(symbol) %&gt;%
+  tq_transmute(
+    select = adjusted,
+    mutate_fun = periodReturn,
+    period = &#39;daily&#39;)
+
+#plot the data
+stocks_ret %&gt;%
+  ggplot(aes(x = date, y = daily.returns, color = symbol)) +
+  geom_line() +
+  facet_wrap(~symbol, scales = &#39;free_x&#39;, nrow = 1) +
+  theme_bw() +
+  theme(legend.position = &#39;none&#39;) +
+  labs(title = &#39;Stock Returns for Multiple Assets&#39;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+<p>Now we have a dataframe with <em>daily returns</em> grouped by each <em>symbol</em>. However, we need a data frame with a <em>date</em> column and <em>n</em> columns, 1 for each stock return. So we need a tidy data frame:</p>
+<pre class="r"><code>stocks_tidy = stocks_ret %&gt;%
+  spread(symbol, daily.returns)
+
+head(stocks_tidy)</code></pre>
+<pre><code>## # A tibble: 6 x 5
+##   date        `^GSPC`     AMZN        GE      IBM
+##   &lt;date&gt;        &lt;dbl&gt;    &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;
+## 1 2010-12-31  0        0        0         0      
+## 2 2011-01-03  0.0113   0.0234  -0.000547  0.00491
+## 3 2011-01-04 -0.00131  0.00429  0.0181    0.00109
+## 4 2011-01-05  0.00501  0.0130   0.00161  -0.00400
+## 5 2011-01-06 -0.00212 -0.00832 -0.00429   0.0109 
+## 6 2011-01-07 -0.00184 -0.00199 -0.00700  -0.00491</code></pre>
+<p>We need to compound each column. So, at this point, we can write a <strong>user defined</strong> function and iterate for each column to do all the computations.</p>
+<pre class="r"><code>ret_compound = function(x){
+  #Step 1: compute (1 + r)
+  x = 1 + x
+  #Step 2: compute cumprod
+  x = cumprod(x)
+  #step 3: compute cumprod - 1
+  x = x - 1
+  
+  return(x)
+}</code></pre>
+<p>Now, lest use <code>apply</code> functions on pur data frame:</p>
+<pre class="r"><code>cum_ret = stocks_tidy
+cum_ret[, 2 : ncol(cum_ret)] = lapply(cum_ret[, 2 : ncol(cum_ret)], ret_compound)
+
+tail(cum_ret)</code></pre>
+<pre><code>## # A tibble: 6 x 5
+##   date       `^GSPC`  AMZN    GE   IBM
+##   &lt;date&gt;       &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1 2013-12-20   0.446  1.23 0.658 0.293
+## 2 2013-12-23   0.454  1.24 0.660 0.309
+## 3 2013-12-24   0.458  1.22 0.673 0.316
+## 4 2013-12-26   0.465  1.25 0.687 0.331
+## 5 2013-12-27   0.464  1.21 0.687 0.329
+## 6 2013-12-30   0.464  1.19 0.690 0.339</code></pre>
+<pre class="r"><code>#Platting the results
+cum_ret %&gt;%
+  gather(symbol, cum_ret, 2 : ncol(.)) %&gt;%
+  ggplot(aes(x = date, y = cum_ret + 1, color = symbol)) +
+  geom_line() +
+  theme_bw() +
+  labs(title = &#39;Value of $1 usd Invested&#39;) +
+  geom_hline(yintercept = 1)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
+</div>
+<div id="volatility-variance-and-standard-deviation" class="section level2">
+<h2>Volatility, Variance and Standard Deviation</h2>
+<p>Volatility is a statistical measure of the dispersion of returns for a given security or market index. In most cases, the higher the volatility, the riskier the security. Volatility is often measured as either the standard deviation or variance between returns from that same security or market index.</p>
+<p>In the securities markets, volatility is often associated with big swings in either direction. For example, when the stock market rises and falls more than one percent over a sustained period of time, it is called a “volatile” market. An asset’s volatility is a key factor when pricing options contracts.</p>
+<p>Let the <strong>variance of a stock</strong> be defined as:</p>
+<p><span class="math display">\[
+\sigma^2 = \frac{1}{N-1}\sum_{t=1}^N (R_t - \bar{R})^2
+\]</span></p>
+<p>So, the <strong>standard deviation</strong> is:</p>
+<p><span class="math display">\[
+\sigma = \sqrt{\frac{1}{N-1}\sum_{t=1}^N (R_t - \bar{R})^2}
+\]</span>
+The <strong>volatility</strong> for horizon <span class="math inline">\(T\)</span> in a yearly basis is:</p>
+<p><span class="math display">\[
+\sigma_T = \sigma \sqrt{T}
+\]</span>
+were <span class="math inline">\(T\)</span> is the number of period over a year. For Example, if <span class="math inline">\(\sigma = 0.01\)</span> daily then the volatility is:</p>
+<pre class="r"><code>s = 0.01
+t = 252
+sT = s * sqrt(t)
+print(sT)</code></pre>
+<pre><code>## [1] 0.1587451</code></pre>
+</div>
+<div id="summarizing-stocks" class="section level2">
+<h2>Summarizing Stocks</h2>
+<p>Now we can summarize our stocks by computing the annualized mean and annualized volatility:</p>
+<pre class="r"><code>stock_sumary = stocks_tidy %&gt;%
+  gather(symbol, return, 2 : ncol(.)) %&gt;%
+  mutate(Year = year(date)) %&gt;%
+  group_by(symbol, Year) %&gt;%
+  summarise(Mean = mean(return),
+            sd = sd(return)) %&gt;%
+  mutate(annual_ret = ((Mean + 1) ^252) - 1,
+         volatility = sd * sqrt(252)) %&gt;%
+  na.omit()</code></pre>
+<pre><code>## `summarise()` has grouped output by &#39;symbol&#39;. You can override using the `.groups` argument.</code></pre>
+<pre class="r"><code>print(stock_sumary)</code></pre>
+<pre><code>## # A tibble: 12 x 6
+## # Groups:   symbol [4]
+##    symbol  Year      Mean      sd annual_ret volatility
+##    &lt;chr&gt;  &lt;dbl&gt;     &lt;dbl&gt;   &lt;dbl&gt;      &lt;dbl&gt;      &lt;dbl&gt;
+##  1 ^GSPC   2011 0.000107  0.0147     0.0274       0.233
+##  2 ^GSPC   2012 0.000536  0.00804    0.144        0.128
+##  3 ^GSPC   2013 0.00104   0.00698    0.300        0.111
+##  4 AMZN    2011 0.000139  0.0242     0.0355       0.384
+##  5 AMZN    2012 0.00168   0.0200     0.527        0.318
+##  6 AMZN    2013 0.00194   0.0170     0.629        0.270
+##  7 GE      2011 0.000238  0.0193     0.0617       0.306
+##  8 GE      2012 0.000852  0.0118     0.239        0.187
+##  9 GE      2013 0.00132   0.0106     0.393        0.169
+## 10 IBM     2011 0.00106   0.0141     0.306        0.224
+## 11 IBM     2012 0.000282  0.0102     0.0736       0.161
+## 12 IBM     2013 0.0000384 0.0118     0.00972      0.187</code></pre>
+<pre class="r"><code>#Plotting Summary
+stock_sumary %&gt;%
+  gather(Metric, Value, 3 : ncol(.)) %&gt;%
+  ggplot(aes(x = factor(Year), y = Value, fill = factor(Year))) +
+  geom_bar(stat = &#39;identity&#39;, alpha = 0.6) +
+  facet_grid(Metric ~ symbol, scales = &#39;free_y&#39;) +
+  theme_bw() +
+  theme(legend.position = &#39;none&#39;) +
+  labs(title = &#39;Summary Statistics for selected strocks&#39;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
+</div>
+<div id="drawdown-and-max-drawdown" class="section level2">
+<h2>Drawdown and Max Drawdown</h2>
+<p>Drawdown method is used for measuring and managing the financial risks associated with the investments with respect to money and time and the two factors that are used for the purpose of defining this metric are its magnitude (i.e. how low will the price fall) and the duration (i.e. how long this phase of drawdown will last).</p>
+<p>To compute the drawdown:</p>
+<ul>
+<li><p>Compute a <strong>Weath Index</strong></p></li>
+<li><p>Compute <strong>Previous Peaks</strong></p></li>
+<li><p>Compute de <strong>Drawdown</strong> as the Weath Value as percentage of previous peak</p></li>
+</ul>
+<p>Let´s calculate the drawdown for Amazon:</p>
+<pre class="r"><code>#Step 1: compute a weatlh index
+amazon = stocks_tidy$AMZN
+w_index = cumprod((1 + amazon))
+
+#Step 2: Compute de Previuos Peak
+peaks = cummax(w_index)
+
+#Step 3: Compute drawdown
+drawdown = (w_index - peaks) / peaks
+
+#Plot Results
+plot(drawdown, type = &#39;l&#39;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-14-1.png" width="672" /></p>
+<pre class="r"><code>#The Max Drawdown is:
+min(drawdown)</code></pre>
+<pre><code>## [1] -0.2983665</code></pre>
+</div>
+<div id="drawdown-for-multiple-assets" class="section level2">
+<h2>Drawdown for Multiple Assets</h2>
+<p>now we can create a function to apply to our data frame with all our assets to expand our summary:</p>
+<pre class="r"><code>drawdown_f = function(x){
+  #Step 1: compute a weatlh index
+  w_index = cumprod((1 + x))
+  
+  #Step 2: Compute de Previuos Peak
+  peaks = cummax(w_index)
+  
+  #Step 3: Compute drawdown
+  drawdown = (w_index - peaks) / peaks
+  
+  return(drawdown)
+}</code></pre>
+<p>Let´s apply our formula;</p>
+<pre class="r"><code>stock_ddown = stocks_tidy
+stock_ddown[, 2 : ncol(stock_ddown)] = lapply(stock_ddown[, 2 : ncol(stock_ddown)], drawdown_f)
+
+#Compute Max Drawdown
+stock_ddown %&gt;%
+  gather(symbol, drawdown, 2 : ncol(.)) %&gt;%
+  group_by(symbol) %&gt;%
+  summarise(Max_Drawdown = min(drawdown))</code></pre>
+<pre><code>## # A tibble: 4 x 2
+##   symbol Max_Drawdown
+##   &lt;chr&gt;         &lt;dbl&gt;
+## 1 ^GSPC        -0.194
+## 2 AMZN         -0.298
+## 3 GE           -0.300
+## 4 IBM          -0.191</code></pre>
+<div id="advantages" class="section level3">
+<h3>Advantages</h3>
+<p>It is one of the mathematical tools to derive the risk of the portfolio by comparing the peak and the trough values when the portfolio regains its original shape.</p>
+<p>Below are some of the advantages :</p>
+<ul>
+<li><p>It gives the investor a sense of the risk that the portfolio or the stock holds before investment.</p></li>
+<li><p>A stock or the portfolio with a lower drawdown will give comfort to the traders or the investors to put their money and earn.</p></li>
+<li><p>It helps the trader or the investor to ascertain the volatility of the stock or the fund with the market and the industry in specific.</p></li>
+<li><p>It is used in decision making by large corporations since the ticket size of the investments are huge.</p></li>
+</ul>
+</div>
+<div id="disadvantages" class="section level3">
+<h3>Disadvantages</h3>
+<ul>
+<li><p>It is a relative method of calculating the drawdown % or the amount by just subtracting the trough value from the peak value of the stock or the portfolio.</p></li>
+<li><p>It can vary from stock to stock or fund to fund.</p></li>
+<li><p>Sometimes there is only a marginal fall in the stock or the fund due to some kind of market news
+or political stories. This downfall should not be considered as a drawdown since the value has decline merely because of the news element, and there is no issue in the stocks in the portfolio.</p></li>
+</ul>
+</div>
+</div>
+<div id="returns-are-not-normaly-distributed" class="section level2">
+<h2>Returns are not Normaly Distributed</h2>
+<p>Let´s take the sample from Amazon stock returns to test for <strong>Normality</strong>. There are multiple ways to do it.</p>
+<div id="q-q-plot-for-norality" class="section level3">
+<h3>Q-Q plot for Norality</h3>
+<p>The Q-Q plot, or quantile-quantile plot, is a graphical tool to help us assess if a set of data plausibly came from some theoretical distribution such as a Normal or exponential.</p>
+<p>A Q-Q plot is a scatterplot created by plotting two sets of <strong>quantiles</strong> against one another. If both sets of quantiles came from the same distribution, we should see the points forming a line that’s roughly straight.</p>
+<p>Now what are <strong>quantiles</strong>? These are often referred to as <strong>percentiles</strong>. These are points in your data below which a certain proportion of your data fall. For example, imagine the classic bell-curve standard Normal distribution with a mean of 0. The 0.5 quantile, or 50th percentile, is 0. Half the data lie below 0. That’s the peak of the hump in the curve. The 0.95 quantile, or 95th percentile, is about 1.64. 95 percent of the data lie below 1.6.</p>
+<pre class="r"><code>#Create a base plot panel of 1 row x 1 column
+par(mfrow = c(1,3))
+
+#Create return time series plot
+plot(stocks_tidy$AMZN, type = &#39;l&#39;, col = &#39;orange&#39;)
+title(main = &#39;Time Series of AMZN Returns&#39;)
+
+#Create histogram
+hist(stocks_tidy$AMZN)
+
+#Create qq Normal plot
+qqnorm(stocks_tidy$AMZN)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-17-1.png" width="672" /></p>
+<p>If <strong>AMZN</strong> returns are normal, the <strong>qq plot</strong> would follow a streight line. In this case, we have deviations from Normality mainly in the <strong>tails</strong>. This effect is known as <strong>fat tails distribution</strong></p>
+<p>An alternative way to test for normality is by doing an <strong>hypothesis test</strong> .</p>
+<p>It’s possible to use a significance test comparing the sample distribution to a normal one in order to ascertain whether data show or not a serious deviation from normality.</p>
+<p>There are several methods for normality test such as <strong>Kolmogorov-Smirnov (K-S) normality test and Shapiro-Wilk’s test</strong>.</p>
+<p>The <strong>null hypothesis of these tests is that “sample distribution is normal”</strong>. If the test is significant, the distribution is non-normal.</p>
+<p>Shapiro-Wilk’s method is widely recommended for normality test and it provides better power than K-S. It is based on the correlation between the data and the corresponding normal scores.</p>
+<p>Note that, normality test is sensitive to sample size. Small samples most often pass normality tests. Therefore, it’s important to combine visual inspection and significance test in order to take the right decision.</p>
+<p>The R function <code>shapiro.test()</code> can be used to perform the Shapiro-Wilk test of normality for one variable (univariate):</p>
+<pre class="r"><code>shapiro.test(stocks_tidy$AMZN)</code></pre>
+<pre><code>## 
+##  Shapiro-Wilk normality test
+## 
+## data:  stocks_tidy$AMZN
+## W = 0.92886, p-value &lt; 2.2e-16</code></pre>
+<p>Since the <code>pval &lt; 0.05</code> we reject the <strong>NULL hypothesis</strong> so the <strong>AMZN returns are not Normal</strong></p>
+</div>
+</div>
+<div id="higher-order-moments" class="section level2">
+<h2>Higher Order Moments</h2>
+<p>Because of the lack of <strong>Normality</strong> it is always useful to look at higher <strong>moments</strong>. Typically we look at <strong>Skewnees</strong> and <strong>Kurtosis</strong></p>
+<p>In probability theory and statistics, <strong>skewness</strong> is a measure of the asymmetry of the probability distribution of a real-valued random variable about its mean. The skewness value can be positive, zero, negative, or undefined.</p>
+<p>For a unimodal distribution, negative skew commonly indicates that the tail is on the left side of the distribution, and positive skew indicates that the tail is on the right. In cases where one tail is long but the other tail is fat, skewness does not obey a simple rule. For example, a zero value means that the tails on both sides of the mean balance out overall; this is the case for a symmetric distribution, but can also be true for an asymmetric distribution where one tail is long and thin, and the other is short but fat.</p>
+<p><span class="math display">\[
+s(R) = \frac{\frac{1}{n}\sum(x_i-\bar{x})^3}{[\frac{1}{n-1}\sum(x_i-\bar{x})^2]^\frac{3}{2}}
+\]</span>
+In probability theory and statistics, kurtosis is a measure of the “tailedness” of the probability distribution of a real-valued random variable. Like skewness, kurtosis describes the shape of a probability distribution and there are different ways of quantifying it for a theoretical distribution and corresponding ways of estimating it from a sample from a population. Different measures of kurtosis may have different interpretations.</p>
+<p>The standard measure of a distribution’s kurtosis, originating with Karl Pearson, is a scaled version of the fourth moment of the distribution.</p>
+<p><strong>The kurtosis of any univariate normal distribution is 3</strong>. It is common to compare the kurtosis of a distribution to this value. Distributions with kurtosis less than 3 are said to be platykurtic, although this does not imply the distribution is “flat-topped” as is sometimes stated. Rather, it means the distribution produces fewer and less extreme outliers than does the normal distribution.</p>
+<p><span class="math display">\[
+k(R) = \frac{\frac{1}{n}\sum(x_i-\bar{x})^4}{(\frac{1}{n}\sum(x_i-\bar{x})^2)^2}
+\]</span></p>
+<p>The <strong>excess kurtosis</strong> is defined as kurtosis minus 3.</p>
+<p>Let´s use <code>R</code> to compute higher order moments:</p>
+<pre class="r"><code>#Generate random numbers from Normal Distribution
+set.seed(1234)
+x = rnorm(1000,0,1)
+#Plot qq normal plot
+qqnorm(x)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-19-1.png" width="672" /></p>
+<pre class="r"><code>#Compute higher order numbers
+require(moments)</code></pre>
+<pre><code>## Loading required package: moments</code></pre>
+<pre><code>## 
+## Attaching package: &#39;moments&#39;</code></pre>
+<pre><code>## The following objects are masked from &#39;package:PerformanceAnalytics&#39;:
+## 
+##     kurtosis, skewness</code></pre>
+<pre class="r"><code>skewness(x)</code></pre>
+<pre><code>## [1] -0.005202026</code></pre>
+<pre class="r"><code>kurtosis(x)</code></pre>
+<pre><code>## [1] 3.241962</code></pre>
+<p>Now, let´s do it for our Amazon stock:</p>
+<pre class="r"><code>skewness(stocks_tidy$AMZN)</code></pre>
+<pre><code>## [1] 0.4602219</code></pre>
+<pre class="r"><code>kurtosis(stocks_tidy$AMZN)</code></pre>
+<pre><code>## [1] 10.7409</code></pre>
+<p>The fact that <span class="math inline">\(k(R) = 10.7\)</span> means that Amazon´s Stock Returns have <strong>Fat Tails</strong>. The practical implication is that we are underestimating risk by volatility.</p>
+</div>
+<div id="putting-all-togheter" class="section level2">
+<h2>Putting all Togheter</h2>
+<p>Now, let´s create a summary for our Stocks to recap what we just learned.</p>
+<p>First, let´s create user defined functions for annualized returs, volatility and max drawdown.</p>
+<pre class="r"><code>#annualzed returns
+ret_yr = function(x){
+  x = mean(x)
+  x = (1 + x)^252 - 1
+  return(x)
+}
+
+#annual volatlity
+vol_yr = function(x){
+  x = sd(x)
+  vol = x * sqrt(252)
+  return(vol)
+}
+
+#Max Drawdown
+max_drawdown = function(x){
+  x = drawdown_f(x)
+  x = min(x)
+  return(x)
+}</code></pre>
+<p>Now let´s compute the summary</p>
+<pre class="r"><code>#Define our dataset
+x = stocks_tidy[, 2 : ncol(stocks_tidy)]
+
+#Create summary data frame
+stock_summary = data.frame(mean = sapply(x, mean),
+                           sd = sapply(x, sd),
+                           skew = sapply(x, skewness),
+                           kurtosis = sapply(x, kurtosis),
+                           Ret_yr = sapply(x, ret_yr),
+                           Volatility = sapply(x, vol_yr),
+                           Max_Drawdown = sapply(x, max_drawdown))
+
+stock_summary</code></pre>
+<pre><code>##               mean         sd        skew  kurtosis    Ret_yr Volatility
+## ^GSPC 0.0005603664 0.01045848 -0.46808030  8.098364 0.1516236  0.1660232
+## AMZN  0.0012484055 0.02061284  0.46022190 10.740900 0.3694401  0.3272186
+## GE    0.0007998770 0.01440382 -0.01085978  5.974996 0.2232221  0.2286536
+## IBM   0.0004607867 0.01211496 -0.61573554  8.764296 0.1230986  0.1923190
+##       Max_Drawdown
+## ^GSPC   -0.1938824
+## AMZN    -0.2983665
+## GE      -0.3003563
+## IBM     -0.1912032</code></pre>
+</div>
+</div>

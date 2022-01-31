@@ -1,0 +1,568 @@
+---
+title: Basics of Stock Returns
+author: Eduardo Villarreal
+date: '2022-02-07'
+slug: basics-of-stock-returns
+categories:
+  - Finance
+tags:
+  - R
+  - Finance
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Returns Introduction
+
+The dollar change based solely on the closing price of a security is called capital
+gains and the percentage price in the closing price of a security is its price return. The
+price return is measured over some investment horizon (e.g., 1 day, 1 month, 1 year,
+etc.). The length of the period depends on the application, but the return calculations
+should be consistent such that cumulating all the 1-day returns in a given year should
+equal the annual return.
+
+The daily price return is the percentage change in the price of a security today
+relative to its price yesterday. That is,
+
+$$
+R_t = \frac{P_t - P_{t-1}}{P_t} = \frac{P_t}{P_{t-1}} - 1
+
+$$
+
+Were $P_t$ is the *Price* of an asset at time $t$, $P_{t-1}$ is the *Price¨* of an asset at time $t-1$ and $R_t$ is the *Aritmetic Return* at time $t$
+
+Returns over time are not *aditive*. If you have 2 periods, the 2-period compounding return is:
+
+$$
+R_{t,t+2} = (1+R_{t,t+1})(1+R_{t,t+1,t+2}) - 1
+$$
+As an Example, let´s assume we hace a **stock** that gained $10%$ on dat 1 and lost $-5%$ in day 2. The *compounded return** is:
+
+```{r}
+r1 = 0.1
+r2 = -0.05
+#The total compounded return is
+r = (1 + r1) * (1 + r2) - 1
+print(r)
+```
+
+When evaluating investments, we are typically concerned with how our investment
+has performed over a particular time horizon. Put differently, we are interested in
+cumulative multi-day returns. Extending our 2 period example to n-period for an **Amazon** stock from Dec 31 2010 to Dec 31 2013:
+
+## Loading the require libraries and Gething the Data
+
+For this example we will get the **Amazon (AMZN)** ticker for **yahoo finance**
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidyquant)
+library(timetk)
+library(quantmod)
+
+#Get the data
+AMZN <- tq_get('AMZN',
+               from = '2010-12-31',
+               to = '2013-12-31',
+               get = 'stock.prices',
+               complete_cases = T)
+
+#Let´s plot the series
+AMZN %>%
+  ggplot(aes(x = date, y = close)) +
+  geom_line() +
+  labs(title = 'AMAZON Daily Price') +
+  theme_bw()
+
+```
+
+## Computing the Return
+
+Now let´s compute the return of the stock:
+
+```{r}
+AMZN_ret = AMZN %>%
+  tq_transmute(
+    select = adjusted,
+    mutate_fun = periodReturn,
+    period = 'daily',
+    col_rename = 'AMZN_ret')
+
+#Computing Groos Return
+AMZN_ret$AMZN_Gret = 1 + AMZN_ret$AMZN_ret
+
+#Compute Comulative Returns
+AMZN_ret$AMZN_GCummRet = cumprod(AMZN_ret$AMZN_Gret)
+
+#Compute Net Cumulative Return
+AMZN_ret$AMZN_NetCummRet = AMZN_ret$AMZN_GCummRet - 1
+
+#Plot commulative Returns
+AMZN_ret %>%
+  ggplot(aes(x = date, y = AMZN_NetCummRet)) +
+  geom_line() +
+  labs(title = 'AMAZON Cumulative Return') +
+  theme_bw()
+
+```
+
+What we just did is to compute the Net Commulative Return by daily compounding:
+
+$$
+R_{t, t+N} = \prod_{t=1}^N(1+R_t) - 1
+$$
+
+## Log Returns
+
+Another way to represent returns is by it´s *log form* given by:
+
+$$
+r_t = \text{ln}\frac{P_t}{P_{t-1}} = \ln(P_t) - \ln(P_{t-1})
+$$
+
+where ln is the natural logarithm operator. Therefore, we can take the difference of the log prices
+to calculate log returns
+
+Now, we can just follow the same equation for **cumulative log net returns**:
+
+$$
+r_{t, t+N} = \sum_{t=1}^N r_t -1
+$$
+
+```{r}
+AMZN_LogRet = AMZN %>%
+  tq_transmute(
+    select = adjusted,
+    mutate_fun = periodReturn,
+    period = 'daily',
+    type = 'log',
+    col_rename = 'AMZN_log_ret')
+
+#Computing log Net Ret 
+AMZN_LogRet$AMZN_log_NetRet = cumsum(AMZN_LogRet$AMZN_log_ret)
+AMZN_LogRet$AMZN_log_NetRet = AMZN_LogRet$AMZN_log_NetRet
+
+#Conberting Log Returns to Aritmethic
+AMZN_LogRet$AMZN_log_NetRet = exp(AMZN_LogRet$AMZN_log_NetRet) - 1
+
+AMZN_LogRet %>%
+  ggplot(aes(x = date, y = AMZN_log_NetRet)) +
+  geom_line() +
+  labs(title = 'AMAZON Cumulative Return') +
+  theme_bw()
+
+```
+
+Now let´s compare both data frames:
+
+```{r}
+tail(AMZN_ret$AMZN_NetCummRet)
+tail(AMZN_ret$AMZN_NetCummRet)
+```
+
+
+## Annualizing Returns
+
+Let´s assume we have an asset with 1% return by month. Annualizing this is equivalent to compound 12 times (1 year has 12 months). So, the annualized return is:
+
+```{r}
+r = 0.01
+r_yr = (r + 1)^12 - 1
+print(r_yr)
+```
+
+Thus, a **1%** monthly return is a **12.68%** annualized return.
+
+## Comparing Multiple Assets
+
+Now let´s expand what we learned to multiple assets: **AMZN, GSPC, GE, IBM** or **amazon, sp500 index, general eletric and IBM**
+
+First, lets get the data:
+
+```{r warning=FALSE}
+symbols = c('AMZN', '^GSPC', 'GE', 'IBM')
+
+stocks <- tq_get(symbols,
+               from = '2010-12-31',
+               to = '2013-12-31',
+               get = 'stock.prices',
+               complete_cases = T)
+
+head(stocks)
+
+#Plot the data
+stocks %>%
+  ggplot(aes(x = date, y = adjusted, color = symbol)) +
+  geom_line() +
+  facet_wrap(~symbol, scales = 'free', nrow = 1) +
+  theme_bw() +
+  theme(legend.position = 'none') +
+  labs(title = 'Stock Price Evolutions for Multiple Assets')
+
+```
+
+Now we can compute de returns for each of the assets:
+
+```{r}
+stocks_ret = stocks %>%
+  group_by(symbol) %>%
+  tq_transmute(
+    select = adjusted,
+    mutate_fun = periodReturn,
+    period = 'daily')
+
+#plot the data
+stocks_ret %>%
+  ggplot(aes(x = date, y = daily.returns, color = symbol)) +
+  geom_line() +
+  facet_wrap(~symbol, scales = 'free_x', nrow = 1) +
+  theme_bw() +
+  theme(legend.position = 'none') +
+  labs(title = 'Stock Returns for Multiple Assets')
+```
+
+Now we have a dataframe with *daily returns* grouped by each *symbol*. However, we need a data frame with a *date* column and *n* columns, 1 for each stock return. So we need a tidy data frame:
+
+```{r}
+stocks_tidy = stocks_ret %>%
+  spread(symbol, daily.returns)
+
+head(stocks_tidy)
+```
+
+We need to compound each column. So, at this point, we can write a **user defined** function and iterate for each column to do all the computations.
+
+```{r}
+ret_compound = function(x){
+  #Step 1: compute (1 + r)
+  x = 1 + x
+  #Step 2: compute cumprod
+  x = cumprod(x)
+  #step 3: compute cumprod - 1
+  x = x - 1
+  
+  return(x)
+}
+```
+
+Now, lest use `apply` functions on pur data frame:
+
+```{r}
+cum_ret = stocks_tidy
+cum_ret[, 2 : ncol(cum_ret)] = lapply(cum_ret[, 2 : ncol(cum_ret)], ret_compound)
+
+tail(cum_ret)
+
+#Platting the results
+cum_ret %>%
+  gather(symbol, cum_ret, 2 : ncol(.)) %>%
+  ggplot(aes(x = date, y = cum_ret + 1, color = symbol)) +
+  geom_line() +
+  theme_bw() +
+  labs(title = 'Value of $1 usd Invested') +
+  geom_hline(yintercept = 1)
+
+```
+
+
+## Volatility, Variance and Standard Deviation
+
+Volatility is a statistical measure of the dispersion of returns for a given security or market index. In most cases, the higher the volatility, the riskier the security. Volatility is often measured as either the standard deviation or variance between returns from that same security or market index.
+
+In the securities markets, volatility is often associated with big swings in either direction. For example, when the stock market rises and falls more than one percent over a sustained period of time, it is called a "volatile" market. An asset's volatility is a key factor when pricing options contracts.
+
+Let the **variance of a stock** be defined as:
+
+$$
+\sigma^2 = \frac{1}{N-1}\sum_{t=1}^N (R_t - \bar{R})^2
+$$
+
+So, the **standard deviation** is:
+
+$$
+\sigma = \sqrt{\frac{1}{N-1}\sum_{t=1}^N (R_t - \bar{R})^2}
+$$
+The **volatility** for horizon $T$ in a yearly basis is:
+
+$$
+\sigma_T = \sigma \sqrt{T}
+$$
+were $T$ is the number of period over a year. For Example, if $\sigma = 0.01$ daily then the volatility is:
+
+```{r}
+s = 0.01
+t = 252
+sT = s * sqrt(t)
+print(sT)
+```
+
+## Summarizing Stocks
+
+Now we can summarize our stocks by computing the annualized mean and annualized volatility:
+
+```{r}
+stock_sumary = stocks_tidy %>%
+  gather(symbol, return, 2 : ncol(.)) %>%
+  mutate(Year = year(date)) %>%
+  group_by(symbol, Year) %>%
+  summarise(Mean = mean(return),
+            sd = sd(return)) %>%
+  mutate(annual_ret = ((Mean + 1) ^252) - 1,
+         volatility = sd * sqrt(252)) %>%
+  na.omit()
+
+print(stock_sumary)
+
+#Plotting Summary
+stock_sumary %>%
+  gather(Metric, Value, 3 : ncol(.)) %>%
+  ggplot(aes(x = factor(Year), y = Value, fill = factor(Year))) +
+  geom_bar(stat = 'identity', alpha = 0.6) +
+  facet_grid(Metric ~ symbol, scales = 'free_y') +
+  theme_bw() +
+  theme(legend.position = 'none') +
+  labs(title = 'Summary Statistics for selected strocks')
+
+```
+
+## Drawdown and Max Drawdown
+
+Drawdown method is used for measuring and managing the financial risks associated with the investments with respect to money and time and the two factors that are used for the purpose of defining this metric are its magnitude (i.e. how low will the price fall) and the duration (i.e. how long this phase of drawdown will last).
+
+To compute the drawdown:
+
+* Compute a **Weath Index**
+
+* Compute **Previous Peaks**
+
+* Compute de **Drawdown** as the Weath Value as percentage of previous peak
+
+Let´s calculate the drawdown for Amazon:
+
+```{r}
+#Step 1: compute a weatlh index
+amazon = stocks_tidy$AMZN
+w_index = cumprod((1 + amazon))
+
+#Step 2: Compute de Previuos Peak
+peaks = cummax(w_index)
+
+#Step 3: Compute drawdown
+drawdown = (w_index - peaks) / peaks
+
+#Plot Results
+plot(drawdown, type = 'l')
+
+#The Max Drawdown is:
+min(drawdown)
+
+```
+
+## Drawdown for Multiple Assets
+
+now we can create a function to apply to our data frame with all our assets to expand our summary:
+
+```{r}
+drawdown_f = function(x){
+  #Step 1: compute a weatlh index
+  w_index = cumprod((1 + x))
+  
+  #Step 2: Compute de Previuos Peak
+  peaks = cummax(w_index)
+  
+  #Step 3: Compute drawdown
+  drawdown = (w_index - peaks) / peaks
+  
+  return(drawdown)
+}
+```
+
+Let´s apply our formula;
+
+```{r}
+stock_ddown = stocks_tidy
+stock_ddown[, 2 : ncol(stock_ddown)] = lapply(stock_ddown[, 2 : ncol(stock_ddown)], drawdown_f)
+
+#Compute Max Drawdown
+stock_ddown %>%
+  gather(symbol, drawdown, 2 : ncol(.)) %>%
+  group_by(symbol) %>%
+  summarise(Max_Drawdown = min(drawdown))
+
+```
+
+
+### Advantages
+
+It is one of the mathematical tools to derive the risk of the portfolio by comparing the peak and the trough values when the portfolio regains its original shape.
+
+Below are some of the advantages :
+
+* It gives the investor a sense of the risk that the portfolio or the stock holds before investment.
+
+* A stock or the portfolio with a lower drawdown will give comfort to the traders or the investors to put their money and earn.
+
+* It helps the trader or the investor to ascertain the volatility of the stock or the fund with the market and the industry in specific.
+
+* It is used in decision making by large corporations since the ticket size of the investments are huge.
+
+### Disadvantages
+
+* It is a relative method of calculating the drawdown % or the amount by just subtracting the trough value from the peak value of the stock or the portfolio.
+
+* It can vary from stock to stock or fund to fund.
+
+* Sometimes there is only a marginal fall in the stock or the fund due to some kind of market news 
+or political stories. This downfall should not be considered as a drawdown since the value has decline merely because of the news element, and there is no issue in the stocks in the portfolio.
+
+## Returns are not Normaly Distributed
+
+Let´s take the sample from Amazon stock returns to test for **Normality**. There are multiple ways to do it.
+
+### Q-Q plot for Norality
+
+The Q-Q plot, or quantile-quantile plot, is a graphical tool to help us assess if a set of data plausibly came from some theoretical distribution such as a Normal or exponential.
+
+A Q-Q plot is a scatterplot created by plotting two sets of **quantiles** against one another. If both sets of quantiles came from the same distribution, we should see the points forming a line that’s roughly straight.
+
+Now what are **quantiles**? These are often referred to as **percentiles**. These are points in your data below which a certain proportion of your data fall. For example, imagine the classic bell-curve standard Normal distribution with a mean of 0. The 0.5 quantile, or 50th percentile, is 0. Half the data lie below 0. That’s the peak of the hump in the curve. The 0.95 quantile, or 95th percentile, is about 1.64. 95 percent of the data lie below 1.6.
+
+```{r}
+#Create a base plot panel of 1 row x 1 column
+par(mfrow = c(1,3))
+
+#Create return time series plot
+plot(stocks_tidy$AMZN, type = 'l', col = 'orange')
+title(main = 'Time Series of AMZN Returns')
+
+#Create histogram
+hist(stocks_tidy$AMZN)
+
+#Create qq Normal plot
+qqnorm(stocks_tidy$AMZN)
+```
+
+If **AMZN** returns are normal, the **qq plot** would follow a streight line. In this case, we have deviations from Normality mainly in the **tails**. This effect is known as **fat tails distribution**
+
+An alternative way to test for normality is by doing an **hypothesis test** .
+
+It’s possible to use a significance test comparing the sample distribution to a normal one in order to ascertain whether data show or not a serious deviation from normality.
+
+There are several methods for normality test such as **Kolmogorov-Smirnov (K-S) normality test and Shapiro-Wilk’s test**.
+
+The **null hypothesis of these tests is that “sample distribution is normal”**. If the test is significant, the distribution is non-normal.
+
+Shapiro-Wilk’s method is widely recommended for normality test and it provides better power than K-S. It is based on the correlation between the data and the corresponding normal scores.
+
+Note that, normality test is sensitive to sample size. Small samples most often pass normality tests. Therefore, it’s important to combine visual inspection and significance test in order to take the right decision.
+
+The R function `shapiro.test()` can be used to perform the Shapiro-Wilk test of normality for one variable (univariate):
+
+```{r}
+shapiro.test(stocks_tidy$AMZN)
+```
+
+
+Since the `pval < 0.05` we reject the **NULL hypothesis** so the **AMZN returns are not Normal**
+
+## Higher Order Moments
+
+Because of the lack of **Normality** it is always useful to look at higher **moments**. Typically we look at **Skewnees** and **Kurtosis**
+
+In probability theory and statistics, **skewness** is a measure of the asymmetry of the probability distribution of a real-valued random variable about its mean. The skewness value can be positive, zero, negative, or undefined.
+
+For a unimodal distribution, negative skew commonly indicates that the tail is on the left side of the distribution, and positive skew indicates that the tail is on the right. In cases where one tail is long but the other tail is fat, skewness does not obey a simple rule. For example, a zero value means that the tails on both sides of the mean balance out overall; this is the case for a symmetric distribution, but can also be true for an asymmetric distribution where one tail is long and thin, and the other is short but fat.
+
+$$
+s(R) = \frac{\frac{1}{n}\sum(x_i-\bar{x})^3}{[\frac{1}{n-1}\sum(x_i-\bar{x})^2]^\frac{3}{2}}
+$$
+In probability theory and statistics, kurtosis is a measure of the "tailedness" of the probability distribution of a real-valued random variable. Like skewness, kurtosis describes the shape of a probability distribution and there are different ways of quantifying it for a theoretical distribution and corresponding ways of estimating it from a sample from a population. Different measures of kurtosis may have different interpretations.
+
+The standard measure of a distribution's kurtosis, originating with Karl Pearson, is a scaled version of the fourth moment of the distribution.
+
+**The kurtosis of any univariate normal distribution is 3**. It is common to compare the kurtosis of a distribution to this value. Distributions with kurtosis less than 3 are said to be platykurtic, although this does not imply the distribution is "flat-topped" as is sometimes stated. Rather, it means the distribution produces fewer and less extreme outliers than does the normal distribution.
+
+$$
+k(R) = \frac{\frac{1}{n}\sum(x_i-\bar{x})^4}{(\frac{1}{n}\sum(x_i-\bar{x})^2)^2}
+$$
+
+The **excess kurtosis** is defined as kurtosis minus 3.
+
+Let´s use `R` to compute higher order moments:
+
+```{r}
+#Generate random numbers from Normal Distribution
+set.seed(1234)
+x = rnorm(1000,0,1)
+#Plot qq normal plot
+qqnorm(x)
+
+#Compute higher order numbers
+require(moments)
+skewness(x)
+kurtosis(x)
+
+```
+
+
+Now, let´s do it for our Amazon stock:
+
+```{r}
+skewness(stocks_tidy$AMZN)
+kurtosis(stocks_tidy$AMZN)
+```
+
+The fact that $k(R) = 10.7$ means that Amazon´s Stock Returns have **Fat Tails**. The practical implication is that we are underestimating risk by volatility.
+
+## Putting all Togheter
+
+Now, let´s create a summary for our Stocks to recap what we just learned.
+
+First, let´s create user defined functions for annualized returs, volatility and max drawdown.
+
+```{r}
+#annualzed returns
+ret_yr = function(x){
+  x = mean(x)
+  x = (1 + x)^252 - 1
+  return(x)
+}
+
+#annual volatlity
+vol_yr = function(x){
+  x = sd(x)
+  vol = x * sqrt(252)
+  return(vol)
+}
+
+#Max Drawdown
+max_drawdown = function(x){
+  x = drawdown_f(x)
+  x = min(x)
+  return(x)
+}
+```
+
+Now let´s compute the summary
+
+```{r}
+#Define our dataset
+x = stocks_tidy[, 2 : ncol(stocks_tidy)]
+
+#Create summary data frame
+stock_summary = data.frame(mean = sapply(x, mean),
+                           sd = sapply(x, sd),
+                           skew = sapply(x, skewness),
+                           kurtosis = sapply(x, kurtosis),
+                           Ret_yr = sapply(x, ret_yr),
+                           Volatility = sapply(x, vol_yr),
+                           Max_Drawdown = sapply(x, max_drawdown))
+
+stock_summary
+```
+
+
+
