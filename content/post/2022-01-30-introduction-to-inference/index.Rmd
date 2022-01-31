@@ -1,0 +1,919 @@
+---
+title: Introduction to Inference
+author: Eduardo Villarreal
+date: '2022-01-30'
+slug: introduction-to-inference
+categories:
+  - Basic Statisitcs
+tags:
+  - Inference and Regression
+---
+
+# Introducción a la Inferencia
+
+## Estadística Inferencial
+
+En Estadística estamos interesados en estimar **parámetros** que nos ayuden a tomar conclusiones válidas para una **población**. En particular, si conocemos la media poblacional $\mu$ y su desviación estándar $\sigma$ podemos saber muchas cosas como el promedio de edad laboral en un país y que porcentaje de la población está por encima de la esperanza de vida de un país para formular políticas públicas.
+
+La única forma de obtener parámetros de poblaciones es hacer **censos** pero estos son muy caros y toman mucho tiempo. Aún cuando tengamos un sistema transaccional que guarde todas las facturas, minar esta información requiere de una infraestructura.
+
+Entonces, las personas recurren a las estimaciones de parámetros por medio de las **estadísticas**. La idea detrás de este concepto es que nosotros podemos **aproximar** el valor de un parámetro poblacional con una estadística muestral:
+
+$\mu \approx \hat{\mu}$
+
+En donde $\hat{\mu}$ es una aproximación a la media poblacional $\mu$. Esto se logra a través de muestreos. Aún cuando no podemos saber el valor real de la media poblacional y por lo general se asume desconocida, por medio de muestreos sistematizados, podemos aproximar este valor.
+
+### La Distribución Normal
+
+La importancia de esta distribución radica en que **permite modelar numerosos fenómenos naturales, sociales y psicológicos**. Mientras que los mecanismos que subyacen a gran parte de este tipo de fenómenos son desconocidos, por la enorme cantidad de variables incontrolables que en ellos intervienen, el uso del modelo normal puede justificarse asumiendo que cada observación se obtiene como la suma de unas pocas causas independientes.
+
+De hecho, la estadística descriptiva solo permite describir un fenómeno, sin explicación alguna. Para la explicación causal es preciso el **diseño experimental**, de ahí que al uso de la estadística en psicología y sociología sea conocido como **método correlacional**.
+
+La **distribución normal** también es importante por su relación con la estimación por **mínimos cuadrados**, uno de los métodos de estimación más simples y antiguos.
+
+Algunos ejemplos de variables asociadas a fenómenos naturales que siguen el modelo de la normal son:
+
+* caracteres morfológicos de individuos como la estatura;
+* caracteres fisiológicos como el efecto de un fármaco;
+* caracteres sociológicos como el consumo de cierto producto por un mismo grupo de individuos;
+* caracteres psicológicos como el cociente intelectual;
+* nivel de ruido en telecomunicaciones;
+* errores cometidos al medir ciertas magnitudes;
+
+La distribución normal también aparece en muchas áreas de la propia estadística. Por ejemplo, la **distribución muestral de las medias muestrales es aproximadamente normal**, cuando la distribución de la población de la cual se extrae la muestra no es normal. Además, la distribución normal maximiza la entropía entre todas las distribuciones con media y varianza conocidas, lo cual la convierte en la elección natural de la distribución subyacente a una lista de datos resumidos en términos de media muestral y varianza. La distribución normal es la más extendida en estadística y **muchos tests estadísticos están basados en una "normalidad"** más o menos justificada de la variable aleatoria bajo estudio.
+
+La distribución normal se define como:
+
+$X \sim \mathcal{N}(\mu,\,\sigma^{2})\ = \frac{1}{\sigma \sqrt{2\pi}}e^{\frac{(x-\mu)^2}{2\sigma^2}}$
+
+a la cantidades $\mu$ y $\sigma^2$ se les conoce como **media** y **varianza** y determinan la **localización** del valor más probable y la **dispersión** de la curva. Entonces, podemos obtener distintas formar si los valores de la estos 2 parámetros son distintos:
+
+```{r message=FALSE, warning=FALSE}
+require(tidyverse)
+```
+
+
+```{r}
+#Simular distintas distribuciones normales
+d1 = rnorm(100000, mean = 0, sd = 1)
+d2 = rnorm(100000, mean = 0, sd = 3)
+d3 = rnorm(100000, mean = 4, sd = 0.5)
+
+#Hacer un dataframe para poner todo junto
+simulacion = data.frame(d1 = d1, d2 = d2, d3 = d3)
+
+#Graficar las curvas de distribución normal
+ggplot(simulacion) +
+  geom_density(aes(x = d1, col = 'red'), size = 1) +
+  geom_density(aes(x = d2, col = 'blue'), size = 1) +
+  geom_density(aes(x = d3, col = 'green'), size = 1)+
+  theme(legend.position = 'none') +
+  labs(title = 'Diferentes Distribuciones Normales')
+```
+
+Muchas veces nos interesa obtener la **función acumulada** para obtener probabilidades. Por ejemplo, supongamos que nos interesa saber la probabilidad de que un avión que viaja de **MX** a **NY** haga menos de 4.5 hrs. Supongamos que en promedio, un avión hace 5 hrs o 300 minutos y que su desviación estándar es de 45 min. Generalmente tendríamos que calcular:
+
+$P[t<= 270] = \int_{t = 0}^{t = 270}\frac{1}{\sigma \sqrt{2\pi}}e^{\frac{(x-\mu)^2}{2\sigma^2}}$
+
+lo cual representa conocimientos avanzados de cálculo y un montón de operaciones. En **R** podemos computarlo con la función `pnorm(value, mu, sd)`
+
+```{r}
+#La probabilidad de llegar en menos de 4.5 hrs
+pnorm(270, mean = 300, sd = 45)
+```
+Supongamos que ahora queremos computar la probabilidad de llegar en **más de 6 hrs**
+
+```{r}
+#La probabilidad de llegar en más de 6 hrs es:
+1 - pnorm(360, mean = 300, sd = 45)
+```
+
+Cuál es la probabilidad de llegar entre 4.5 y 6 hrs?
+
+```{r}
+#La probabilidad de llegar antes de 4.5 hrs es
+p1 = pnorm(270, mean = 300, sd = 45)
+
+#La probabilidad de llegar antes de 6 hrs
+p2 = pnorm(360, mean = 300, sd = 45)
+
+#La probbilidad de llegar entre 4.5 y 6 hrs es:
+p = p2 - p1
+p
+
+```
+
+La función `pnorm()` **siempre calcula  la $P(X \leq \text{Valor})$
+
+### La Distribución Normal Estándar
+
+Hacer cómputos con esta ecuación:
+
+$X \sim \mathcal{N}(\mu,\,\sigma^{2})\ = \frac{1}{\sigma \sqrt{2\pi}}e^{\frac{(x-\mu)^2}{2\sigma^2}}$
+
+es difícil desde un punto de vista matemático. Pero podemos usar un truco que consiste en hacer que la media de nuestro objeto de estudio sea $0$ y que su dispersión sea siempre $1$. Esto lo logramos por medio de la estandarización:
+
+$z = \frac{x-\mu}{\sigma}$
+
+Con esto logramos simplificar un poco la ecuación de la distribución normal:
+
+$Z \sim \mathcal{N}(0,\,1)\ = \frac{1}{ \sqrt{2\pi}}e^{\frac{z^2}{2}}$
+
+y se le conoce como **Distribución Normal Estándar**. Siempre tiene $\mu=0$ y $\sigma=1$. Ahora vamos a usarla en el ejemplo del avión. Queremos saber la probabilidad de llegar antes de 4.5 hrs:
+
+```{r}
+#Estandarizamos las 4.5 hr (270 min)
+z = (270 - 300) / 45
+
+#Computamos la probabilidad P(Z<=z)
+pnorm(z, mean = 0, sd = 1)
+
+```
+Y hemos obtenido el mismo resultado que antes.
+
+Ahora supongmos que queremos obtener el tiempo de viaje que resulta en el 95% delos viajes. A esto se le conoce como **Distribución de probabilidades inversa**
+
+$P(Z\leq z) = \int_{Z = -\infty}^z\frac{1}{ \sqrt{2\pi}}e^{\frac{z^2}{2}} = 0.95$
+
+Ahora lo que tendríamos que hacer es integrar y despejar $z$. Por fortuna, en **R** podemos computar la distribución inversa con la función `qnorm(p, mean, sd)`
+
+```{r}
+x = qnorm(0.95, mean = 300, sd = 45)
+x
+```
+El **95% de las veces un avión llegará hasta en 374 minutos**. También podemos hacerlo con la distribución normal estándar:
+
+```{r}
+z = qnorm(0.95)
+z
+```
+
+En teoría, $z = 1.644$ es equivalente a $x = 374.018$:
+
+```{r}
+(374.018 - 300) / 45
+```
+
+Para consultar más detalles puedes consultar: <https://es.wikipedia.org/wiki/Distribuci%C3%B3n_normal>
+
+
+### Simulación de una población
+
+En **R** podemos simular números aleatorios con una distribución normal con el comando `rnorm()` que tiene argumentos `n` el número de realizaciones (tamaño de la muestra), `mean` la media y `sd` la desviación estándar. Para que los resultados sean replicables en distintas computadoras, vamos a tener que poner un parámetro llamado *semilla* en un valor fijo para todos, digamos `1234`
+
+Supongamos que conocemos la media poblacional de la edad del mundo y que es de 40 años con una desviación estándar de 8.5 años. Asumamos también que el mundo tiene 10,000 individuos:
+
+```{r}
+set.seed(1234)
+x_poblacion = rnorm(10000, mean = 40, sd = 8.5)
+hist(x_poblacion)
+```
+
+Si computamos la media y la desviación estándar tenemos:
+
+```{r}
+mean(x_poblacion)
+sd(x_poblacion)
+```
+Que aproxima a los parámetros que elegimos.
+
+Qué pasa si elegimos 5 personas en forma aleatoria? el promedio será de 40 años? Con la función `sample()` podemos elegir individuos de un vector en forma aleatoria. Los argumentos son `x = vector de n x 1`, `size = tamaño de muestra` y `replace = si el muestreo es con reemplazo`
+
+```{r}
+muestra = sample(x_poblacion, size = 5, replace = T)
+mean(muestra)
+sd(muestra)
+
+```
+Parece que se cumple que la edad promedio es de 40 años!!! y si repetimos este ejercicio 2,000 veces con muestras de tamaño 5, computamos la media y la desviación estándar, los guardamos y vemos el histograma? obtendríamos que la media de esos 2,000 muestreos es de 40 años?
+
+
+```{r}
+resultados = NULL
+for (i in 1 : 2000) {
+
+  
+  muestra = sample(x_poblacion, size = 5, replace = T)
+  media = mean(muestra)
+  desv = sd(muestra)
+  
+  resultados_tem = t(c(i, media, desv))
+  resultados = rbind(resultados, resultados_tem)
+}
+
+#Para facilitar el manejo, vamos a convertir la matriz de resultados en un dataset o dataframe
+resultados = data.frame(resultados)
+names(resultados) = c('Muestra', 'Media', 'DesvEst')
+
+#Graficar el histograma y computar la media de los 2000 muestras de tamaño 5
+ggplot(resultados, aes(x = Media)) +
+  geom_histogram(color = 'white')
+
+mean(resultados$Media)
+mean(resultados$DesvEst)
+
+```
+ 
+
+Qué representa cada observación? recordemos que tomamos 5 muestras aleatorias de la población y computamos su promedio. Entonces, cada una de estas muestras se usó para estimar la media de la población.
+
+Si la población tiene 10,000 individuos, ¿realmente necesitamos tomar 2000 muestras de tamaño 5 para estimar la media poblacional? La respuesta es: No. Existe un criterio de convergencia, es decir, debería existir un momento en el cual el promedio de los promedios de las muestras convergen a un valor constante:
+
+```{r}
+for (i in 2:nrow(resultados)){
+  resultados$Convergencia[i] = mean(resultados[1 : i, 2])
+}
+
+ plot(resultados$Convergencia, type = 'l')
+```
+
+En este caso, vemos que a partir de ~600 muestras ya el valor del promedio se mantiene constante cerca de 40.
+
+Y si ampliamos el tamaño de la muestra a 15?
+
+```{r}
+resultados = NULL
+for (i in 1 : 2000) {
+
+  
+  muestra = sample(x_poblacion, size = 15, replace = T)
+  media = mean(muestra)
+  desv = sd(muestra)
+  
+  resultados_tem = t(c(i, media, desv))
+  resultados = rbind(resultados, resultados_tem)
+}
+
+#Para facilitar el manejo, vamos a convertir la matriz de resultados en un dataset o dataframe
+resultados = data.frame(resultados)
+names(resultados) = c('Muestra', 'Media', 'DesvEst')
+
+for (i in 2:nrow(resultados)){
+  resultados$Convergencia[i] = mean(resultados[1 : i, 2])
+}
+
+ plot(resultados$Convergencia, type = 'l')
+
+```
+
+Ahora vemos que a partir de ~250 muestras el valor del promedio converge a un valor cercano de 40. Y si hacemos n=30?
+
+```{r}
+resultados = NULL
+for (i in 1 : 2000) {
+
+  
+  muestra = sample(x_poblacion, size = 30, replace = T)
+  media = mean(muestra)
+  desv = sd(muestra)
+  
+  resultados_tem = t(c(i, media, desv))
+  resultados = rbind(resultados, resultados_tem)
+}
+
+#Para facilitar el manejo, vamos a convertir la matriz de resultados en un dataset o dataframe
+resultados = data.frame(resultados)
+names(resultados) = c('Muestra', 'Media', 'DesvEst')
+
+for (i in 2:nrow(resultados)){
+  resultados$Convergencia[i] = mean(resultados[1 : i, 2])
+}
+
+ plot(resultados$Convergencia, type = 'l')
+```
+
+Si vemos el histograma de esta última simulación, observaremos lo que se conoce como distribución de medias:
+
+```{r}
+ggplot(resultados, aes(x = Media)) +
+  geom_histogram(color = 'white') +
+  labs(title = 'Distribucion de medias con tamaño de mestra n=30')
+```
+
+Lo que nos dice este histograma es que si tomamos muestras de tamaño 30, es muy probable que la media de la población esté entre 35 y 45 años (simplemente tomando los datos mínimos y máximos en la gráfica). Como cualquier otro conjunto de datos, también podríamos tomar la desviación estándar de este conjunto y obtener algún intervalo que nos de cierta confianza de nuestra estimación:
+
+```{r}
+error_est = sd(resultados$Media)
+Lower = mean(resultados$Media) - 1.96 * error_est
+Upper = mean(resultados$Media) + 1.96 * error_est
+c(Lower, mean(resultados$Media) ,Upper)
+```
+
+Lo que nos dice este vector es que en promedio esperamos que la edad promedio sea de 40.08 años pero con un 95% de confianza podría estar entre 37.04 años y 43.13 años.
+
+Ahora bien, también computamos la desviación estándar de cada una de las muestras de tamaño 30:
+
+```{r}
+ggplot(resultados, aes(x = DesvEst)) +
+  geom_histogram(color = 'white') +
+  labs(title = 'Distribución de la desviación estándar con n = 30')
+```
+
+Si comparamos el promedio de las desviaciones estádar con la desviación estándar de los promedios, obtendremos resultados distintos:
+ 
+```{r}
+c(sd(resultados$Media), mean(resultados$DesvEst))
+```
+
+Esto quiere decir que si tomamos una muestra aleatoria de n=30, la desviación estándar dentro de esa muestra es de 8.3 mientras que si tomamos muchas muestras de tamaño 30, la desviación estándar de las medias de esas muestras es de 1.55. Lo que vemos es que 1.55 vs 8.33 son valores muy distintos!!! lo que sucede es que **la desviación estándar de la distribución de medias no es igual al promedio de las desviaciones estándar!!!** pero podemos hacer una corrección!
+
+$\sigma_{\hat{x}} = \frac{\sigma}{\sqrt(n)}$
+
+A esto se le conoce como **error estándar**. Si computamos ahora el error estándar obtenemos lo siguiente:
+
+```{r}
+c(sd(resultados$Media), mean(resultados$DesvEst) / sqrt(30))
+```
+
+Que ahora sí nos da valores muy parecidos!!!!Lo que que acabamos de demostrar empíricamente es la estimación de una media poblacional $\mu$ a través de un proceso de muestreo. Más aún, cuando nuestras muestras son mayores de 30 datos la estadística nos asegura una rápida convergencia. Entonces, no necesitamos hacer 2,000 o 200 o 2 muestreos de una población. con **1 muestra que tenga un tamaño suficientemente grande ($n > 30$) podemos hacer una inferencia**.
+
+Con esto, la estimación por intervalo de una media poblacional es:
+
+$\hat{x} - Z_{\alpha/2} \frac{s}{\sqrt(n)} \leq \mu\leq \hat{x} + Z_{\alpha/2} \frac{s}{\sqrt(n)}$
+
+Vamos a probar nuestro modelo seleccionando 1 muestra aleatoria de tamaño 31 de la población de 10,000 individuos para hacer una estimación de la media poblacional asumiendo un intervalo de confianza del 95% (El valor de $Z_{\alpha/2}$ para un intervalo de confianza del 95% es ~1.96).
+
+```{r}
+set.seed(1234)
+n1 = sample(x_poblacion, size = 30)
+
+#Calcular la media y desviación estándar
+media = mean(n1)
+desv = sd(n1)
+
+#computar el intervalo de confianza del 95% (uzamos una Z=1.96)
+Lower = media - 1.96 * desv / sqrt(30)
+Upper = media + 1.96 * desv / sqrt(30)
+c(Lower, media, Upper)
+```
+
+Por fortuna, no tenemos que hacer esto cada vez que necesitemos hacer un intervalo de confianza. **R** puede ayudarnos. La librería  `rcompanion` nos puede ayudar a hacer estas inferencias.
+
+No olvides instalar la librería con `install.packages('rcompanion')`
+
+Vamos a regresar al dataset `diamonds`. Si tomamos una muestra en forma aleatoria, cuál es el precio promedio que podemos esperar y cuanto puede variar este precio promedio?
+
+```{r}
+require(rcompanion)
+
+#Para la variabl price
+
+groupwiseMean(price ~ 1,
+              data   = diamonds,
+              conf   = 0.95,
+              digits = 3)
+```
+
+El precio promedio de un diamante se encuentra entre 3,900 y 3,970 con un esperado de 3,930. También podemos usar esta librería para encontrar el precio esperado por grupos. Supongamos que queremos saber si en promedio existe alguna diferencia en los precios de un diamante por su color:
+
+```{r}
+groupwiseMean(price ~ color,
+              data   = diamonds,
+              conf   = 0.95,
+              digits = 3)
+```
+
+Este análisis podemos complementarlo con una gráfica de intervalos. Vamos a usar una librería especializada llamada `gplots`. No olvides instalar con `install.packages('gplots')`
+
+Para más detalles puedes consultar <http://www.sthda.com/english/wiki/plot-group-means-and-confidence-intervals-r-base-graphs>
+
+```{r warning=FALSE}
+library(gplots)
+# Plot the mean of teeth length by dose groups
+plotmeans(price ~ color, data = diamonds)
+```
+
+### La distribución $t$
+
+La **distribución t (de Student)** es una distribución de probabilidad que surge del problema de **estimar la media de una población normalmente distribuida** cuando el tamaño de la muestra es pequeño y la desviación estándar poblacional es desconocida.
+
+Fue desarrollada por **William Sealy Gosset bajo el pseudónimo “Student”**.
+
+Aparece de manera natural al realizar la **prueba t de Student** para la determinación de las diferencias entre dos varianzas muestrales y para la construcción del intervalo de confianza para la diferencia entre las partes de dos poblaciones cuando se desconoce la desviación típica de una población y esta debe ser estimada a partir de los datos de una muestra.
+
+Si asumios que una variable $Z$ tiene **distribución normal estándar** y que otra variable $V$ (la varianza) tiene una distribución **ji-cuadrada** con $m$ grados de libertad (recordemos que en el denominador para computar la variaza dividimos entre $n-1$ **grados de libertad**); entonces, la siguiente cantidad, sigue una **distribución t** com $m$ **grados de libertad**.
+
+$t_{(m)} = \frac{Z}{\sqrt{V/m}}$
+
+Esta distribución se utiliza cuando los tamaños de muestra son pequeños. Vamos a  comparar una distribución normal con una distribución t con $m=3$ grados de libertad:
+
+```{r warning=FALSE}
+z = rnorm(100000, mean = 0, sd = 1)
+t = rt(100000, 3)
+
+#Ponemos todo en un dtaframe
+simulacion = data.frame(normal = z, t = t)
+
+#Graficamos
+ggplot(simulacion) +
+  geom_density(aes(x = normal), size = 1, col = 'red') +
+  geom_density(aes(x = t), size = 1, col = 'blue') +
+  xlim(c(-4, 4)) +
+  labs(title = 'Distribucion t-student (azul) vs Distribucion Normal (rojo)')
+```
+
+Lo que observamos es que la distribución t-sudent tiene **colas** más pesadas permitiendo la modelación de mayor incertidumbre que la distribución normal. Cuando el tamaño de una muestra $n > 30$ la distribución t-student se aproxima a la distribución normal:
+
+```{r warning=FALSE}
+z = rnorm(100000, mean = 0, sd = 1)
+t1 = rt(100000, 3)
+t2 = rt(100000, 31)
+
+#Ponemos todo en un dataframe
+simulacion = data.frame(normal = z, t1 = t1, t2 = t2)
+
+#Graficamos
+ggplot(simulacion) +
+  geom_density(aes(x = normal), size = 1, col = 'red') +
+  geom_density(aes(x = t1), size = 1, col = 'blue') +
+  geom_density(aes(x = t2), size = 1, col = 'orange') +
+  xlim(c(-4, 4)) +
+  labs(title = 'Distribucion t-student(m=3) (azul), Distribucion Normal (rojo) y t-student(m=31')
+```
+
+Para saber más sobre la distribución t-student puedes visitar <https://es.wikipedia.org/wiki/Distribuci%C3%B3n_t_de_Student>
+
+### Pruebas de Hipótesis (1-sample t)
+
+Una vez que computamos un intervalo de confianza, podemos probar algunas hipótesis. Regresando al ejemplo de la edad de la población, estamos interesados en saber si con nuestra muestra tenemos un indicio que nos diga que la edad de la población es de 40 años. Estadísticamente, esto se escribe de la siguiente forma:
+
+$H_o : \hat{\mu} = 40$
+
+$H_a : \hat{\mu} \neq 40$
+
+Recordemos que el intervalo de confianza del 95% es $[36.85100, 43.55648]$. Es decir que con un 95% de probabilidades, esperamos que la edad promedio de la población esté entre 36.8 años y 43.55 años. Si, queremos saber si es que existe la probabilidad de que la edad de la población sea de 40 años lo único que tenemos que hacer es fijarnos si dentro del intervalo, se encuentran los 40 años de edad.
+
+En este caso, dado que $40 \in [36.8, 43.5]$ se dice que se acepta la hipótesis nula, $H_o$ y concluimos que con una confianza el 95% la edad promedio de la población es de 40 años.
+
+Esto podemos verificarlo con la función `t.test(datos, mu, conf.level)`
+
+```{r}
+#Recordando que n1 es nuestra muestra sampleada de la población
+t.test(n1, mu = 40, conf.level = 0.95)
+```
+
+El parámetro de interés es el `p-value = 0.906` que como regla general, con un intervalo de confianza del 95%, si este `p-value >= 0.05` entonces se acepta la hipótesis nula, $H_o: \hat{\mu} = 40$. En este caso, también se acepta $H_o$ y hemos llegado al mismo resultado anterior. Ambos procedimientos son equivalentes.
+
+Ahora supongamos que estamos comprando/vendiendo diamantes y tenemos una muestra de 100 diamantes del dataset `diamonds`. Es posible que el precio de un diamante sea igual a 4,000 usd?
+
+```{r}
+#Sacamos la muestra de tamaño 100
+diamonds_sample = sample(diamonds$price, size = 100)
+
+#Hacemos la prueba de hipotesis
+t.test(diamonds_sample, mu = 4000, conf.level = 0.95)
+
+```
+
+En este caso, la prueba es:
+
+$H_o : \hat{\mu} = 4000$
+
+$H_a : \hat{\mu} \neq 4000$
+
+Como el `p-value = 0.91` y es mayor de 0.05, entonces, con un 95% de confianza podemos decir que el precio promedio de un diamante podría ser de 4,000 usd. Esto también lo podemos constatar porque el $4000 \in [3212, 4710]$
+
+
+### Pruebas de Hipótesis (2-sample t)
+
+En el ejemplo del intervalo de confianza del precio de los diamantes por color, vemos que en la gráfica podría no existir una diferencia en precio entre los colores `I` y `J`. Supongamos que el promedio del precio de `P_I = 3500` y que el promedio de `P_J = 3500`. Si esto ocurre, entonces la diferencial entre ambos precios `P_J - P_I = 0`. A esto se le denomina **diferencia de medias**.
+
+En este caso la hipótesis a probar es:
+
+$H_o : \hat{\mu_1} - \hat{\mu_2} = 0$
+
+$H_a : \hat{\mu_1} - \hat{\mu_2} \neq 0$
+
+El código en **R** para resolver es:
+
+Entonces, cuando queremos saber si dos grupos son iguales, lo que hacemos es probar si la diferencia de sus promedio es estadísticamente 0.
+
+```{r}
+#Primero: sacamos una muestra de tamaño 100 para los colores I y J
+diamonds_sample = diamonds[diamonds$color == 'I' | diamonds$color == 'J', ]
+
+#Vamos a computar un indice sobre el cual vamos a seleccionar los 100 renglones de interés
+indice = 1 : nrow(diamonds_sample)
+set.seed(1234) #Para tener resultados replicables
+indice = sample(indice, size = 100)
+diamonds_sample = diamonds_sample[indice, ]
+
+#Computamos la prueba de hipótesis
+t.test(price ~ color,
+       data = diamonds_sample,
+       var.test = TRUE,
+       conf.level = 0.95)
+```
+Igual que en el caso anterior, el `p-value = 0.64` que es mayor de 0.05. Por lo tanto, se acepta la $H_o: \hat{\mu_1} - \hat{\mu_2} = 0$ y se concluye que entre el precio del color `I` y `J` no hay diferencia o que son estadísticamente iguales.
+
+Un supuesto muy importante es que estamos asumiendo que $\hat{\sigma_I^2} = \hat{\sigma_J^2}$ lo cual no necesariamente es cierto. Entonces, en el caso de las comparaciones entre 2 grupos, necesitamos probar que las varianzas son iguales:
+
+$H_o : \hat{\sigma_1^2} = \hat{\sigma_2^2}$
+
+$H_a : \hat{\sigma_1^2} \neq \hat{\sigma_2^2}$
+
+Esto se hace con la **Prueba de Barlett <https://en.wikipedia.org/wiki/Bartlett%27s_test> :
+
+```{r}
+bartlett.test(price ~ color, data = diamonds_sample)
+```
+
+El `p-value = 0.41` lo que quiere decir que se acepta $H_o : \hat{\sigma_1^2} = \hat{\sigma_2^2}$ ; es decir, que ambas varianzas del precio de diamantes color `I` y `J`son iguales. Por lo tanto nuestro supuesto en la prueba de medias en el argumento `var.test = TRUE` es correcto y podemos concluir que con un 95% de confianza ambos precios son iguales.
+
+
+## ANOVA (Analysis of Variance)
+
+Un Análisis de Varianza o **ANOVA** descompone la variación total observada en componentes observados (ej. `color`, `cut`) para analizar la diferencia de **medias entre grupos** de tal forma que podemos saber cuánta variación es atribuibe a cada **variable**. En el **ANOVA** cada variable se conoce como **factor** y a los posibles **valores** de un factor se le conoce como **niveles**.
+
+Si el factor puede tener un número **infito** de niveles, se le denomina **factor continuo** y si el factor solo puede tener un número finito de niveles de se denomina **factor discreto**.
+
+En el dataset `diamonds`
+
+```{r}
+glimpse(diamonds, width = 70)
+```
+
+las variables o factores `carat`, `depth`, `table`,`x`, `y` y `z` son factores continuos mientras que las variables `cut`, `color`, `claridad` son variables discretas.
+
+El **ANOVA** funciona muy bien con la **variable dependiente es continua** y tenemos **2 o más factores discretos**
+
+### One-Way ANOVA
+
+El **one-way anova** se utiliza cuando **solamente tenemos 1 factor discreto que pede tener 2,3,4 o más niveles**. En este caso el modelo es el siguiente:
+
+$y_{ij} = \alpha_j + \epsilon_i$
+
+En este caso $\alpha_j$ es el **efecto** de que el factor $\alpha$ cambie de un valor a otro, $\epsilon_i$ es el error en la *i-ésima* observación y $y_{ij}$ es el valor de la observación *i-ésima* de la variable dependiente $y$ cuando el factor $\alpha$ toma el valor $j$.
+
+Supongamos que queremos estimar el efecto en el precio de la variable (factor) `cut` del `diamonds` dataset. Para darnos idea, primero quisieras saber cuantos valores (niveles) tiene la variable `cut`. Esto podemos hacerlo con la funación `unique()`:
+
+```{r}
+unique(diamonds$cut)
+```
+
+Es este caso son 4 niveles o valores. Entonces, la pregunta es: Existe alguna diferencia en el precio promedio de un diamante cuando agrupamos por corte?
+
+Recordando el módulo anterior, vamos a computar el promedio de `price` por la varialbe `cut`:
+
+```{r}
+require(psych)
+describeBy(diamonds$price, group = diamonds$cut, mat = T, digits = 2)
+plotmeans(price ~ cut, data = diamonds)
+```
+
+Viendo la tabla y la gráfica de medias, podemos observar que, quizás, exista una diferencia estádisica entre el corte `Ideal`, `Premium` y `Fair` siendo el tipo de corte `Ideal`el que menor precio promedio tiene. Ya que tenemos una intuición, lo que queremos probar es:
+
+$H_o : \mu_1 = \mu_2 = ...= \mu_j$
+
+$H_a : \mu_i \neq \mu_j \text{para al menos un par $i$, $j$}$
+
+```{r}
+one_way = aov(log(price) ~ cut, data = diamonds)
+summary(one_way)
+```
+
+El resultado del **anova** suele repotarse en una tabla. Veamos cada elemento de la tabla:
+
+
+>`DF` o grados de libertad. Este parámetro se refiere al número de **niveles** mínimos necesarios para poder estimar el modelo
+
+$df_{\alpha} = n_{ \alpha} - 1$ en donde $n_{\alpha}$ es el número de niveles de la variable `cut`. En este caso $n_\alpha = 5$
+
+$df_T = N - 1$ en donde $N$ es el número total de observaciones en la muestra. En este caso $N = 53,940$
+
+$df_e = N - n_\alpha$ es el número de grados de libertad del error que en este caso es $53,935$
+
+
+>La siguiente coumna `Sum Sq` se conoce como la **Suma de Cuadrados**
+
+$SS_\alpha = \sum_j n_j (\bar{y_j} - \bar{y})^2 = 1,007$
+
+$SS_e = \sum_i \sum_j (y_{ij} - \bar{y}) ^ 2 = 54,524$
+
+
+>Luego sigue la columna `Meas Sq` que se refiere a la variaza explicada por cada componente:
+
+$MS_\alpha = SS_\alpha / df_\alpha$
+
+$MS_e = SS_e / df_e$
+
+
+>El estadístico se define como el **ratio** entre 2 varianzas ($\sigma_1^2 / \sigma_2^2$). En este caso es:
+
+$F = MS_\alpha / MS_e = 249.1$
+
+
+>Y finalmente `Pr(>F)` es la probabilidad de que $F_o$ sea mayor a $F$ y este caso es $0$
+
+
+Al final, lo que nos importa el `Pr(>F)` que anteriormente conociamos con `P-value`. Dado que el valor es cercano a $0$ se rechaza la $H_o : \mu_1 = \mu_2 = ...= \mu_j$ y se puede decir que el precio promedio de los diamantes varia por el tipo de corte.
+
+Una parte importante que no hemos hablado es el último término de $y_{ij} = \alpha_j + \epsilon_i$ que se refiere al error ($\epsilon_i$). Una parte importante para **validar el modelo** es asegurarse que este error $\epsilon$ cumple con ciertas propiedades:
+
+1. Tiene una forma de campana o guassina (Es **Normal**)
+2. El promedio de los errores es 0 ($\mu_\epsilon = 0$)
+3. La varianza de los errores es constante con valor $\sigma_\epsilon ^2$)
+4. Los errores son independientes
+
+A estas 4 propiedades se les conoce como $\epsilon_i \approx NID(0, \sigma^2)$
+
+Revisaremos este tema en mayor detenimiento cuando revisemos el modelo **ANOVA** múltiple
+
+### Two-way ANOVA
+
+El **ANOVA** de dos vias o **Two-Way** simplemente introduce un segundo factor o variable en la ecuación:
+
+$y_{ijk} = \alpha_j + \gamma_k +\epsilon_i$
+
+```{r}
+two_way = aov(log(price) ~ cut + color, data = diamonds)
+summary(two_way)
+```
+
+Ahora en la tabla, se agrega un 3er renglón para la variable `color` y también se computa un valor `P-value` que tambíen es muy cercano a 0.
+
+#### Regla del `P-value`
+
+Generalizando las conclusiones:
+
+> si el `p-value` es menor a cierto treshold (generalmente 0.05), entonces, se dice que la variable en cuestion es **estadísticamente signigicativa**
+
+Para este ejemplo, ambas variables `cut`y `color` son **estadísticamente significativas`
+
+
+### ANOVA General
+
+Cuando tenemos mas de 2 factores, tambíen podemos correr un modelo **ANOVA**. Supongmos que queremos saber si existe una diferencia entre los promedios del precio de diamantes con la variable `cut`, `color` y `clarity`.
+
+Para tener un mejor entendimiento, vamos a graficar los datos:
+
+```{r}
+#Grafica Boxplot del precio vs el color
+ggplot(diamonds, aes(x = color, y = price, fill = color)) +
+  geom_boxplot() +
+  labs(title = 'Boxplot Price vs Color')
+
+#Grafica Bocplot del precio vs el corte
+ggplot(diamonds, aes(x = cut, y = price, fill = cut)) +
+  geom_boxplot() +
+  labs(title = 'Boxplot Price vs Cut')
+
+#Gráfica Boxplot del precio vs claridad
+ggplot(diamonds, aes(x = clarity, y = price, fill = clarity)) +
+  geom_boxplot() +
+  labs(title = 'Boxplot Price vs Clarity')
+
+
+```
+
+De las gráficas, podemos ver que es posible que exista una diferencia estadísticamente signigicativa en el promedio del precio y el corte, color y clridad.
+
+```{r}
+anova_general = aov(log(price) ~ cut + clarity + color, data = diamonds)
+summary(anova_general)
+```
+
+Qué nos dice el `p-value` para cada variable?
+
+
+## Pruebas de hipotesis para proporciones
+
+Hata ahora solo hemos visto el caso cuando la variable de interés es **continua** pero que sucede cuando tenemos una **proporción** o **probabilidad**?. La proporciones cumplen con la propiedad de $0\leq p\leq1$. En particular, la proporción se define como:
+
+$p = \frac{x}{n}$
+
+En donde $x$ es el número de éxitos y $n$ es el número de intentos o coloquialmente el tamaño de la muestra. Por ejemplo, si en 30 lanzamientos de una moneda, 10 son cara; entonces, la proporción de de caras es $p = \frac{10}{30} = 0.333$.
+
+Las proporciones no deben confundirse como **porcentajes**. Un porcentaje es una raón de cambio y estos puede ser menores de 0 (negativos) o mayores de 1. Por lo tanto, los porcentajes vistos como razones de cambio no pueden ser tratados estadísticamente como proporciones.
+
+### La distribución binomial
+
+En estadística, la distribución binomial o distribución binomial es una distribución de probabilidad discreta que cuenta el número de éxitos en una secuencia de $n$ ensayos de **Bernoulli independientes** entre sí con una probabilidad fija $p$ de ocurrencia de éxito entre los ensayos. 
+
+Un experimento de Bernoulli se caracteriza por ser **dicotómico**, esto es, solo dos resultados son posibles, a uno de estos se le denomina “éxito” y tiene una probabilidad de ocurrencia **p** y al otro se le denomina “fracaso” y tiene una probabilidad $q = 1-p$
+
+
+En general, una variable aleatoria discreta $X$ tiene una distribución binomial con parámetros $n$ y $0\leq p \leq 1$ y escribimos $x\backsim\text{Binom}(n, p)$ con función de probabilidades:
+
+$f(x) = {n\choose x}p^x(1-p)^{n-x}$
+
+con la función `rbino(n, x, p)` podemos simular algunas distribuciones binomiales asumiendo que en 10 intentos queremos el 30%, 50% y 95% de éxito del evento de interés.
+
+```{r}
+#1,000 numeros aleatorios con distribucion binomial con exito de 30%
+x1 = rbinom(1000, 10, 0.3)
+#1,000 numeros aleatorios con distribucion binomial con exito de 50%
+x2 = rbinom(1000, 10, 0.5)
+#1,000 numeros aleatorios con distribucion binomial con exito de 95%
+x3 = rbinom(1000, 10, 0.95)
+
+#hacer 3 histigramas en 1 panel
+par(mfrow = c(1, 3))
+hist(x1)
+hist(x2)
+hist(x3)
+```
+
+Una cosa interesante es que cuando el número de intentos se incrementa, $p \backsim N(p, \sigma^2)$, es decir, la distribución binomial se parece mucho a una distribución normal.
+
+```{r}
+#1,000 numeros aleatorios con distribucion binomial con 30% de exito en 10 intentos
+x1 = rbinom(1000, 10, 0.3)
+#1,000 numeros aleatorios con distribucion binomial con 30% de exito en 100 intentos
+x2 = rbinom(1000, 100, 0.3)
+#1,000 numeros aleatorios con distribucion binomial con 30% de exito en 1000 intentos
+x3 = rbinom(1000, 1000, 0.3)
+
+#hacer 3 histigramas en 1 panel
+par(mfrow = c(1, 3))
+hist(x1)
+hist(x2)
+hist(x3)
+```
+
+La **varianza** puede ser computada como:
+
+$\sigma_p^2 = np(1-p)$
+
+el otivo por el cual se hace difícil trabajar con *ratios* como las proporciones es que si el denominador de la proporción cambian, es decir, no es constante, la varianza no es constante en el tiempo. Esto es importante al momento de hacer predicciones y medir la estabilidad en el tiempo de indicadores como el **Market share**, **Porcentaje de defectos**, etc..
+
+```{r echo=FALSE}
+p = rep(0.3, 1000)
+n = 1 : 1000
+var = n * p * (1 - p)
+plot(var, type = 'l', xlab = 'Sample Size')
+```
+
+### 1-Sample-p test
+
+Supongamos que estamos evaluando lotes de producción de un bien y que hoy tenemos una contingencia de calidad. De los lotes que estan puesto en cuarentena, sabemos que existe un 5.7% de probabilidades de obtener un productos con defectos. En teoría, si el porcentaje de defectos es menor a un 2.5% podemos pasar la producción después de un proceso de inspección minucioso. De lo contrario, todo el lote es rechazado.
+
+Como el proceso de medición y toma de muestras es muy caro y toma tiempo, usted solo puede muestrear 100 piezas en cada lote. La pregunta es: si en la última inspección encontramos 5 piezas defectuosas, aceptamos o rechazamos el lote?
+
+En este caso, estadísticamente queremos probar que:
+
+$H_o : p = 0.025$
+
+$H_a : p \geq 0.025$
+
+Esto lo podemos probar con una prueba de proporciones. El número de exitos $x=5$, el número de intentos es $n = 100$, y
+
+```{r}
+prop.test(x = 5, n = 100, p = 0.025, alternative = "greater")
+```
+
+El `p-value = 0.1` como es menor de 0.05 entonces aceptamos $H_o : p = 0.025$ y podemos concluir que la proporción de defectos es menor o igual  al 2.5%. Por lo tanto, aceptamos el lote con la premisa de inspeccionar mas detenidamente el lote.
+
+
+### 2-Sample-p test
+
+Supongamos ahora que nuestros ingenieros de proceso han realizado modificaciones y mejora para corregir las fallas de calidad. Ahora hemos encontrado 2.2% de defectuosas. Queremos saber ahora si la mejora del 5.7% (nuestra tasa de defectos anterior) a 2.2% es estadísticamente significativa. Estadísticamente esto es:
+
+$H_o : p_1 - p_2 = 0$
+
+$H_a : p_1 - p_2 \neq 0$
+
+Asumiendo que en un muestreo de calidad de 100 piezas obuvimos 5 defectuosas y después de la mejora obtuvimos 2, existe una mejora signiicativa?
+
+```{r}
+prop.test(x = c(5, 2), n = c(100, 100))
+```
+
+Como el valor `p-value = 0.44` es mayor a 0.05 entoces se acepta $H_o : p_1 - p_2 = 0$ y concluimos que la mejora aún no es estadísticamente significativa.
+
+#### Efecto del tamaño de la muestra en proporciones
+
+Que sucedería, si en lugar de muestrear 100 piezas, obtenemos 1000 piezas? Entonces, las piezasa defectuosas antes de la mejora serían ~57 y las piezas defectuosas después de la mejora serían ~22:
+
+```{r}
+prop.test(x = c(57, 22), n = c(1000, 1000))
+```
+
+Ahora, el `p-value ~ 0` lo cual hace que la $H_o : p_1 - p_2 = 0$ se rechace y por lo tanto, la mejoría ahora es estadísticamente significativa. Esto se debe a que en el caso de las proporciones, el tamaño de la muestra es más sensible que en el caso de los promedio que vimos anteriormente.
+
+Recordemos que para estandarizar una magnitud a una escala que sigue una distribución normal hacemos:
+
+$z = \frac{x - \mu}{\sigma}$
+
+Si queremos estimar la media poblacional, recordemos que $\mu = \hat{\mu}$ y $\sigma = \frac{\sigma}{\sqrt{n}}$ :
+
+$z = \frac{x - \hat{\mu}}{\frac{\sigma}{\sqrt{n}}}$ ;
+
+$z = \frac{\sqrt{n}(x - \hat{\mu})}{\sigma}$
+
+Ahora necesitamos despejar $n$ para encontrar cuanto debería valor el tamaño de una muestra:
+
+$z\sigma = \sqrt{n}(x - \hat{\mu})$ ;
+
+$\frac{z\sigma}{x - \hat{\mu}} = \sqrt{n}$ ;
+
+Ahora elevamos al cuadrado;
+
+$n = \frac{z^2\sigma^2}{(x - \hat{\mu})^2}$
+
+Para simplificar la ecuación $x-\hat{\mu}$ podemos asumirla como na constanta dada por el investigador. Esta constante se llama **error de muestreo** y se refiere a la tolerancia que permitimos para equivocarnos en una estimación. Mientras más pequeña la tolerancia más tamaño de mestra es necesaria:
+
+$n = \frac{z^2\sigma^2}{\Delta^2}$
+
+Qué pasa cuando la varianza crece? asumiendo que $Z = 1.96$ y que la tolerancia $\Delta = 0.5$ años (recordemos que anteriormente queríamos estimar la edad promedio de la población mundial, esto es 1.2% de error):
+
+```{r}
+z = 1.96
+delta = 2
+sigma = seq(1, 20, by = 0.5)
+
+n = z^2 * sigma^2 / delta^2
+plot(x = sigma, y = n, type = 'l')
+
+```
+
+El efecto de más **viarianza** (sigma) conlleva a incrementar el tamaño de la muestra.
+
+Qué pasa ahora con la proporción? Reemplazamos $\sigma$ por $p(1-p)$ y asumiendo 1.2% para la estimacion de una proporcion
+
+$n = \frac{z^2p(1-p)}{\Delta^2}$
+
+```{r}
+z = 1.96
+delta = 0.012
+p = seq(0.01, 0.999, by = 0.01)
+sigma2 = p*(1-p)
+
+n = z^2 * sigma2 / delta^2
+plot(x = p, y = n, type = 'l')
+```
+
+Para una proporción, el tamaño de la muestra **explota** hasta ~6000 en comparación de un promedio que se va hasta ~300. Entonces, cuando hablamos de proporciones, generalmente, será necesario ampliar el tamaño de las muestras de manera significativa.
+
+
+## Prueba $\chi^2$ (*chi cuadrada*) para independencia en conteos
+
+Supongamos que tenemos una situación en dónde una compañía ha establecido una política de *Oportunidades Iguales para Todos* y que en el proceso de selección participan tanto Hombres (H) como Mujeres (M). Ustedes son auditores del proceso y quieren saber si en realidad la compañía está siendo imparcial en la selección de personas.
+
+```{r}
+rh = data.frame(Status = c('Seleccionado', 'No Seleccionado'),H = c(100, 180), M = c(40, 15))
+rh
+```
+
+
+Este tipo de problemas son interesantes por que si sacamos cuantas mueres fueron aceptadas vs cuantos hombres fueron aceptados obtendriamos que se aceptaron al 35% mientras que a las mujeres el 72%. Con estos datos a-priori, podríamos concluir que la compañia no ha sido del todo imparcial. Más aún, el porcentaje de aplicantes es menor para las mujeres que para los hombres (55 mujeres vs 280 hombres) y esto dificulta más la toma de desiciones.
+
+Supongamos que para que la decisión de que una persona sea seleccionada es **independiente** de si es hombre o mujer. Entonces, podríamos computar el número de hombres y meujeres seleccionados como:
+
+$E_{i,j} = \frac{row_i   col_j}{Total}$
+
+Así, el número esperado de hombres seleccionados es:
+
+```{r}
+E_SH = ((100 + 180) * (100 + 40)) / (100 + 180 + 40 + 15)
+E_SH
+```
+
+Esto podemos computarlo para cada par de renlones y columnas y obtendríamos 4 valores esperados. El Estadístico $\chi^2$ se define como:
+
+$\chi^2 = \sum_{i=1}^r\sum_{j=1}^c\frac{(O_{i,j}E_{i,j})^2}{E_{i,j}}$
+
+La función `chisq.test(data)` computa la prueba:
+
+```{r}
+#Poner todo en formato de tabla:
+
+chisq = chisq.test(rh[, 2:3])
+chisq
+```
+
+La hipótesis a probar es:
+
+$H_o : \text{La decision de contratar a una persona es independiente del género}$
+
+$H_a : \text{La decision de contratar a una persona NO es independiente del género}$
+
+El `p-value = 7.8e-07` que es mucho menor que 0.05. Entonces, rechazamos $H_o : \text{La decision de contratar a una persona es independiente del género}$ y podemos decir, con 95% de confianza que la contratación de personal depende del género de la persona.
+
+Esto sucede porque lo esperado no es igual a lo obervado. La matríz de conteos esperados es:
+
+```{r}
+round(chisq$expected, 2)
+```
+Esto quiere decir que se esperaban 22.9 mujeres contratados pero en realidd contratamos 40 mientras que para los hombres, esperabamos contratar a 117 pero realmente contratamos 100.
+
+Regresando al ejemplo de `diamonds`, suponga que estamos por aceptar un lote de diamantes y nos interesa cierta homogneidad entre el corte, `cut`, y el color, `color`. Una forma de saber si hay algún sesgo es con la prueba $\chi^2$:
+
+```{r}
+#Hacemos una tabla para contar cuantos diamantes hay por cada combinación de curte y color
+diamonds_table = table(diamonds[, 2:3])
+diamonds_table
+
+#Ahora hacemos la prueba de hipótesis para independencia
+chisq.test(diamonds_table)
+```
+
+El `p-value -> 0` por lo tanto, se rechaza la $H_o$ y podemos concluir que la selección de diamantes en el lote NO es independiente entre el color y el corte.
+
+Esta prueba sólo se utiliza cuando estamos interesados en los conteos entre 2 grupos de variables. **Qué pasa si quisiéramos saber si existe independencia entre el corte, el color y el precio que es una variable continua?**
+
+R. Usamos el ANOVA que ya revisamos anteriormente!
+
+
+
+

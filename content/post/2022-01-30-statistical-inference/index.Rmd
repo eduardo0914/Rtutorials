@@ -1,0 +1,526 @@
+---
+title: Statistical inference
+author: Eduardo villarreal
+date: '2022-01-30'
+slug: statistical-inference
+categories:
+  - Basic Statisitcs
+tags:
+  - Descriptive Statisitcs
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Introducción a la Estadística Descriptiva
+
+## Estadística Descriptiva
+
+Durante este módulo vamos a trabajar con el dataset `diamonds` que viene como parte de la instalación de `tidyverse`
+
+### Summary de los datos
+
+Para cargar un librería utilizamos:
+
+
+`install.packages('tidyverse')`
+
+`require(tidyverse)`
+
+
+Para ver los primeros 10 renglones del dataset utilizamos la función `head(datos, 10)`
+
+```{r}
+#Cargamos la libreria
+require(tidyverse)
+head(diamonds, 10)
+```
+
+
+Para obtener información descriptiva de todo el dataset usamos `summary()`
+
+```{r}
+summary(diamonds)
+```
+### Medidas de tendencia central
+
+La primer medida de tendencia central es la **media** o promedio aritmético:
+
+$\hat{x} = \frac{1}{n} \sum_{i=1}^n x_i$
+
+El comando `mean()` recibe como argumentos la **columna numerica** de un dataset. Para referirnos a una columna en especial,
+podemos hacer uso del operador `$` con `datos$columna`. Tambie
+
+Por ejemplo, para computar la media de la columna `price` hacemos:
+
+```{r}
+mean(diamonds$price)
+```
+
+Si queremos computar el promedio de varias columnas hacemos:
+
+```{r}
+sapply(diamonds[, 7:10], mean)
+```
+
+La función `sapply` aplica una función como `sum()` o `mean()` a las columnas seleccionadas
+
+La segunda medida para medir la centralidad es la **mediana**
+
+Cuando el tamaño de la muestra $n$ es **par**:
+
+$med(x) = Z[\frac{n}{2}]$
+
+En donde $Z$ es una lista ordenada de valores de menor a mayor y $n/2$ es la **posición** en donde se encuentra la mediana dentro de $Z$.
+
+Cuando el tamaño de la muetra $n$ es **impar** la mediana es:
+
+$med(x) = \frac{Z[\frac{n-1}{2}] + Z[\frac{n+1}{2}]}{2}$
+
+La mediana de la variable `price` es:
+
+```{r}
+median(diamonds$price)
+```
+
+Cuando queremos aplicar a multiples columnas, hacemos igual que con la media:
+
+```{r}
+sapply(diamonds[, 7:10], median)
+```
+
+
+### Medidas de dispersión
+
+La medida de dispersión más elemental es el **rango** que se define como:
+
+$rango = max(x) - min(x)$
+
+Para calcular el valor máximo y el mínimo lo hacemos con `max(x)`y `min(x)` respectivamente:
+
+```{r}
+rango = max(diamonds$price) - min(diamonds$price)
+rango
+```
+
+Podemos hacer una función que se llame `rango` y que tome como una entrada la columna de referencia:
+
+```{r}
+rango = function(x){
+  r = max(x) - min(x)
+  return(r)
+}
+```
+
+Vamos a usar nuestra nueva función para computar el rango de varias variables:
+
+```{r}
+sapply(diamonds[, 7:10], rango)
+```
+
+La segunda medida de dispersión es la **Varianza** y la **Desviación Estandar** que es simplemente la raíz cuadrada de la varianza:
+
+$Var(x) = \frac{1}{n-1}\sum_{i=1}^2 (x_i - \hat{x}) ^2$
+
+$std(x) = \sqrt{Var[x]}$
+
+Para calcular la varianza y la desviación estándar utilizamos las funciones `var(x)` y `sd(x)`
+
+```{r}
+varianza = var(diamonds$price)
+desv_est = sd(diamonds$price)
+
+print(paste('La Varianza y la desviación estándar es: ', varianza, 'y ', desv_est))
+```
+Tambien podemos aplicar `sapply`:
+
+```{r}
+sapply(diamonds[, 7:10], sd)
+```
+
+### Juntando todo en una función
+
+Si queremos obtener los estadísticos descriptivos de múltiples variables, tendriamos que hacer una función y luego aplicar `sapply` como en los ejemplos anteriores.
+
+Vamos a definir una función que compute la media, la mediana, el rango y la desviación estándar:
+
+```{r}
+my_decriptives = function(x){
+  list(mean(x), median(x), max(x) - min(x), sd(x))
+}
+
+sapply(diamonds[, 7:10], my_decriptives)
+```
+
+El primer renglón es la media, el segundo la mediana, el tercero el rango y finalmente tenemos la desviación estándar.
+
+Por fortuna podemos usar el poder colaborativo de **R**. Existe una libreria que no ayuda a facilitar la tarea: la librería `pastecs`. Primero necesitamos instalar la librería `install.packages("pastecs")`. Después usamos el comando `stat.desc(datos)`
+
+```{r echo=TRUE}
+require(pastecs)
+options(width = 300)
+estadisticos = stat.desc(diamonds)
+
+#Todas las columnas que no son numericas apareceran con NA´s. Primero eliminamos las columnas con NA´s utilizando un truco
+#que consiste en aplicar el operador transpuesta 2 veces en conjunto con na.omit. El primer operador traspuesto
+#convierte las columnas en renglones una vez que esto sucede eliminamos los renglones con NAs. El segundo
+#Operador transpuesto, convierte los renglones en columnas
+
+estadisticos = t(na.omit(t(estadisticos)))
+
+#Rendondeamos para poder imprimir en la consola
+round(estadisticos, 2)
+```
+
+
+### Estadísticas por grupo
+
+Veamos ahora qué tipo de datos tenemos. Para esto podemos utilizar el comando `glimpse(datos)`
+
+```{r}
+glimpse(diamonds, width = 100)
+```
+
+Observando el dataset, nos interesaría obtener las estadísticas descriptivas de la variable `price` por el `color` del diamante.
+
+R cuenta con una librería llamada `psych` que hace esta tarea. Recuerda que para instalar la librería hacemos
+`install.packages('psych')`
+
+```{r}
+require(psych)
+options(width = 300)
+describeBy(diamonds$price, group = diamonds$color, mat = T, digits = 2)
+```
+
+La opción `mat = TRUE` imprime una matriz en lugar de una lista. Esto para lograr una mejor comprensión en la consola. La opción `digits = 2` redondea las cifras a 2 decimales.
+
+El output es una matriz que consta de 7 renglones, 1 renglón para cada valor de `color`. Así por por ejemplo, el renglón 1 que está tipificado como `X11` quiere decir que para el `precio` de diamantes cuando el `color = D` tenemos `n = 6775` observaciones, el promedio del precio es `mean = 3169` y la desviación estándar es `3356`
+
+
+## Análisis Exploratorio (EDA)
+
+El **Análisis Exploratorio de Datos** o **EDA** se utiliza para representar un conjunto de datos y sus relaciones en forma visual y gráfica de tal forma que los datos *cuenten* alguna historia. El principio es que para nuestro cerebro es más fácil entender una imagen que una tabla con números.
+
+En esta sección usaremos `ggplot` con el conjunto de datos `diamonds` que es parte del ecosistema `tidyverse`
+
+`ggplot` funciona con "capas" que se van agregando de tal forma que cada una de ellas contiene algún elemento visual de la gráfica. Estas capas operan en jerarquías de importancia:
+
+> * Primero tenemos los **aesteticos** o `aes()`. El más importate es el primer aestetico que se refiere a los datos que vamos a utilizar para graficar.
+
+> * En segundo lugar, están los elementos geométricos o `geom_xyz()` que describen las geometrías que componen las gráficas.
+
+> * En tercer lugar, están otros elementos como los temas, colores, titulos y leyendas
+
+`ggplot` opera bajo el principio de que todo lo que esté en un `aes()` opera sobre toda la gráfica o bien sobre todo el elemento geométrico. Por ejemplo, si definimos que el eje $x$ contiene la variable `precio` todos los elementos geométricos asumen que `x = precio`.
+
+Para comenzar con `ggplot` debemos definir la primera capa:
+
+`ggplot(data, aes(x = x, y = y, color = z, size = w, alpha = 0.6))`
+
+en este ejemplo, todos los parámetros dentro de `aes()` aplicarán para **toda* la gráfica. Por ejemplo, si queremos hacer una gráfica de puntos, el tamaño del punto estará dado por la variable `w`. Si queremos agregar el valor del punto en la gráfica, el tamaño del texto también estará dado por la variable `w`.
+
+Una fuente de inspiración podemos encontrarla en  <https://www.r-graph-gallery.com/>
+
+### Histogramas
+
+El histograma visualiza la distribución de frecuencias de los datos. En `ggplot` existe la forma geométrica `geom_histogram`:
+
+```{r}
+require(tidyverse)
+ggplot(diamonds, aes(x = price)) +
+  geom_histogram()
+```
+
+Sobre el histograma básico, podemos cambiar el color de las lineas, el color del relleno, el número de intervalos de clase, el tema, etc.
+
+```{r}
+ggplot(diamonds, aes(x = price)) +
+  geom_histogram(fill = 'red', color = 'white')
+```
+
+Este es el mismo histograma con relleno rojo y color de líneas blancas.
+
+También podemos hacer un histograma por la variable `color`. Para lograr esto, podemos hacer uso de un `facet`. Los **facets** permiten hacer un corte en los datos para visualizarlos por grupos. Mi favorito es el `facet_wrap()`.
+
+```{r}
+ggplot(diamonds, aes(x = price, fill = color, color = 'white')) +
+  geom_histogram() +
+  facet_wrap(~color, scales = 'free', nrow = 2)
+```
+
+
+Para simplificar la gráfica, vamos a eliminar las leyendas, agregar un título y un subtitulo
+
+
+```{r}
+ggplot(diamonds, aes(x = price, fill = color)) +
+  geom_histogram(color = 'white') +
+  facet_wrap(~color, scales = 'free', nrow = 2) +
+  theme(legend.position = 'none') +
+  labs(title = 'Dataset diamonds',
+       subtitle = 'Histogram by color')
+
+```
+
+En este ejemplo hemos puesto en el primer **aestético**, `aes(x = price, fill = color)` indicando que para todos los elementos geométricos, el relleno será de color definido por la variable `color` (R asigna una paleta de colores con un color para cada `nivel` de la variable `color`).
+
+
+### Density plots
+
+Un **density plot** es similar a un histograma solo que utiliza una estimación no paramétrica de la distribución de probabilidades de los datos. El objeto geométrico es `geom_density`
+
+```{r}
+ggplot(diamonds, aes(x = price)) +
+  geom_density()
+```
+
+Al igual que en el histograma también podemos agregar capas. Por ejemplo, vamos a graficar la distribución de frecuencias por `color`:
+
+
+```{r}
+ggplot(diamonds, aes(x = price, fill = color)) +
+  geom_density(alpha = 0.4)
+
+```
+En este caso hemos agregado una transparencia a través del parámetro `alpha = 0.4` para poder visualizar la distribución por `color`. si te parece que la imagen no es muy clara, podemos aplicar un `facet_wrap`
+
+```{r}
+ggplot(diamonds, aes(x = price, fill = color)) +
+  geom_density(alpha = 0.4) +
+  facet_wrap(~color, scales = 'free', nrow = 2) +
+  theme(legend.position = 'none') +
+  labs(title = 'Dataset diamonds',
+       subtitle = 'Density Plot by color')
+```
+
+### Box Plots
+
+La gráfica de cajas es otra forma de visualizar la distribución de los datos. La geometría que la define es  `geom_boxplot()` y son muy buenas para visualizar la dispersión por grupos de datos.
+
+```{r}
+ggplot(diamonds, aes(y = price, x = color, fill = color)) +
+  geom_boxplot()
+```
+
+Las gráficas de caja o **box plots** nos permiten agregar una 3er variable para visualizar los datos. Supongamos que queremos ver las diferencias entre la pureza del diamante y el precio y el color. Entonces, agregaremos un facet por la variable `clarity`
+
+```{r}
+ggplot(diamonds, aes(y = price, x = color, fill = color)) +
+  geom_boxplot() +
+  facet_wrap(~clarity, scales = 'free', nrow = 2) +
+  theme(legend.position = 'none') +
+    labs(title = 'Dataset diamonds',
+       subtitle = 'Box Plot by color and by clarity')
+```
+
+Una característica interesante de `ggplot` es que también podemos agregar elementos gráficos que se computan por medio de estadísticos. Supongamos que queremos agregar un punto  en cada caja que represente el promedio por grupo. Esto se logra con el elemento `stat_summary()`
+
+```{r}
+ggplot(diamonds, aes(y = price, x = color, fill = color)) +
+  geom_boxplot(alpha = 0.6) +
+  facet_wrap(~clarity, scales = 'free', nrow = 2) +
+  theme(legend.position = 'none') +
+  stat_summary(fun=mean, geom = "point", shape = 16, size = 1, color="red", fill = "red") +
+    labs(title = 'Dataset diamonds',
+       subtitle = 'Box Plot by color and by clarity')
+```
+
+Los argumentos de `stat_summary()` toman la función a computar `fun = mean` , la geometría `geom = 'point'`, la forma de la geometría que para que el punto sea circular es `shape = 16`, el tamaño del punto `size = 1`, el color de relleno y de la línea.
+
+
+### Violin plot
+
+Es una variante del gráfico de caja que muestra de una forma mas clara la distribución de los datos en cuanto al **sesgo** y la **kurtosis** de la distribución de frecuencias.
+
+```{r}
+ggplot(diamonds, aes(y = price, x = color, fill = color)) +
+  geom_violin()
+```
+
+### QQ-Plots
+
+Las gráficas QQ-Plots se utilizan para revisar si la distribución de frecuencias de una variable se *parece* a una distribución teórica hipotética (usualmente la distribución Normal). Esto es importante porque muchos algoritmos asumen que la distribución de frecuencias es **Normal**.
+
+El objeto geométrico es `geom_qq()` que grafica los datos sobre un papel probabilístico y `geom_qq_line()` que dibuja una línea recta con la distibución acumulada de frecuencias linealizada. Si los datos (puntos) siguen un comportamiento lineal, entonces, se puede asumir que a distribución de los datos podría provenir de una distribución de probabilidades teórica dada (usualmente la normal)
+
+La distribución de probabilidades asumiendo **Normalidad** es:
+
+$f(x) = \frac{e^{-(x - \mu)^{2}/(2\sigma^{2}) }} {\sigma\sqrt{2\pi}}$
+
+Para explicar la herramienta, vamos a simular 1000 datos de una distribución normal y vamos a gráfica el qq-plot
+
+
+```{r}
+#simulacion de 1000 datos normalmente distribuidos
+simulacion = rnorm(n = 1000, mean = 0, sd = 1)
+qqnorm(simulacion)
+```
+
+En la gráfica se aprecia como nuestra simulación se aproxima a una **línea recta** indicando que los datos simulados sí se aproximan a una distribución normal.
+
+Regresando al ejemplo, queremos saber si la variable `carat` está distribuida normalmente:
+
+```{r}
+ggplot(diamonds, aes(sample = carat)) +
+  geom_qq(color = 'blue') +
+  geom_qq_line(color = 'red') +
+  labs(title = 'Diamonds Data set',
+       subtitle = 'QQ-Plot for cust') +
+  theme_bw()
+```
+
+En este pedazo de código, hemos integrado un nuevo elemento: `theme_bw()`. Los temas o "themes" son formatos predeterminados para la estética de las gráficas. En este caso, decidí cambiar el tema que hemos estado utilizando para ver con más claridad el qq-plot. Al igual que en el caso de histograma o del boxplot, también podemos aplicar un `facet_wrap()`con la variable `color`
+
+```{r}
+ggplot(diamonds, aes(sample = carat)) +
+  geom_qq(color = 'blue') +
+  geom_qq_line(color = 'red') +
+  labs(title = 'Diamonds Data set',
+       subtitle = 'QQ-Plot for cust by Color') +
+  theme_bw() +
+  facet_wrap(~color, nrow = 2, scales = 'free')
+```
+
+
+
+
+### EDA con `DataExplorer`
+
+Existe una forma sencilla de obtener visualizaciones con la finalidad de entender el dataset más que para hacer una presentación o contar una historia. La librería `Dataexplorer` nos permite crear un reporte con una análisis básico de todo el data set utilizando la función. Recuerda instalar antes la librería con `install.packages('DataExplorer')`
+
+La función `create_report()` recibe como input el dataset y si existiera alguna variable dependiente de interés tendríamos que poner el nombre.
+
+Prueba poner en la consola la siguiente línea de comando `create_report(diamonds)`
+
+Si quieres saber más sobre `DataExplorer` puedes visitar la página web [DataExplorer] (https://cran.r-project.org/web/packages/DataExplorer/vignettes/dataexplorer-intro.html)
+
+
+
+## Análisis de Correlación
+
+En estadística estamos interesados en estudiar relaciones causales y una forma de hacerlo es a través del concepto de **correlación**. La correlación mide el grado de *asociación* entre dos variables y se computa de la siguiente manera:
+
+$\rho = \frac{\text{cov}(x,y)}{\sigma_x \sigma_y}$
+
+Para computar este ratio podemos usar formulas de **R**:
+
+* `cov(x, y)` para la covarianza
+* `sd()` para la desviación estándar
+
+```{r}
+x = diamonds$carat
+y = diamonds$price
+
+#Calculando la covarianza
+covarianza = cov(x, y)
+
+#Calculando la desviacion estandar
+sx = sd(x)
+sy = sd(y)
+
+#computamos el indice de correlación
+rho = covarianza / (sx * sy)
+rho
+```
+El indice de correlación se encuentra en el intervalo $-1<\rho<1$. Si $\rho > 0$ y cercano a 1 se dice que la relación $x,y$ es positiva (a medida que $x$ incrementa, $y$ también incrementa). Si $\rho < 0$ se dice que la relación entre $x,y$ es inversa (a medida que la $x$ se incrementa, la $y$ tiende a disminuir). Si $|\rho| \rightarrow 1$ se dice que la relación es fuerte.
+
+Podemos ahorrarnos unas cuantas líneas de código y computar el indice de correlaciones con la función `cor(x, y)`:
+
+```{r}
+cor(x, y)
+```
+
+### Scatter Plot
+
+Un **scatter plot** ayuda a visualizar la relación entre 2 variables típicamente continuas. En `ggplot` el objeto geométrico es `geom_point()`
+
+```{r}
+ggplot(diamonds, aes(x = carat, y = price)) +
+  geom_point()
+```
+
+Tal cual lo que nos dice esta gráfica es que a medida que el valor de `carat` se incrementa, la variable `price` también se incrementa. Tal como lo dice el índice de correlaciones $\rho = 0.92$ la relación entre ambas variables es alta.
+
+Podemos agregar otros objetos geométricos tales como `geom_smooth()` que agregan una línea de tendencia. El default es una línea "smooth" que intenta capturar comportamientos que pudieran no ser lineales:
+
+```{r}
+ggplot(diamonds, aes(x = carat, y = price)) +
+  geom_point() +
+  geom_smooth()
+```
+
+Pero tambien podemos forzar una línea recta:
+
+```{r}
+ggplot(diamonds, aes(x = carat, y = price)) +
+  geom_point() +
+  geom_smooth(method = 'lm')
+```
+
+También podemos utilizar transparencias con `alpha` y separar por `color` con un `facet_wrap()`
+
+```{r}
+ggplot(diamonds, aes(x = carat, y = price, alpha = 0.4)) +
+  geom_point() +
+  facet_wrap(~color, scales = 'free', nrow = 2)
+```
+Podemos colorear los puntos por alguna otra variable como el corte `cut` y cambiar la intensidad del brillo con el operador `I()`
+
+```{r}
+ggplot(diamonds, aes(x = carat, y = price, alpha = I(1/2), color = cut)) +
+  geom_point(alpha = 0.4) +
+  facet_wrap(~color, scales = 'free', nrow = 2) +
+  theme(legend.position = 'bottom') +
+  labs(title = 'Diamonds Data set',
+       subtitle = 'Scatter plot for Precio, x = carat, color = cut')
+```
+
+### Matriz de Correlaciones
+
+Cuando tenemos múltiples variables, nos interesa ver la correlación que existe entre cada una de ellas. Si hay 4 variables continuas existen 6 pares de correlaciones distintas y con 5 tendríamos 10 (en ambos casos eliminando la correlación de cada variable con ella misma que por definición siempre es 1). En genera existirán $N(N-1)/2$ pares únicos.
+
+La función `cor()`también puede computar la matriz de correlaciones. Antes de poder usarlas, debemos quedarnos solo con las variables numéricas del data set y asegurar que el tipo de datos es numérico-matricial.
+
+Para filtrar grupos de columnas que cumplan con características iguales usamos la función `select_if()` con la condición `is.numeric` y después aplicamos la función `cor()`
+
+```{r}
+#Solo variables numéricas
+data = select_if(diamonds, is.numeric)
+
+#Matriz de Correlación
+data = as.matrix(data)
+rho = cor(data)
+rho
+
+```
+
+### El Correlograma
+
+El **correlograma** es la representación gráfica de la matriz de correlaciones. La librería `corrplot` proporciona un método simple para visualizar correlaciones. Para más detalles puedes consultar el sitio <https://cran.r-project.org/web/packages/corrplot/vignettes/corrplot-intro.html>
+
+No olvides instalar la libreria usando `install.packages('corrplot')
+
+El input de `corrplot()` es la matriz de correlaciones. En nuestro ejemplo la he nombrado `rho`
+
+```{r}
+require(corrplot)
+col <- colorRampPalette(c("#BB4444", "#EE9988", "#FFFFFF", "#77AADD", "#4477AA"))
+
+corrplot(rho, method = "color", col = col(200),
+         type = "lower", order = "hclust", number.cex = .7,
+         addCoef.col = "black", # Add coefficient of correlation
+         tl.col = "black", tl.srt = 90, # Text label color and rotation
+         # hide correlation coefficient on the principal diagonal
+         diag = FALSE)
+
+```
+
+
+Para mejora la apariencia de la gráfica se declaró una paleta de colores con el comando `colorRampPalette` que como argumento utiliza una lista de colores <https://www.rdocumentation.org/packages/dichromat/versions/1.1/topics/colorRampPalette>
+
+El argumento `col = col(200)` toma como input la paleta que hicimos, `type = 'lower'` genera una matriz inferior triangular. También puedes probar con `'upper'`. El argumento `order = 'hclust'` ordena en clusters la matriz de correlaciones y el argumento `addCoef.col = 'black'` agrega el valor de la correlación en color negro.
+
+
