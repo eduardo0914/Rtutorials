@@ -2,7 +2,7 @@ baseurl: "https://eduardo0914rtutorials.netlify.app"
 languageCode: "en-us"
 title: "A minimal Hugo website"
 theme: "hugo-xmin"
-googleAnalytics: ""
+googleAnalytics: "G-QEYSKYS3QM"
 disqusShortname: ""
 ignoreFiles: ["\\.Rmd$", "\\.Rmarkdown$", "_cache$", "\\.knit\\.md$", "\\.utf8\\.md$"]
 footnotereturnlinkcontents: "↩"
