@@ -22,7 +22,7 @@ etc.). The length of the period depends on the application, but the return calcu
 should be consistent such that cumulating all the 1-day returns in a given year should
 equal the annual return.</p>
 <p>The daily price return is the percentage change in the price of a security today
-relative to its price yesterday. That is,</p>
+relative to its price yesterday. That is</p>
 <p><span class="math display">\[
 R_t = \frac{P_t - P_{t-1}}{P_t} = \frac{P_t}{P_{t-1}} - 1
 \]</span></p>
@@ -31,7 +31,7 @@ R_t = \frac{P_t - P_{t-1}}{P_t} = \frac{P_t}{P_{t-1}} - 1
 <p><span class="math display">\[
 R_{t,t+2} = (1+R_{t,t+1})(1+R_{t,t+1,t+2}) - 1
 \]</span>
-As an Example, let´s assume we hace a <strong>stock</strong> that gained <span class="math inline">\(10%\)</span> on dat 1 and lost <span class="math inline">\(-5%\)</span> in day 2. The *compounded return** is:</p>
+As an Example, let´s assume we have a <strong>stock</strong> that gained <span class="math inline">\(10%\)</span> on dat 1 and lost <span class="math inline">\(-5%\)</span> in day 2. The *compounded return** is:</p>
 <pre class="r"><code>r1 = 0.1
 r2 = -0.05
 #The total compounded return is
@@ -90,7 +90,7 @@ AMZN_ret %&gt;%
   labs(title = &#39;AMAZON Cumulative Return&#39;) +
   theme_bw()</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
-<p>What we just did is to compute the Net Commulative Return by daily compounding:</p>
+<p>What we just did is to compute the Net Cumulative Return by daily compounding:</p>
 <p><span class="math display">\[
 R_{t, t+N} = \prod_{t=1}^N(1+R_t) - 1
 \]</span></p>
@@ -101,7 +101,7 @@ R_{t, t+N} = \prod_{t=1}^N(1+R_t) - 1
 <p><span class="math display">\[
 r_t = \text{ln}\frac{P_t}{P_{t-1}} = \ln(P_t) - \ln(P_{t-1})
 \]</span></p>
-<p>where ln is the natural logarithm operator. Therefore, we can take the difference of the log prices
+<p>where <code>ln</code> is the natural logarithm operator. Therefore, we can take the difference of the log prices
 to calculate log returns</p>
 <p>Now, we can just follow the same equation for <strong>cumulative log net returns</strong>:</p>
 <p><span class="math display">\[
@@ -145,7 +145,7 @@ print(r_yr)</code></pre>
 </div>
 <div id="comparing-multiple-assets" class="section level2">
 <h2>Comparing Multiple Assets</h2>
-<p>Now let´s expand what we learned to multiple assets: <strong>AMZN, GSPC, GE, IBM</strong> or <strong>amazon, sp500 index, general eletric and IBM</strong></p>
+<p>Now let´s expand what we´ve learned to multiple assets: <strong>AMZN, GSPC, GE, IBM</strong> or <strong>amazon, sp500 index, general electric and IBM</strong></p>
 <p>First, lets get the data:</p>
 <pre class="r"><code>symbols = c(&#39;AMZN&#39;, &#39;^GSPC&#39;, &#39;GE&#39;, &#39;IBM&#39;)
 
@@ -174,7 +174,7 @@ stocks %&gt;%
   theme(legend.position = &#39;none&#39;) +
   labs(title = &#39;Stock Price Evolutions for Multiple Assets&#39;)</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
-<p>Now we can compute de returns for each of the assets:</p>
+<p>Now we can compute the returns for each of the assets:</p>
 <pre class="r"><code>stocks_ret = stocks %&gt;%
   group_by(symbol) %&gt;%
   tq_transmute(
@@ -216,7 +216,7 @@ head(stocks_tidy)</code></pre>
   
   return(x)
 }</code></pre>
-<p>Now, lest use <code>apply</code> functions on pur data frame:</p>
+<p>Now, lest use <code>lapply</code> functions on our data frame:</p>
 <pre class="r"><code>cum_ret = stocks_tidy
 cum_ret[, 2 : ncol(cum_ret)] = lapply(cum_ret[, 2 : ncol(cum_ret)], ret_compound)
 
@@ -333,7 +333,7 @@ min(drawdown)</code></pre>
 </div>
 <div id="drawdown-for-multiple-assets" class="section level2">
 <h2>Drawdown for Multiple Assets</h2>
-<p>now we can create a function to apply to our data frame with all our assets to expand our summary:</p>
+<p>Now we can create a function to apply to our data frame with all our assets to expand our summary:</p>
 <pre class="r"><code>drawdown_f = function(x){
   #Step 1: compute a weatlh index
   w_index = cumprod((1 + x))
@@ -404,7 +404,7 @@ hist(stocks_tidy$AMZN)
 #Create qq Normal plot
 qqnorm(stocks_tidy$AMZN)</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-17-1.png" width="672" /></p>
-<p>If <strong>AMZN</strong> returns are normal, the <strong>qq plot</strong> would follow a streight line. In this case, we have deviations from Normality mainly in the <strong>tails</strong>. This effect is known as <strong>fat tails distribution</strong></p>
+<p>If <strong>AMZN</strong> returns are normal, the <strong>qq plot</strong> would follow a straight line. In this case, we have deviations from Normality mainly in the <strong>tails</strong>. This effect is known as <strong>fat tails distribution</strong></p>
 <p>An alternative way to test for normality is by doing an <strong>hypothesis test</strong> .</p>
 <p>It’s possible to use a significance test comparing the sample distribution to a normal one in order to ascertain whether data show or not a serious deviation from normality.</p>
 <p>There are several methods for normality test such as <strong>Kolmogorov-Smirnov (K-S) normality test and Shapiro-Wilk’s test</strong>.</p>
@@ -428,15 +428,15 @@ qqnorm(stocks_tidy$AMZN)</code></pre>
 <p>For a unimodal distribution, negative skew commonly indicates that the tail is on the left side of the distribution, and positive skew indicates that the tail is on the right. In cases where one tail is long but the other tail is fat, skewness does not obey a simple rule. For example, a zero value means that the tails on both sides of the mean balance out overall; this is the case for a symmetric distribution, but can also be true for an asymmetric distribution where one tail is long and thin, and the other is short but fat.</p>
 <p><span class="math display">\[
 s(R) = \frac{\frac{1}{n}\sum(x_i-\bar{x})^3}{[\frac{1}{n-1}\sum(x_i-\bar{x})^2]^\frac{3}{2}}
-\]</span>
-In probability theory and statistics, kurtosis is a measure of the “tailedness” of the probability distribution of a real-valued random variable. Like skewness, kurtosis describes the shape of a probability distribution and there are different ways of quantifying it for a theoretical distribution and corresponding ways of estimating it from a sample from a population. Different measures of kurtosis may have different interpretations.</p>
+\]</span></p>
+<p>In probability theory and statistics, kurtosis is a measure of the “tailedness” of the probability distribution of a real-valued random variable. Like skewness, kurtosis describes the shape of a probability distribution and there are different ways of quantifying it for a theoretical distribution and corresponding ways of estimating it from a sample from a population. Different measures of kurtosis may have different interpretations.</p>
 <p>The standard measure of a distribution’s kurtosis, originating with Karl Pearson, is a scaled version of the fourth moment of the distribution.</p>
 <p><strong>The kurtosis of any univariate normal distribution is 3</strong>. It is common to compare the kurtosis of a distribution to this value. Distributions with kurtosis less than 3 are said to be platykurtic, although this does not imply the distribution is “flat-topped” as is sometimes stated. Rather, it means the distribution produces fewer and less extreme outliers than does the normal distribution.</p>
 <p><span class="math display">\[
 k(R) = \frac{\frac{1}{n}\sum(x_i-\bar{x})^4}{(\frac{1}{n}\sum(x_i-\bar{x})^2)^2}
 \]</span></p>
 <p>The <strong>excess kurtosis</strong> is defined as kurtosis minus 3.</p>
-<p>Let´s use <code>R</code> to compute higher order moments:</p>
+<p>Let´s use <code>R</code> to compute higher order moments with the library <code>moments</code></p>
 <pre class="r"><code>#Generate random numbers from Normal Distribution
 set.seed(1234)
 x = rnorm(1000,0,1)
@@ -465,7 +465,7 @@ require(moments)</code></pre>
 <div id="putting-all-togheter" class="section level2">
 <h2>Putting all Togheter</h2>
 <p>Now, let´s create a summary for our Stocks to recap what we just learned.</p>
-<p>First, let´s create user defined functions for annualized returs, volatility and max drawdown.</p>
+<p>First, let´s create user defined functions for annualized returns, volatility and max drawdown.</p>
 <pre class="r"><code>#annualzed returns
 ret_yr = function(x){
   x = mean(x)
@@ -503,12 +503,12 @@ stock_summary</code></pre>
 <pre><code>##               mean         sd        skew  kurtosis    Ret_yr Volatility
 ## ^GSPC 0.0005603664 0.01045848 -0.46808030  8.098364 0.1516236  0.1660232
 ## AMZN  0.0012484055 0.02061284  0.46022190 10.740900 0.3694401  0.3272186
-## GE    0.0007998771 0.01440382 -0.01085831  5.974985 0.2232221  0.2286536
-## IBM   0.0004607873 0.01211495 -0.61573589  8.764262 0.1230988  0.1923188
+## GE    0.0007998764 0.01440381 -0.01085941  5.974993 0.2232219  0.2286534
+## IBM   0.0004607867 0.01211496 -0.61573820  8.764236 0.1230986  0.1923190
 ##       Max_Drawdown
 ## ^GSPC   -0.1938824
 ## AMZN    -0.2983665
-## GE      -0.3003561
-## IBM     -0.1912031</code></pre>
+## GE      -0.3003560
+## IBM     -0.1912032</code></pre>
 </div>
 </div>
