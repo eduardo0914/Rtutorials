@@ -1,0 +1,340 @@
+---
+title: VaR and CVaR
+author: Eduardo Villarreal
+date: '2022-02-07'
+slug: var-and-cvar
+categories:
+  - Finance
+tags:
+  - R
+  - Finance
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Data for this section
+
+I´m going to use data for different stocks ro the SP500 Index.
+
+Let´s load the libraries we will require for this section.
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidyquant)
+library(timetk)
+library(quantmod)
+require(moments)
+require(PerformanceAnalytics)
+```
+
+```{r warning=FALSE}
+ticks <- c('AMZN', 'AAPL', 'NFLX', 'XOM', 'T', 'GOOG', 'MSFT', 'TM', 'AA',
+'GE', 'IBM', 'IP', 'JMP', 'MMM', 'PG' , 'NVDA', 'BAC', 'PFE', 'CRM', 'NKE')
+
+#Get the Data
+stocks = tq_get(ticks,
+                from = '2010-01-01',
+                to = '2016-12-31',
+                get = 'stock.prices',
+                complete_cases = T)
+head(stocks)
+```
+
+Now, let´s compute the returns of adjusted prices:
+
+```{r}
+stocks_ret = stocks %>%
+  group_by(symbol) %>%
+  tq_transmute(select = adjusted,
+    mutate_fun = periodReturn,
+    period = 'daily')
+
+head(stocks_ret)
+
+```
+
+From previous section on **Basic of Returns** <https://eduardo0914rtutorials.netlify.app/post/2022/02/07/basics-of-stock-returns/> we learned how to compute different return statistics and we coded some user defined functions:
+
+```{r}
+#annualized returns
+ret_yr = function(x){
+  x = mean(x)
+  x = (1 + x)^252 - 1
+  return(x)
+}
+
+#annual volatility
+vol_yr = function(x){
+  x = sd(x)
+  vol = x * sqrt(252)
+  return(vol)
+}
+
+#Drawdown
+drawdown_f = function(x){
+  #Step 1: compute a weatlh index
+  w_index = cumprod((1 + x))
+  #Step 2: Compute de Previuos Peak
+  peaks = cummax(w_index)
+  #Step 3: Compute drawdown
+  drawdown = (w_index - peaks) / peaks
+  return(drawdown)
+}
+
+#Max Drawdown
+max_drawdown = function(x){
+  x = drawdown_f(x)
+  x = min(x)
+  return(x)
+}
+
+#Return Compounding
+ret_compounding = function(x){
+  x = 1 + x
+  x = cumprod(x)
+  x = x - 1
+  return(x)
+}
+
+#Welth Index
+w_index = function(x){
+  x = 1 + x
+  x = cumprod(x)
+  x = x
+  return(x)
+}
+
+```
+
+For llustration, I´m going to plot the cummulative return for each stock:
+
+```{r}
+ret_compound = stocks_ret %>%
+  spread(symbol, daily.returns)
+
+ret_compound[, 2 : ncol(ret_compound)] = lapply(ret_compound[, 2 : ncol(ret_compound)], w_index)
+ret_compound %>%
+  gather(symbol, AcRet, 2 : ncol(.)) %>%
+  ggplot(aes(x = date, y = AcRet, color = symbol)) +
+  geom_line() +
+  geom_hline(yintercept = 1) +
+  theme_bw() +
+  theme(legend.position = 'none') +
+  labs(title = 'Wealth Index for different Stocks')
+
+```
+
+
+
+# Semi Deviation
+
+**Semi-deviation** is a method of measuring the below-mean fluctuations in the returns on investment. Semi-deviation will reveal the worst-case performance to be expected from a risky investment. Semi-deviation is an alternative measurement to standard deviation or variance. However, unlike those measures, semi-deviation looks only at negative price fluctuations. Thus, semi-deviation is most often used to evaluate the **downside** risk of an investment.
+
+## Understanding Semi-Deviation
+
+In investing, semi-deviation is used to measure the dispersion of an asset's price from an observed mean or target value. In this sense, dispersion means the extent of variation from the mean price.
+
+-   Semi-deviation is an alternative to the standard deviation for measuring an asset's degree of risk.
+
+-   Semi-deviation measures only the below-mean, or negative, fluctuations in an asset's price.
+
+-   This measurement tool is most often used to evaluate risky investments.
+
+-   The point of the exercise is to determine the severity of the downside risk of an investment. The asset's semi-deviation number can then be compared to a benchmark number, such as an index, to see if it is more or less risky than other potential investments.
+
+The formula for semi-deviation is:
+
+$$
+\sigma\_{semi} = \sqrt{\frac{1}{n}\sum_{R_t \leq \bar{R}}(R_t - \bar{R})^2}
+$$
+
+Were $N$ is the number of returns below the mean return.
+
+Let´s create a function to compute the **semi deviation** of a stock
+
+```{r}
+#Function to compute Semi Deviation
+semi_sigma = function(x){
+  #compute the average Return
+  mean_x = mean(x)
+  deviation = (x - mean_x)
+  deviation = deviation[deviation <= 0]
+  sqrdev = deviation ^ 2
+  sqrdev = sum(sqrdev) / (length(deviation) - 1)
+  avgsqrdev = sqrt(sqrdev)
+  
+  
+  return(avgsqrdev)
+}
+
+x = stocks_ret[stocks_ret$symbol == 'AMZN', ]
+x = x$daily.returns
+semi_sigma(x)
+
+```
+
+Another version of this is to take $N$ as the lenght of the full time series. This method is the default of `PerformanceAnalytics` function `SemiDeviation`
+
+# Value at Risk (VAR)
+
+**Value at risk (VaR)** is a measure of the risk of loss for investments. It estimates how much a set of investments might lose (with a given probability), given normal market conditions, in a set time period such as a day. **VaR** is typically used by firms and regulators in the financial industry to gauge the amount of assets needed to cover possible losses.
+
+For a given portfolio, time horizon, and probability $p$, the $p(VaR)$ can be defined informally as the **maximum possible loss during that time after excluding all worse outcomes whose combined probability is at most p**.
+
+For example, if a portfolio of stocks has a one-day 95% VaR of 1 million, that means that there is a 0.05 probability that the portfolio will fall in value by more than 1 million over a one-day period if there is no trading. Informally, a loss of 1 million or more on this portfolio is expected on 1 day out of 20 days (because of 5% probability)
+
+
+There are at least 4 methodologies to estmate **VaR**:
+
+1. Historical non parametric VaR
+
+2. Variance-Covariance (Parametric VaR)
+
+3. Parametric non - Gaussian
+
+4. Cornish - Fisher (Semi-Parametric)
+
+
+## Historical VaR
+
+**Historical VaR** can be computed by using **percentiles**. Let´s say we want the worst 5% for each stock in our data frame. In `R` we can compute this with the `quantile` function. Before doinf that we need to pass out data frame in to a wide format (dates and Stock returns as columns)
+
+```{r}
+#Wide Format
+historical_VaR = stocks_ret %>%
+  spread(symbol, daily.returns)
+
+#Compute VaR
+VaR_hist = function(x, alpha = 0.05){
+  x = -quantile(x, alpha)
+  return(x)
+}
+
+#Iterate VaR over each column
+sapply(historical_VaR[, 2 : ncol(historical_VaR)], VaR_hist)
+  
+```
+
+
+In this example, for **AA** the $\text{VaR}=-0.035$ meaning that 5% of the times the expected lost is 3.5% or worse
+
+
+## Variance-Covariance VaR (Normal Distribution)
+
+This method assumes that stock returns are normally distributed. In other words, it requires that we estimate only two factors—an expected (or average) return and a standard deviation—which allow us to plot a normal distribution curve.
+
+The idea behind the variance-covariance is similar to the ideas behind the historical method—except that we use the familiar curve instead of actual data. The advantage of the normal curve is that we automatically know where the worst 5% and 1% lie on the curve. They are a function of our desired confidence and the standard deviation.
+
+We can compute inverse normal distribution in `R` with the `qnorm` function. Hence, VaR is defined as:
+
+$$
+\text{VaR} = \bar{R} + Z_{\alpha}\sigma
+$$
+
+```{r}
+VaR_gaussian = function(x, alpha = 0.05){
+  x_mean = mean(x)
+  x_sd = sd(x)
+  z = qnorm(alpha)
+  VaR = x_mean + z * x_sd
+  return(-VaR)
+}
+
+
+#Iterate VaR over each column
+VaRdf = data.frame(VaR_historical = sapply(historical_VaR[, 2 : ncol(historical_VaR)], VaR_hist),
+  VaR_Gaussian = sapply(historical_VaR[, 2 : ncol(historical_VaR)], VaR_gaussian))
+
+VaRdf
+```
+
+## Cornish-Fisher VaR
+
+Since the returns of financial assets are often skewed and as such not normally distributed, **using the VaR formula above will lead to biased results**. A possible solution is to use the Cornish-Fisher expansion to estimate quantiles of such a non-normal distribution. The Cornish-Fisher expansion, based on four moments, transforms a standard Gaussian variable  z  into a non Gaussian random variable  Z , according to the following formula:
+
+$$
+Z = z + (z^2-1)\frac{S}{6} + (z^3-3z)\frac{K}{24} - (2z^3-5z)\frac{S^2}{36}
+$$
+with $S$ a skewness parameter and $K$ an (excess) kurtosis parameter.
+
+
+```{r}
+VaR_Cornish = function(x, alpha = 0.05){
+    x_mean = mean(x)
+    x_sd = sd(x)
+    k =kurtosis(x) - 3
+    s = skewness(x)
+    z = qnorm(alpha)
+    
+    #Compute modified Z score using the Cornish-Fisher expansion
+    Zc = z + (z^2 - 1) * (s / 6) + (z^3 - 3 * z) * (k / 24) - (2 * z^3 - 5 * z) * (s^2 / 36)
+    
+    #Compute VaR
+    VaR = x_mean + Zc * x_sd
+    return(-VaR)
+}
+
+#Iterate VaR over each column
+VaRdf = data.frame(VaR_historical = sapply(historical_VaR[, 2 : ncol(historical_VaR)], VaR_hist),
+  VaR_Gaussian = sapply(historical_VaR[, 2 : ncol(historical_VaR)], VaR_gaussian),
+  VaR_Cornish_Fisher = sapply(historical_VaR[, 2 : ncol(historical_VaR)], VaR_Cornish))
+
+VaRdf
+
+```
+
+
+# Conditional Value at Risk (cVaR)
+
+**Conditional value-at-risk (CVaR)** is the extended risk measure of value-at-risk that quantifies the **average loss over a specified time period of unlikely scenarios beyond the confidence level**. For example, a one-day 99% CVaR of 12 million means that the expected loss of the worst 1% scenarios over a one-day period is 12 million. CVaR is also known as **expected shortfall**.
+
+Practitioners in both risk management and portfolio management are increasingly using CVaR. For example:
+
+* CVaR is replacing VaR for calculating market risk capital in the Fundamental Review of the Trading Book (FRTB) by Basel Committee on Banking Supervision (BCBS).
+
+* CVaR is being adopted for portfolio optimization.
+
+ CVaR is a risk measure that quantifies this potential loss is **Expected Shortfall (ES)** which is defined as
+ 
+ $$
+ ES^{1-\alpha}_{t+1} = E(R_{t+1}|R_{t+1} \leq VaR^{1-\alpha}_{t+1})
+ $$
+that is, the expected portfolio return conditional on being on a day in which the return is smaller than VaR. This risk measure focuses its attention on the left tail of the distribution and it is highly dependent on the shape of the distribution in that area, while it neglects all other parts of the distribution.
+
+An analytical formula for ES is available if we assume that returns are normally distributed. We can thus express ES as:
+
+$$
+ES^{1-\alpha}_{t+1} = - \sigma_{t+1} \frac{\phi(z_{\alpha})}{\alpha}
+$$
+where  $z_α$  is equal to $-2.33$ and $-1.64$ for  $α$  equal to $0.01$ and $0.05$, respectively. If we are calculating VaR at 99% so that  $α$  is equal to $0.01$ then ES is equal to:
+
+
+$$
+ES^{0.99}_{t+1} = - \sigma_{t+1} \frac{\phi(-2.33)}{0.01} = -2.64 \sigma_{t+1}
+$$
+```{r}
+#Compute CVaR assuming gaussian distribution
+
+CVaR_fun = function(x, alpha = 0.05){
+  
+  sigma = sd(x)
+  ES = -dnorm(qnorm(alpha)) / alpha * sigma
+  return(ES)
+}
+
+#Iterate VaR over each column
+VaRdf = data.frame(VaR_historical = sapply(historical_VaR[, 2 : ncol(historical_VaR)], VaR_hist),
+  VaR_Gaussian = sapply(historical_VaR[, 2 : ncol(historical_VaR)], VaR_gaussian),
+  VaR_Cornish_Fisher = sapply(historical_VaR[, 2 : ncol(historical_VaR)], VaR_Cornish),
+  CVaR_Gaussian = -sapply(historical_VaR[, 2 : ncol(historical_VaR)], CVaR_fun))
+
+VaRdf
+```
+
+For **AA** if that five percent chance happens, that is the worst five percent of the possible cases. When those things happen, the average of that is a **4.7 percent loss in a day**.
+
+
+
