@@ -1,0 +1,662 @@
+---
+title: Markowitz Portfolio Optimization & QP
+author: Eduardo Villarreal
+date: '2022-02-13'
+slug: markowitz-portfolio-optimization-qp
+categories:
+  - Finance
+tags:
+  - Finance
+  - R
+  - Optimization
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Data for this section
+
+I´m going to use data for different stocks of the SP500 Index.
+
+Let´s load the libraries we will require for this section.
+
+```{r message=FALSE, warning=FALSE}
+require(plotly)
+library(tidyverse)
+library(tidyquant)
+library(timetk)
+library(quantmod)
+require(moments)
+require(PerformanceAnalytics)
+
+theme_set(theme_bw())
+```
+
+```{r warning=FALSE}
+ticks <- c('AMZN', 'AAPL', 'NFLX', 'XOM', 'T', 'GOOG', 'MSFT', 'TM', 'AA',
+'GE', 'IBM', 'IP', 'JMP', 'MMM', 'PG' , 'NVDA', 'BAC', 'PFE', 'CRM', 'NKE')
+
+#Get the Data
+stocks = tq_get(ticks,
+                from = '2010-01-01',
+                to = '2016-12-31',
+                get = 'stock.prices',
+                complete_cases = T)
+head(stocks)
+```
+
+Now, let´s compute the returns of adjusted prices:
+
+```{r}
+stocks_ret = stocks %>%
+  group_by(symbol) %>%
+  tq_transmute(select = adjusted,
+    mutate_fun = periodReturn,
+    period = 'daily')
+
+head(stocks_ret)
+
+```
+
+# Intuition of Markowitz Portfolio Optimization
+
+**Modern portfolio theory (MPT)**, or **mean-variance analysis**, is a mathematical framework for assembling a portfolio of assets such that the expected return is maximized for a given level of risk. It is a formalization and extension of diversification in investing, the idea that owning different kinds of financial assets is less risky than owning only one type. Its key insight is that an asset's risk and return should not be assessed by itself, but by how it contributes to a portfolio's overall risk and return. It uses the variance of asset prices as a proxy for risk.
+
+Economist **Harry Markowitz** introduced MPT in a 1952 essay, for which he was later awarded a Nobel Memorial Prize in Economic Sciences.
+
+How should we invest our wealth? Portfolio theory provides an answer to this question based upon two principles:
+
+> -   we want to maximize the expected return; and
+
+> -   we want to minimize the risk, which we define in this chapter to be the standard deviation of the return, though we may ultimately be concerned with the probabilities of large losses.
+
+These goals are somewhat at odds because **riskier assets generally have a higher expected return**, since investors demand a reward for bearing risk. The difference between the expected return of a risky asset and the risk-free rate of return is called the risk premium. Without risk premiums, few investors would invest in risky assets.
+
+## One Risky Asset and One Risk-Free Asset
+
+Assume that the expected return is $0.15$ and the standard deviation of the return is $0.25$. Assume that there is a **risk-free asset, such as, a 90-day T-bill**, and the risk-free rate is $0.06$. The standard deviation of the return on the risk-free asset is $0$ by definition of "risk-free." **The rates and returns here are annual, though all that is necessary is that they be in the same time units**
+
+Suppose that a fraction $w$ of our wealth is invested in the risky asset and the remaining fraction $1 − w$ is invested in the risk-free asset. Then the expected return is:
+
+$$
+E(R) = w(R) + (1 − w)(R_f)  = w(0.15) + (1 − w)(0.06) = 0.06 + 0.09w
+$$
+
+And the variance, assuming $\bar{R} = 0$
+
+$$
+σ_R^2 = w^2 (\sigma_r)^2 + (1 − w)^2 (\sigma_f)^2 = w^2 (0.25)^2 + (1 − w)^2 (0)^2 = w^2(0.25)^2,
+$$ And standard deviation:
+
+$$
+\sigma_R = \pm \sigma_r w
+$$
+
+For convenience, we will assume $w > 0$ **(long position)**.
+
+To decide what proportion $w$ of one's wealth to invest in the risky asset, one chooses either the expected return $E(R)$ one wants or the amount of risk $σ_R$ with which one is willing to live. Once either $E(R)$ or $σ_R$ is chosen, $w$ can be determined.
+
+Although $σ$ is a measure of risk, a more direct measure of risk is actual monetary loss. In the next example, $w$ is chosen to control the maximum size of the loss **(VAR)**. A more detail introduction to **VAR** con be found here:
+
+[Introduction to VAR](https://eduardo0914rtutorials.netlify.app/post/2022/02/07/var-and-cvar/)
+
+Suppose that a firm is planning to invest \$1,000,000 and has capital reserves that could cover a loss of $150,000$ but no more. Therefore, the firm would like to be certain that, if there is a loss, then it is no more than $0.15$, that is, that $R$ is greater than $−0.15$. Suppose that $R$ is normally distributed:
+
+$$
+P(R<-0.15) =  \phi \Bigg (\frac{-0.15 - \bar{R}}{\sigma_r}\Bigg) = 0.01;
+$$
+
+$$
+P(R<-0.15) =  \phi \Bigg (\frac{-0.15 - (0.06 + 0.09w)}{0.25w}\Bigg) = 0.01
+$$
+
+To find the value of $w$ we can solve analytically, or we can use computations by using **simulation**
+
+```{r}
+#phi is defined as the probability under a curve. The problem is to find the value
+#of w were the are under the normal curve is 0.01
+
+#We can do this by difining a grid of 1,000 uniform random numbers between 0 to 1
+w = runif(1000)
+
+#Now, we cam compute Rbar and sigma
+
+Rbar = 0.06 + 0.09 * w
+sigma = 0.25 * w
+max_loss = -0.15
+
+
+#Now we compute the area under the curve
+prob_df = data.frame(Rbar = Rbar,
+                     sigma = sigma,
+                     w = w,
+                     z_score = ((max_loss - Rbar) / sigma))
+
+prob_df = prob_df %>%
+  mutate(prob_loss = pnorm(z_score)) %>%
+  mutate(delta = abs(0.01 - prob_loss)) %>%
+  dplyr::filter(z_score >= -6)
+
+#Lest´s filter our probability of loss by 0.01
+p = prob_df %>%
+  ggplot(aes(x = w, y = prob_loss)) +
+  geom_point(aes(color = delta)) +
+  geom_hline(yintercept = 0.01) +
+  scale_color_viridis_b(option = 'B') +
+  theme_bw() +
+  labs(title = 'w values that targeted max loss of 0.01')
+
+#Interactive Plot with plotly
+ggplotly(p)
+
+prob_df %>%
+  dplyr::filter(delta <= 0.0005)
+
+```
+
+Based of this results, we can concluded that the value of $w$ that minimizes the VaR is $w = 0.4264$
+
+## Two Risky Assets
+
+Suppose the two risky assets have returns $R_1$ and $R_2$ and that we mix them in proportions $w$ and $1 − w$, respectively. The return on the portfolio is $R_p = w R_1 + (1 − w) R_2$. The expected return on the portfolio is $E(R_P ) = w μ_1 + (1 − w) μ_2$. Let $ρ_{12}$ be the correlation between the returns on the two risky assets. The variance of the return on the portfolio is:
+
+$$
+σ_R^2 = w^2 σ_1^2 + (1 − w)^2 σ_2^2 + 2 w(1 − w)ρ_{12} σ_1σ_2
+$$ Suppose that $μ_1 = 0.14$, $μ_2 = 0.08$, $σ_1 = 0.2$, $σ_2 = 0.15$, and $ρ_{12} = 0$. Then:
+
+$$
+E(R_p) = E(R_P ) = w μ_1 + (1 − w) μ_2 = 0.14w + (1-w)0.08 = 0.08 + 0.06w
+$$ And variance:
+
+$$
+σ^2_{R_P} = w^2 σ_1^2 + (1 − w)^2 σ_2^2 + 2 w(1 − w)ρ_{12} σ_1σ_2 =(0.2)^2 w^2 + (0.15)^2 (1 − w)^2
+$$ Now, let´s use our simulation method to solve this problem:
+
+```{r}
+#We can do this by defining a grid of 1,000 uniform random numbers between 0 to 1
+w = runif(1000)
+
+#Now, we cam compute Rbar and sigma
+mu1 = 0.14
+mu2 = 0.08
+sigma1 = 0.2
+sigma2 = 0.15
+
+Rbar = 0.08 + 0.06 * w
+sigma = sigma1^2 * w^2 + sigma2^2 * (1-w)^2
+
+
+#Now we compute the area under the curve
+prob_df = data.frame(Rbar = Rbar,
+                     sigma = sigma,
+                     w = w)
+
+#Let´s find the minimum variance:
+p = prob_df %>%
+  ggplot(aes(x = w, y = sigma)) +
+  geom_point(aes(color = sigma)) +
+  scale_color_viridis_b(option = 'B') +
+  theme_bw() +
+  labs(title = 'w values that minimizes Variance')
+
+ggplotly(p)
+
+prob_df%>%
+  mutate(w2 = 1 - w) %>%
+  arrange(sigma) %>%
+  head()
+```
+
+So, the weight $w$ that minimizes **variance** is $w=0.36032$ for risky asset 1 and $1-w=0.6396$ for risky asset 2.
+
+Now, a different view of this is to plot **Risk** vs **Return**. This is called the **Efficient Frontier Curve**. And the point with minimum variance is call the **minimum variance portfolio:**
+
+```{r}
+prob_df %>%
+  ggplot(aes(x = sigma, y = Rbar)) +
+  geom_point(aes(color = sigma)) +
+  geom_point(aes(x = 0.0144, y = 0.1016), size = 5, color = 'red') +
+  annotate('text', x = 0.02, y = 0.1016, label = 'Min Variance Portfolio') +
+  scale_color_viridis_b(option = 'B') +
+  theme_bw() +
+  labs(title = 'Minimum Variance Portfolio & Efficient Frontier')
+  
+
+```
+
+What is interesting about this chart, is, that the **minimum variance portfolio** has the **highest return** at **minimum risk.**
+
+## Example with Stock Market Data
+
+Let´s use this to decide how much of our available money should we put on **3M (MMM)** and **Procter & Gamble (PG).**
+
+The `stocks_ret` data frame, has the historical data to perform this computations.
+
+First, let´s pre-process the data, compute annual returns, volatility and correlations:
+
+```{r}
+example_df = stocks_ret %>%
+  dplyr::filter(symbol %in% c('MMM', 'PG'))
+
+#The Annualized Returns are:
+returns = example_df %>%
+  mutate(Year = year(date)) %>%
+  group_by(Year, symbol) %>%
+  summarise(Mean_ret = mean(daily.returns),
+            Var_ret = var(daily.returns)) %>%
+  mutate(Mean_ret_year = (1 + Mean_ret)^252 - 1,
+         Var_ret_year = Var_ret * 252) %>%
+  dplyr::filter(Year == 2016)
+returns
+  
+#The correlation between this 2 assets is:
+correlation = example_df %>%
+  spread(symbol, daily.returns) %>%
+  dplyr::select(MMM, PG)
+
+correlation = as.matrix(correlation) #convert to vectors
+correlation = cor(correlation)
+correlation
+```
+
+**MMM** return is $0.23$ and **PG** around $0.10$ and both has similar volatilities. So, we want to answer the question: How much money do we invest in each asset?
+
+Now, we can compute the weights:
+
+```{r}
+#We can do this by defining a grid of 1,000 uniform random numbers between 0 to 1
+w = runif(1000)
+
+#Now, we cam compute Rbar and sigma
+mu1 = 0.2304
+mu2 = 0.10469
+sigma1 = 0.02187
+sigma2 = 0.02027
+rho =  0.4937
+
+Rbar = w * mu1 + (1 - w) * mu2
+sigma = sigma1^2 * w^2 + sigma2^2 * (1-w)^2 + 
+  2 *w * (1 - w) * rho * sigma1 * sigma2
+
+
+#Now we compute the area under the curve
+prob_df = data.frame(Rbar = Rbar,
+                     sigma = sigma,
+                     w = w)
+
+#Let´s find the minimum variance:
+p = prob_df %>%
+  ggplot(aes(x = w, y = sigma)) +
+  geom_point(aes(color = sigma)) +
+  scale_color_viridis_b(option = 'B') +
+  theme_bw() +
+  labs(title = 'w values that minimizes Variance')
+
+ggplotly(p)
+
+#The weight w is:
+prob_df%>%
+  mutate(w2 = 1 - w) %>%
+  arrange(sigma) %>%
+  head()
+
+```
+
+Now, we can plot the efficient frontier:
+
+```{r}
+#Plotting the efficient frontier
+
+prob_df %>%
+  ggplot(aes(x = sigma, y = Rbar)) +
+  geom_point(aes(color = sigma)) +
+  geom_point(aes(x = 0.0003292048, y = 0.1583), size = 5, color = 'red') +
+  annotate('text', x = 0.00036, y = 0.1583, label = 'Min Variance Portfolio') +
+  scale_color_viridis_b(option = 'B') +
+  theme_bw() +
+  labs(title = 'Minimum Variance Portfolio & Efficient Frontier')
+```
+
+The answer to our question is to invest $0.43$ in **MMM** and $0.57$ in **GE**. The expected return is $0.158$ annually.
+
+How much wealth is possible to get with this strategy? By assuming we have **5,000 usd**:
+
+```{r}
+w_MMM = 0.43
+w_GE = 1 - w_MMM
+
+#Budget for each asset
+BU_MMM = 5000 * w_MMM
+BU_GE = 5000 * w_GE
+
+stocks_ret %>%
+  dplyr::filter(symbol %in% c('MMM', 'GE')) %>%
+  spread(symbol, daily.returns) %>%
+  mutate(GE_compounded = cumprod(GE + 1) * BU_GE,
+         MMM_compounded = cumprod(MMM + 1) * BU_MMM) %>%
+  mutate(Rp = GE_compounded + MMM_compounded) %>%
+  ggplot(aes(x = date, y = Rp)) +
+  geom_line(aes(color = Rp)) +
+  scale_color_viridis_b(option = 'B', end = 0.8)
+
+
+```
+
+# Quadratic Programming - Introduction
+
+**Quadratic programming (QP)** is the problem of optimizing a quadratic objective function and is one of the simplests form of non-linear programming. The objective function can contain bilinear or up to second order polynomial terms, and the constraints are linear and can be both equalities and inequalities.
+
+QP is widely used in image and signal processing, to optimize financial portfolios, to perform the least-squares method of regression, to control scheduling in chemical plants, and in [sequential quadratic programming](https://optimization.mccormick.northwestern.edu/index.php?title=Sequential_quadratic_programming&action=edit&redlink=1), a technique for solving more complex non-linear programming problems. The problem was first explored in the early 1950s, most notably by Princeton University's [Wolfe](http://en.wikipedia.org/wiki/Philip_Wolfe_(mathematician)) and [Frank](http://en.wikipedia.org/wiki/Marguerite_Frank), who developed its theoretical background, and by [Markowitz](http://en.wikipedia.org/wiki/Harry_Markowitz), who applied it to portfolio optimization, a subfield of finance.
+
+A general quadratic programming formulation contains a quadratic objective function and linear equality and inequality constraints:
+
+$$
+\text{min}f(x)=q^Tx+\frac{1}{2}x^TQx \\
+\text{s.t} \\
+Ax = a \\
+Bx \leq b \\
+x \geq 0
+$$
+
+The objective function is arranged such that the vector $q$ contains all of the (singly-differentiated) linear terms and $Q$ contains all of the (twice-differentiated) quadratic terms.
+
+Put more simply, $Q$ is the **Hessian matrix of the objective function** and $q$ is its gradient. By convention, any constants contained in the objective function are left out of the general formulation.
+
+As for the constraints, the matrix equation $Ax = a$ contains all of the linear equality constraints, and $Bx \leq b$ are the linear inequality constraints.
+
+In `R` we use the library `quadprog`.
+
+## Markowitz QP formulation - No Short Sales allowed
+
+Usually, you may find this notation for **QP** (i.e [Erik Zivot 2021](https://bookdown.org/compfinezbook/introcompfinr/Quadradic-programming.html))
+
+$$
+\min{\mathbf{x}}=\frac{1}{2}\mathbf{x}'\mathbf{Dx}-\mathbf{d}'\mathbf{x} \\ 
+\text{s.t. }\mathbf{A}_{eq}^{\prime}\mathbf{x} \geq\mathbf{b}_{eq} \text{ for }l\text{ equality constraints,} \\
+\mathbf{A}_{neq}^{\prime}\mathbf{x} =\mathbf{b}_{neq}\text{ for }m\text{ inequality constraints}
+$$
+
+The `quadprog` package has a function named `solve.QP` with the following arguments:
+
+    function (Dmat, dvec, Amat, bvec, meq = 0, factorized = FALSE) 
+
+In terms of our Portfolio Optimization problems we can defined the mathematical formulation as follow:
+
+$$
+\text{min} x = \frac{1}{2}\mathbf{x'Dx}-\mathbf{d' x} = \mathbf{w'\Sigma w}
+$$
+
+were $\mathbf{w}$ is a $N \times 1$ portfolio weights vector and $\Sigma$ is the $N \times N$ **variance-covariance** matrix.
+
+where the arguments `Dmat` and `dvec` correspond to the matrix $\mathbf{D}$ and the vector $\mathbf{d}$, respectively. The function `solve.QP()`, however, assumes that the equality and inequality matrices $A_{eq}, A_{neq}$ and vectors $b_{eq}, b_{neq}$ are combined into a single $(l+m) \times N$ matrix $\mathbf{A'}$ and a single $(l+m) \times 1$ vector $\mathbf{b}$.
+
+When **short sales** are not allowed, the constraints are:
+
+$$
+\mathbf{w' \mu} = \mu_{obj} \\
+\mathbf{1' w} = 1 \\
+\mathbf{I_N w} \geq 0
+$$
+
+This basically mean that the **sum of weights most be equal 1** and **all weights are positive.**
+
+Now, lets solve our previous example using QP:
+
+```{r}
+#### Quadratic Programming Example
+example_df_qp = example_df %>%
+  spread(symbol, daily.returns)
+
+#compute the Annualized Variance-Covariance Matrix
+cov_mat = cov(example_df_qp[, 2 : 3]) * 252
+
+#Compute Annualized Returns for assets
+mean_ret = example_df %>%
+  group_by(symbol) %>%
+  summarise(Ret = mean(daily.returns)) %>%
+  mutate(Ret_yr = (1 + Ret)^252 - 1)
+```
+
+Now, we can use QP:
+
+```{r}
+library(quadprog)
+
+#Set Names od decision variables
+w_names = c('MMM', 'PG')
+
+#Matrix on the Quadratic form Dmat
+Dmat = cov_mat
+
+# Vector appearing in the quadratic function - Zero vector
+dvec <- rep(0, 2)
+dvec = t(dvec)
+
+## Matrix defining the constraints Amat ------->
+constr_1 = mean_ret$Ret_yr #Expected Return
+constr_2 = c(1, 1) #Sum of weights is 1
+constr_3 = diag(2) #Identity matrix for Waeights Identification
+Amat = rbind(constr_1, constr_2, constr_3)
+colnames(Amat) = w_names
+
+
+# Vector holding the value of b0 for the Amat constrint
+bvec <- c(0.12, 1, 0, 0)
+
+#Solving the QP problem ------>
+# meq indicates how many constraints are equality 
+# Only the second constraint is equality so meq = 2
+qp <- solve.QP(Dmat = Dmat, dvec = dvec, Amat = t(Amat), bvec = bvec, meq = 2)
+qp$solution
+```
+
+Now we know that we need to invest $MMM = 0.77$ and $PG = 0.35$. How ever, this is just the **minimun risk portfolio**. If we want to visualize the efficient frontier, we need to define a grid of posible target returns and interate $k$ times:
+
+```{r message=FALSE, warning=FALSE}
+#Let´s iterate over 500 target returns 
+target_return = seq(0.1, 0.16, length = 500)
+
+#Set the empty vector to store the results
+w = NULL
+
+for(i in target_return){
+  mu_P = i
+  bvec[1] = mu_P
+  qp <- solve.QP(Dmat = Dmat, dvec = dvec, Amat = t(Amat), bvec = bvec, meq = 2)
+  result = c(qp$solution, mu_P, qp$value)
+  w = rbind(w, result)
+  
+}
+
+#Compute retunrs and Portfolio Risk
+w = as.data.frame(w)
+names(w) = c(w_names, 'Return', 'Risk')
+
+#Get min Var Portfolio
+min_port = min(w$Risk)
+min_var_port = w %>%
+  dplyr::filter(Risk == min_port)
+
+min_var_port
+
+w %>%
+  ggplot(aes(x = Risk, y = Return)) +
+  geom_point(aes(color = Return)) +
+  geom_point(aes(x = min_var_port$Risk, y = min_var_port$Return), size = 5, color = 'red') +
+  scale_color_viridis_b(option = 'B') +
+  labs(title = 'Efficient Frontier')
+```
+
+## Markowitz QP formulation - Risk Free Rate
+
+Consider an investment universe with $N$ risky assets and a single risk-free asset. **The tangency portfolio is the maximum Sharpe ratio portfolio** of risky assets and is the solution to the maximization problem:
+
+$$
+\text{max } \frac{\mu_t - r_f}{\sigma_t} = \frac{\mathbf{t'}\mu - r_f}{\sqrt(\mathbf{t'\Sigma t})} \\
+\text{s.t: } \\ 
+\mathbf{t'1} = 1
+$$
+
+This optimization problem *cannot* be written as a QP optimization as expressed in. Hence, it looks like we cannot use the function `solve.QP()` to find the short sales constrained tangency portfolio. However, it turns out we can use `solve.QP()` to find the short sales constrained tangency portfolio.
+
+The alternative way to compute the tangency portfolio is to first find a minimum variance portfolio of risky assets and a risk-free asset whose excess expected return $\mu_{p,x} = \mathbf{\mu'x - r_f1}$ achieves a target excess return $\bar{\mu}_{p,0} = \mathbf{\mu_{p,0} - r_f} > 0$. This portfolio solves the minimization problem:
+
+$$
+\text{min} x = \frac{1}{2}\mathbf{x'Dx}-\mathbf{d' x} = \mathbf{w'\Sigma w} \\
+\text{s.t: } \\
+\mu_{p,x} = \bar{\mu}_{p,0}
+$$ where the weight vector $\mathbf{x}$ is not constrained to satisfy $\mathbf{x'1}=1$. For convenience $\mu_{p,x} = 1$. The tangency portfolio is then determined by normalizing the weight vector $\mathbf{x}$ so that its elements sum to one:
+
+$$
+\mathbf{t} = \frac{\mathbf{x}}{\mathbf{x'1}}
+$$However, once we have the efficient frontier, we can compute the **Sharpe Ratio** to get it´s maximum value:
+
+```{r}
+#Compute Sharpe Ratios
+rf = 0.03
+w = w %>%
+  mutate(Sharpe = (Return - rf) / sqrt(Risk))
+
+#Get the Maximum Sharpe Ratio
+sp_ratio = w %>%
+  dplyr::filter(Sharpe == max(Sharpe)) %>%
+  as.data.frame()
+
+w %>%
+  ggplot(aes(x = Risk, y = Return)) +
+  geom_point(aes(color = Return)) +
+  geom_point(aes(x = min_var_port$Risk, y = min_var_port$Return), size = 5, color = 'red') +
+  scale_color_viridis_b(option = 'B') +
+  labs(title = 'Efficient Frontier and Tangency Portfolio') +
+  geom_point(aes(x = sp_ratio$Risk, y = sp_ratio$Return), size = 5, color = 'blue')
+```
+
+## Markowitz QP formulation - Short Sales allowed
+
+When **short sales** are allowed, we need to relax the **non-negativity** constraints:
+
+$$
+\text{min} x = \frac{1}{2}\mathbf{x'Dx}-\mathbf{d' x} = \mathbf{w'\Sigma w} \\
+\text{s.t: } \\
+\mathbf{w' \mu} = \mu_{obj} \\
+\mathbf{1' w} = 1 \\
+$$
+
+To make it more illustrative, I´m going to expand our set of stocks to the whole universe we downloaded:
+
+First I´m going to pre-process the data, compute mean returns, Volatility and Covariance matrix:
+
+```{r}
+
+#Compute the Variance-Covariance Matrix
+Dmat = stocks_ret %>%
+  spread(symbol, daily.returns)
+Dmat = cov(Dmat[, 2 : ncol(Dmat)]) * 252
+
+#Compute Returns and Voltility
+Rs = stocks_ret %>%
+  group_by(symbol) %>%
+  summarise(Ret = mean(daily.returns),
+            Vol = sd(daily.returns)) %>%
+mutate(Ret_yr = (1+ Ret)^252 - 1,
+       Vol_yr = Vol * sqrt(252))
+```
+
+Now, let´s write the matrix formulation:
+
+```{r}
+#Set the number of assets
+N = length(unique(stocks_ret$symbol))
+
+#Matrix on the Quadratic form Dmat
+Dmat = Dmat
+
+#Set Names od decision variables
+w_names = colnames(Dmat)
+
+
+# Vector appearing in the quadratic function - Zero vector
+dvec <- rep(0, N)
+
+## Matrix defining the constraints Amat ------->
+constr_1 = Rs$Ret_yr #Expected Return
+constr_2 = rep(1, N) #Sum of weights is 1
+
+Amat = rbind(constr_1, constr_2)
+colnames(Amat) = w_names
+
+
+# Vector holding the value of b0 for the Amat constrint with 12% return
+bvec <- c(0.12, 1)
+
+#Solving the QP problem ------>
+# meq indicates how many constraints are equality 
+# Only the second constraint is equality so meq = 2
+qp <- solve.QP(Dmat = Dmat, dvec = dvec, Amat = t(Amat), bvec = bvec, meq = 2)
+short_sales = qp$solution
+
+names(short_sales) = w_names
+short_sales
+```
+
+From the printed results, **AA = -0.43** indicates to **short sale** the stock. But, what is **short selling**?
+
+[Short selling](https://seekingalpha.com/article/4444518-what-does-it-mean-short-stock?source=content_type%3Areact%7Csection%3Amain_content%7Cbutton%3Abody_link), or to "sell short," means that an investor, or short seller, borrows shares/units of an investment security, usually from a broker, and sells the borrowed security, expecting that the share price will fall. If the share price does fall, the investor buys those same shares/units back at a lower price and can make a profit. The short seller then returns the borrowed security to the lender.
+
+> *Warning: Shorting is not for the faint of heart, and can expose investors to unlimited losses. Markets are unpredictable and short sellers can end up losing money if the security price goes up instead of down as they expected.*
+
+## Markowitz QP formulation - Balance the Portfolio
+
+To avoid concentrating the portfolio in just one or a few stocks, an investor may wish to constrain the portfolio so that no wi exceeds a bound $λ$, for example, $λ = 1/4$ means that no more than $1/4$ of the portfolio can be in anyvsingle stock. In this case, $w ≤ λ1$ or equivalently $−w ≥ −λ1$, so that $A_{neq}$ is minus the $N × N$ identity matrix and $b_{neq} = −λ1$. One can combine these constraints with those that prohibit short selling.
+
+Let´s re formulate the problem assuming none of the assets can have more than 30% participation:
+
+```{r}
+#Set the number of assets
+N = length(unique(stocks_ret$symbol))
+
+#Matrix on the Quadratic form Dmat
+Dmat = Dmat
+
+#Set Names od decision variables
+w_names = colnames(Dmat)
+
+# Vector appearing in the quadratic function - Zero vector
+dvec <- rep(0, N)
+#dvec = t(dvec)
+
+## Matrix defining the constraints Amat ------->
+constr_1 = mean_ret$Ret_yr #Expected Return
+constr_2 = rep(1, N) #Sum of weights is 1
+constr_3 = diag(N) #Identity matrix for w >= 0
+constr_4 = -diag(N) #Identity matrix for the upper bound
+Amat = rbind(constr_1, constr_2, constr_3, constr_4)
+colnames(Amat) = w_names
+
+
+# Vector holding the value of b0 for the Amat constraint
+bvec_R = 0.12 #Target retur for the portfolio
+bvec_1 = 1 #N weight sum to 1
+bvec_Zero = rep(0, N) #Non-negativity constraint
+bvec_UB = rep(-0.30, N) #Upper Bound constraint for assets. w<=p
+bvec <- c(bvec_R, bvec_1, bvec_Zero, bvec_UB)
+
+#Solving the QP problem ------>
+# meq indicates how many constraints are equality 
+# Only the second constraint is equality so meq = 2
+qp <- solve.QP(Dmat = Dmat, dvec = dvec, Amat = t(Amat), bvec = bvec, meq = 2)
+portfolio_UB = qp$solution
+names(portfolio_UB) = w_names
+portfolio_UB = ifelse(portfolio_UB < 0, 0, portfolio_UB)
+portfolio_UB
+```
+
+Now, we can plot the portfolio composition to make it more visual:
+
+```{r fig.width=10}
+barplot(portfolio_UB, col = 'red', main = 'Portfolio Composition')
+```
+
+Now you can see that the algorithm is protecting us of having more than 30% in one asset. What would happen if we constraint the weights to 15%? This one is for you to practice!!
