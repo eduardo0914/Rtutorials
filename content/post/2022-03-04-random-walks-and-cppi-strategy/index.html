@@ -1,0 +1,761 @@
+---
+title: Random Walks and CPPI strategy
+author: Eduardo Villarreal
+date: '2022-03-04'
+slug: random-walks-and-cppi-strategy
+categories:
+  - Finance
+tags:
+  - Finance
+  - R
+---
+
+<script src="{{< blogdown/postref >}}index_files/header-attrs/header-attrs.js"></script>
+
+
+<div id="data-for-the-session" class="section level1">
+<h1>Data for the Session</h1>
+<p>For this tutorial, I´m going to use data from the <a href="http://mba.tuck.dartmouth.edu/pages/faculty/ken.french/index.html">Kenneth R. French</a> data repository related to 49 Industries Stock Returns. To make things easy, I´m going to use the <code>FFdownload</code> library.</p>
+<p>Let´s load our libraries:</p>
+<pre class="r"><code>library(tidyverse)
+library(tidyquant)
+library(timetk)
+library(quantmod)
+require(moments)
+require(PerformanceAnalytics)
+require(FFdownload)
+
+theme_set(theme_bw())</code></pre>
+<p>Now, let´s download the data. The <code>FFdownload</code> package takes the data from the repository, unzips the file and performs data cleaning tasks to load a cleaned <code>xts</code> dataframe.</p>
+<p><code>xts</code>  or the Extensible Time Series is one of such packages that offers such a time series object. It’s a powerful R package that provides an extensible time series class, enabling uniform handling of many R time series classes by extending <code>zoo</code>.</p>
+<pre class="r"><code>#Let´s define the set of data we want. In this case is just 1 database:
+inputlist &lt;- c(&#39;49_Industry_Portfolios_CSV.zip&#39;)
+
+#Let´s create a temporal directory to store the data
+tempd &lt;- tempdir()
+
+#Now we can download the data usisn FFdownload. Since we are looking for monthly
+#data, I set exclude_daily = TRUE
+FFdownload(exclude_daily = TRUE, 
+           tempd = tempd,
+           download = TRUE,
+           download_only = TRUE,
+           inputlist = inputlist) #This is the input list of data
+
+#Let´s process de CSV file here
+tempf &lt;- paste0(tempd,&quot;\\FFdata.RData&quot;) #Concatenate the temp file name
+
+FFdownload(output_file = tempf, 
+           exclude_daily = TRUE,
+           tempd = tempd,
+           download = FALSE,
+           download_only = FALSE,
+           inputlist = inputlist)</code></pre>
+<pre><code>## 
+  |                                                                            
+  |                                                                      |   0%
+  |                                                                            
+  |======================================================================| 100%</code></pre>
+<pre class="r"><code>#Let´s load the data file
+load(file = tempf)</code></pre>
+<p>Before continue, let´s take a look of the <code>FFdata</code> object. This is a <code>Large list</code> consisting on 2 hierarchies:</p>
+<p>1) Annualized Data</p>
+<p>2) Monthly Data</p>
+<p>If we take a look at <code>Monthly data</code> we will find:</p>
+<ul>
+<li><p>Monthly Returns database</p></li>
+<li><p>Average Firm Size</p></li>
+<li><p>Number of Firms in each Industry</p></li>
+<li><p>Weighted Returns</p></li>
+</ul>
+<p>For this section, I´m going to work with <code>Monthly Return</code>, <code>Number of Firms</code> and <code>Market Cap</code></p>
+<pre class="r"><code>#Get Monthly Data
+Monthly_data = FFdata$x_49_Industry_Portfolios$monthly
+stock_return = Monthly_data$average_value_weighted_returns
+stock_AvgSize = Monthly_data$average_firm_size
+stock_nFirms = Monthly_data$number_of_firms_in_portfolios</code></pre>
+</div>
+<div id="diversification" class="section level1">
+<h1>Diversification</h1>
+<p>In investing, <strong>diversification</strong> involves spreading your money around among multiple investments to limit your exposure to any one investment. The practice can reduce the volatility of your portfolio because when one asset is falling, others may be rising, offsetting some of the losses on the declining asset. Diversifying your portfolio helps balance risk and reward in your investments.</p>
+<blockquote>
+<p><em>Portfolio diversification involves spreading your money around among multiple investments. Diversification can include spreading investment dollars among various assets types, specific companies, and geographies,</em></p>
+</blockquote>
+<div id="advantage-of-diversification" class="section level2">
+<h2>Advantage of Diversification</h2>
+<p>If you’re wondering why diversification is important in an investment portfolio, there are several reasons. Perhaps the most important benefit is the fact that, if done correctly, it can minimize the <a href="https://seekingalpha.com/article/4470654-value-at-risk-var?source=content_type%3Areact%7Csection%3Amain_content%7Cbutton%3Abody_link#variance-covariance-method">risk</a> that you will lose money in your portfolio.</p>
+<p>When one asset class or position is falling sharply, hopefully, other positions in a portfolio are rising, flat, or at least declining less. Diversification can thus assist in protecting your wealth.</p>
+<p>Spreading your investment dollars among different investment positions can also increase the opportunities for returns. If investors put all their eggs in one basket, that one investment may not deliver any profits. However, selecting a larger number of investments increases the probability that one or more see nice gains.</p>
+<p>Diversification can also protect a portfolio when the market shifts into another stage of the market cycle. For example, investors could allocate some of their portfolios into sectors that are out of favour, preparing them for when that sector will rebound. The cycle can shift suddenly without warning, so by owning sectors that are and aren’t doing well, you prepare your portfolio for that shift. The sector that was losing money may start posting positive returns after the cycle shifts.</p>
+<p>You also reduce volatility in your portfolio by owning a variety of assets. As already stated, it’s a good idea to own a variety of different stocks, bonds or sectors because when one starts to rise, another may reverse. When you look at your portfolio as a whole, it’s less volatile because the different positions are offsetting each other.</p>
+</div>
+<div id="disadvantage-of-diversification" class="section level2">
+<h2>Disadvantage of Diversification</h2>
+<p>While diversification is usually recommended, there are some possible drawbacks. First, diversification can be complicated. Determining what percentage of your portfolio to allocate to what type of asset may require a bit of research and management effort on your part. Managing a diversified portfolio can also be time-consuming for those without a lot of experience investing.</p>
+<p>Diversification can also limit the upside of your portfolio while protecting it from excessive amounts of downside. A portfolio of one stock could see huge gains if that one position soars in value. By diversifying, positions that are delivering substantial profits will be subdued by some positions that are not. Additionally, even though diversification is a strategy to reduce risk, some investors may be more prone to buying some very risky individual investments that they may not understand, within a diversified portfolio.</p>
+<p>Transaction costs on a widely diversified portfolio can be higher if it results in you making a lot of trades instead of buying and holding the positions you have. Finally, diversification doesn’t always protect you from the market’s ups and downs. For example, during the Global Financial Crisis in 2008 and 2009, almost every stock fell significantly, so diversifying by owning a wide array of different stocks didn’t help much.</p>
+<blockquote>
+<p><em>The number one benefit of diversification is that it can reduce volatility in a portfolio, but on the other hand, it might also reduce overall returns.</em></p>
+</blockquote>
+<p><a href="https://seekingalpha.com/article/4436963-what-is-diversification-in-investing?external=true&amp;gclid=CjwKCAiA6seQBhAfEiwAvPqu17mhaom1Dc6UwAVCPPLBF1jS8SOj6fp8P9OO2_Jwk3yxovzNfjlOURoCGxQQAvD_BwE&amp;utm_campaign=14926960698&amp;utm_medium=cpc&amp;utm_source=google&amp;utm_term=127894704186%5Eaud-1172366382705%3Adsa-1427141793820%5E%5E552341146729%5E%5E%5Eg">Source: Seeking Alphas</a></p>
+</div>
+<div id="the-limits-of-diversification" class="section level2">
+<h2>The Limits of Diversification</h2>
+<p>Diversification is achieved by adding assets into a portfolio which have correlations less than 1 with the portfolio. At its purest level, it reduce risk because not all assets will have the same gain or loss at the same time. By investing in different assets (which all have the same risk and return), we reduce the extreme movements of the portfolio, often in a way which doesn’t reduce the overall return quite as much.</p>
+<p>Diversification fail when <strong>systematic risk</strong> is present.</p>
+<div id="what-is-systematic-risk" class="section level3">
+<h3>What Is Systematic Risk?</h3>
+<p>Systematic risk refers to the risk inherent to the entire market or <a href="https://www.investopedia.com/terms/m/market-segment.asp">market segment</a>. Systematic risk, also known as “undiversifiable risk,” “volatility” or “market risk,” affects the overall market, not just a particular stock or industry.</p>
+<p>KEY TAKEAWAYS</p>
+<ul>
+<li><p>Systematic risk is inherent to the market as a whole, reflecting the impact of economic, geopolitical, and financial factors.</p></li>
+<li><p>This type of risk is distinguished from unsystematic risk, which impacts a specific industry or security.</p></li>
+<li><p>Systematic risk is largely unpredictable and generally viewed as being difficult to avoid.</p></li>
+<li><p>Investors can somewhat mitigate the impact of systematic risk by building a diversified portfolio.</p></li>
+</ul>
+</div>
+<div id="understanding-systematic-risk" class="section level3">
+<h3>Understanding Systematic Risk</h3>
+<p>Systematic risk is both unpredictable and impossible to completely avoid. It cannot be mitigated through diversification, only through hedging or by using the correct <a href="https://www.investopedia.com/terms/a/assetallocation.asp">asset allocation</a> strategy.</p>
+<p>Systematic risk underlies other investment risks, such as industry risk. If an investor has placed too much emphasis on cybersecurity stocks, for example, it is possible to diversify by investing in a range of stocks in other sectors, such as healthcare and infrastructure. <strong>Systematic risk, however, incorporates interest rate changes, inflation, recessions, and wars, among other major changes. Shifts in these domains can affect the entire market and cannot be mitigated by changing positions within a portfolio of public equities.</strong></p>
+<p>To help manage systematic risk, investors should ensure that their portfolios include a variety of asset classes, such as fixed income, cash, and real estate, each of which will react differently in the event of a major systemic change. An increase in <a href="https://www.investopedia.com/terms/i/interestrate.asp">interest rates</a>, for example, will make some new-issue bonds more valuable, while causing some company stocks to decrease in price as investors perceive executive teams to be cutting back on spending. In the event of an interest rate rise, ensuring that a portfolio incorporates ample income-generating securities will mitigate the loss of value in some equities.</p>
+<p><a href="https://www.investopedia.com/terms/s/systematicrisk.asp">Source: Investopedia</a></p>
+</div>
+</div>
+<div id="systematic-risk-and-correlation-effect" class="section level2">
+<h2>Systematic Risk and Correlation Effect</h2>
+<p>Now, I´m going to use the data we just download to demostrate how Systematic Risks affect correlations and diversification.</p>
+<p>First, I´m going to create a <strong>Total Industry Market Index.</strong></p>
+<p>Let´s compute the <strong>Market Capitalization</strong>, <span class="math inline">\(Mcap = N_{firms} \times F_{size}\)</span></p>
+<pre class="r"><code>#Converting xts Firm Size  to df
+df_AvgSize = as.data.frame(stock_AvgSize)
+df_AvgSize$Date = row.names(df_AvgSize)
+df_AvgSize = df_AvgSize %&gt;%
+  gather(Industry, AvgSize, 1 : (ncol(.) - 1))
+
+#Converting xts n Firms  to df
+df_nFirms = as.data.frame(stock_nFirms)
+df_nFirms$Date = row.names(df_nFirms)
+df_nFirms = df_nFirms %&gt;%
+  gather(Industry, nFirms, 1 : (ncol(.) - 1))
+
+#Converting xts returns  to df
+df_ret = as.data.frame(stock_return)
+df_ret$Date = row.names(df_ret)
+df_ret = df_ret %&gt;%
+  gather(Industry, Return, 1 : (ncol(.) - 1))
+
+#Join Data
+df_MarketCap = left_join(df_nFirms, df_AvgSize)</code></pre>
+<pre><code>## Joining, by = c(&quot;Date&quot;, &quot;Industry&quot;)</code></pre>
+<pre class="r"><code>df_MarketCap$MarketCap = df_MarketCap$AvgSize * df_MarketCap$nFirms
+df_MarketCap = left_join(df_MarketCap, df_ret)</code></pre>
+<pre><code>## Joining, by = c(&quot;Date&quot;, &quot;Industry&quot;)</code></pre>
+<pre class="r"><code>#Convert Date Columns to Dates ------&gt;
+df_MarketCap = df_MarketCap %&gt;%
+  separate(Date, into = c(&#39;Month&#39;, &#39;Year&#39;)) %&gt;%
+  mutate(Year = as.numeric(Year))
+
+#Convert Text to Numeric
+temp_month = unique(df_MarketCap$Month)
+temp_month = data.frame(Month = temp_month,
+                        Month_n = c(7,8,9,10,11,12,1,2,3,4,5,6))
+df_MarketCap = left_join(df_MarketCap, temp_month)</code></pre>
+<pre><code>## Joining, by = &quot;Month&quot;</code></pre>
+<pre class="r"><code>#Create Date
+df_MarketCap$Date = ISOdate(df_MarketCap$Year, df_MarketCap$Month_n, 1)
+df_MarketCap$Date = as.Date(df_MarketCap$Date, format = &quot;%Y-%m-%d&quot;)
+
+#Divide Retunrs by 100
+df_MarketCap$Return = df_MarketCap$Return / 100</code></pre>
+<p>Now, the <strong>Total Market Cap</strong> is the Sum of <strong>Market Cap</strong> across Industries:</p>
+<pre class="r"><code>df_WeightMarketCap = df_MarketCap %&gt;%
+  dplyr::select(Date, Industry, MarketCap) %&gt;%
+  spread(Industry, MarketCap)
+
+df_WeightMarketCap$Total = rowSums(df_WeightMarketCap[, 2 : ncol(df_WeightMarketCap)])</code></pre>
+<p>Now, let´s compute the weight of each industry:</p>
+<pre class="r"><code>#Ltés define n - 1 columns
+n = ncol(df_WeightMarketCap)
+df_WeightMarketCap[, 2 : n] = df_WeightMarketCap[, 2 : n] / df_WeightMarketCap$Total
+
+#Check the Sum is 1
+mean(df_WeightMarketCap$Total)</code></pre>
+<pre><code>## [1] 1</code></pre>
+<p>Let´s now compare a couple o Industries over time:</p>
+<pre class="r"><code>df_WeightMarketCap %&gt;%
+  dplyr::select(Date, Fin, Steel) %&gt;%
+  gather(Industry, Weight, 2 : ncol(.)) %&gt;%
+  ggplot(aes(x = Date, y = Weight, color = Industry)) +
+  geom_line() +
+  scale_color_viridis_d(begin = 0.2, end = 0.8) +
+  labs(title = &#39;Industry Share on Market Cap 49 Industries&#39;) +
+  theme(legend.position = &#39;bottom&#39;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+<p>Now let´s compute an Index. This Index is the <strong>Portfolio</strong> with all industries proportionally weighted by the Total Market Capitalization:</p>
+<pre class="r"><code>df_MarketCap = df_WeightMarketCap %&gt;%
+  gather(Industry, Weight, 2 : (ncol(.) - 1)) %&gt;%
+  left_join(df_MarketCap)</code></pre>
+<pre><code>## Joining, by = c(&quot;Date&quot;, &quot;Industry&quot;)</code></pre>
+<pre class="r"><code>#Compute Index
+df_MarketCap = df_MarketCap %&gt;%
+  mutate(Industry_Index = Weight * Return)
+
+#Plot of Index
+df_MarketCap %&gt;%
+  group_by(Date) %&gt;%
+  dplyr::summarise(Industry_Index = sum(Industry_Index)) %&gt;%
+  ggplot(aes(x = Date, y = Industry_Index)) +
+  geom_line(col = &#39;blue2&#39;) +
+  labs(title = &#39;49 Industry Index Return&#39;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+<p>Now, what we really want is to show the <strong>cummulative returns</strong> :</p>
+<pre class="r"><code>#Now we can compute our Index
+df_MarketCap %&gt;%
+  group_by(Date) %&gt;%
+  dplyr::summarise(Industry_Index = sum(Industry_Index)) %&gt;%
+  mutate(Index_Growth = cumprod(1 + Industry_Index)) %&gt;%
+  ggplot(aes(x = Date, y = Index_Growth)) +
+  geom_line(color = &#39;blue&#39;) +
+  labs(title = &#39;Total Market Index of 49 Industries&#39;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<pre class="r"><code>#Save the Index
+df_Index = df_MarketCap %&gt;%
+  group_by(Date) %&gt;%
+  dplyr::summarise(Industry_Index = sum(Industry_Index)) %&gt;%
+  mutate(Index_Growth = cumprod(1 + Industry_Index))</code></pre>
+</div>
+<div id="rolling-computations-moving-averages" class="section level2">
+<h2>Rolling Computations: Moving Averages</h2>
+<p>The moving average of lenght <span class="math inline">\(m\)</span> is:</p>
+<p><span class="math display">\[
+\hat{T}_{t} = \frac{1}{m} \sum_{j=-k}^k y_{t+j}
+\]</span></p>
+<p>where <span class="math inline">\(m=2k+1\)</span> That is, the estimate of the trend-cycle at time <span class="math inline">\(t\)</span> is obtained by averaging values of the time series within <span class="math inline">\(k\)</span> periods of <span class="math inline">\(t\)</span>. Observations that are nearby in time are also likely to be close in value. Therefore, the average eliminates some of the randomness in the data, leaving a smooth trend-cycle component. We call this an <span class="math inline">\(m-MA\)</span>, meaning a moving average of order <span class="math inline">\(m\)</span>.</p>
+<p>Now we want to do a rolling mean (moving average) of 36 months. For this I´m going to use the <code>tidyquant</code> package and the function <code>tq_transmutate</code> to compute a rolling average:</p>
+<p><code>tq_mutate_(data, select, mutate_fun, col_rename, …)</code></p>
+<pre class="r"><code>#Compute Simple Moving Average of lenght 36
+df_Index = df_Index %&gt;%
+  tq_mutate(select = Index_Growth,
+            mutate_fun = SMA,
+            n = 36,
+            col_rename = &#39;Index_36m&#39;) %&gt;%
+  tq_mutate(select = Industry_Index,
+            mutate_fun = SMA,
+            n = 36,
+            col_rename = &#39;Return_36m&#39;)
+
+#Plot Industry Index
+df_Index %&gt;%
+  #filter(Date &gt;= &#39;1980-01-01&#39;) %&gt;%
+  ggplot(aes(x = Date, y = Index_Growth)) +
+  geom_line(color = &#39;blue&#39;) +
+  geom_line(aes(y = Index_36m), col = &#39;red&#39;) +
+  labs(title = &#39;Industry Index and 36 MA&#39;)</code></pre>
+<pre><code>## Warning: Removed 35 row(s) containing missing values (geom_path).</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-10-1.png" width="672" /></p>
+<pre class="r"><code>#Plot Return 36 months
+df_Index %&gt;%
+  #filter(Date &gt;= &#39;1980-01-01&#39;) %&gt;%
+  ggplot(aes(x = Date, y = Return_36m)) +
+  geom_line(color = &#39;blue&#39;) +
+  labs(title = &#39;Industry Return 36 MA&#39;)</code></pre>
+<pre><code>## Warning: Removed 35 row(s) containing missing values (geom_path).</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-10-2.png" width="672" /></p>
+<p>Now, I want to test if there is a correlation with Industry Returns to see what happened when the Market drowdowns occured (i.e 2008 crisis). Let´s introduce rolling correlations.</p>
+</div>
+<div id="rolling-correlation" class="section level2">
+<h2>Rolling Correlation</h2>
+<p>Correlations in time series are very useful because <strong>if a relationship exists, you can actually model/predict/forecast using the correlation</strong>. However, there’s one issue: <strong>a correlation is NOT static</strong>! It changes over time. Even the best models can be rendered useless during periods when correlation is low.</p>
+<p>One of the most important calculations in time series analysis is the <strong>rolling correlation</strong>. Rolling correlations are simply applying a correlation between two time series (say sales of product x and product y) as a rolling window calculation.</p>
+<p>In addition to visualizations, the rolling correlation is great for a number of reasons. First, <strong>changes in correlation can signal events</strong> that have occurred causing two correlated time series to deviate from each other. Second, when modeling, <strong>timespans of low correlation can help in determining whether or not to trust a forecast model</strong>. Third, you can <strong>detect shifts in trend as time series</strong> become more or less correlated over time.</p>
+<p>Let´s use <code>Finance</code> and <code>Steel</code> Inustries as an example:</p>
+<pre class="r"><code>df_rollingCorr = df_MarketCap %&gt;%
+  dplyr::select(Date, Industry, Return) %&gt;%
+  spread(Industry, Return) %&gt;%
+  tq_mutate_xy(x = Fin,
+               y = Steel,
+               mutate_fun = runCor,
+               n = 36,
+               col_rename = &#39;RollingCorr&#39;) %&gt;%
+  dplyr::select(Date, Fin, Steel, RollingCorr)
+
+#Plot Rolling Correlations
+df_rollingCorr %&gt;%
+  ggplot(aes(x = Date, y = RollingCorr)) +
+  geom_line(color = &#39;red&#39;) +
+  labs(title = &#39;Rolling Correlation betweem Finance and Steel&#39;)</code></pre>
+<pre><code>## Warning: Removed 35 row(s) containing missing values (geom_path).</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
+<p>Now we can join the 2 data frames:</p>
+<pre class="r"><code>df_Index %&gt;%
+  left_join(df_rollingCorr) %&gt;%
+  tq_mutate_xy(x = RollingCorr,
+               y = Return_36m,
+               mutate_fun = runCor,
+               n = 36,
+               col_rename = &#39;Index_Corr&#39;) %&gt;%
+  filter(Date &gt;= &#39;2000-01-01&#39;) %&gt;%
+  ggplot(aes(x = Date, y = Index_Corr)) +
+  geom_line() +
+  geom_hline(yintercept = 0, lty = 2, col = &#39;red&#39;) +
+  geom_vline(xintercept = as.Date(&#39;2001-12-01&#39;), lty = 2, col = &#39;red&#39;)</code></pre>
+<pre><code>## Joining, by = &quot;Date&quot;</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
+<p>what is shown here is the fact that when Systematic risk is present (i.e 2001 crisis), Correlation between Industry and the Market are below 0. <strong>This motivates the next topic to handle Risk</strong></p>
+</div>
+</div>
+<div id="constant-proportion-portfolio-insurance-cppi" class="section level1">
+<h1>Constant Proportion Portfolio Insurance (CPPI)</h1>
+<p>Constant Proportion Portfolio Insurance (CPPI) is a type of <a href="https://www.investopedia.com/terms/p/portfolioinsurance.asp">portfolio insurance</a> in which the investor sets a floor on the dollar value of their portfolio, then structures asset allocation around that decision. The two asset classes used in CPPI are a risky asset (usually equities or mutual funds) and a conservative asset of either cash, equivalents or treasury bonds. The percentage allocated to each depends on the “cushion” value, defined as current portfolio value minus floor value, and a <a href="https://www.investopedia.com/terms/m/multiplier.asp">multiplier</a> coefficient, where a higher number denotes a more aggressive strategy.</p>
+<div id="understanding-cppi" class="section level2">
+<h2>Understanding CPPI</h2>
+<p>Constant Proportion Portfolio Insurance (CPPI) allows an investor to maintain exposure to the upside potential of a risky asset while providing a capital guarantee against downside risk. The outcome of the CPPI strategy is somewhat similar to that of buying a <a href="https://www.investopedia.com/terms/c/calloption.asp">call option</a>, but does not use option contracts. Thus, CPPI is sometimes referred to as a <a href="https://www.investopedia.com/terms/c/convexity.asp">convex</a> strategy, as opposed to a “concave strategy” like constant mix. Financial institutions sell CPPI products on a variety of risky assets, including equities and credit default swaps.</p>
+<blockquote>
+<p>KEY TAKEAWAYS</p>
+</blockquote>
+<ul>
+<li><p>CPPI is a strategy to combine the upside of equity market exposure with investments in a conservative financial instrument. This is done by allocating a specifically calculated percentage of investment to a risk account.</p></li>
+<li><p>A multiplier is used to determine the amount of risk that an investor is willing to undertake.</p></li>
+<li><p>Investors can rebalance their holdings monthly or quarterly.</p></li>
+</ul>
+<div id="parameters-of-cppi" class="section level3">
+<h3>Parameters of CPPI</h3>
+<p><strong>Bond floor</strong></p>
+<p>The bond floor is the value below which the value of the CPPI portfolio should never fall in order to be able to ensure the payment of all future due cash flows (including notional guarantee at maturity).</p>
+<p><strong>Multiplier</strong></p>
+<p>Unlike a regular bond + call strategy which only allocates the remaining dollar amount on top of the bond value (say the bond to pay 100 is worth 80, the remaining cash value is 20), the CPPI leverages the cash amount. The multiplier is usually 4 or 5, meaning you do not invest 80 in the bond and 20 in the equity, rather m*(100-bond) in the equity and the remainder in the zero coupon bond.</p>
+<p><strong>Gap</strong></p>
+<p>A measure of the proportion of the equity part compared to the cushion, or (CPPI-bond floor)/equity. Theoretically, this should equal 1/multiplier and the investor uses periodic rebalancing of the portfolio to attempt to maintain this.</p>
+</div>
+<div id="dynamic-trading-strategy" class="section level3">
+<h3>Dynamic trading strategy</h3>
+<p><strong>Rules</strong></p>
+<blockquote>
+<p>If the gap remains between an upper and a lower trigger band (resp. releverage and deleverage triggers), the strategy does not trade. It effectively reduces <a href="https://en.wikipedia.org/wiki/Transaction_costs" title="Transaction costs">transaction costs</a>, but the drawback is that whenever a trade event to reallocate the weights to the theoretical values happen, the prices have either shifted quite a bit high or low, resulting in the CPPI effectively buying (due to leverage) high and selling low.</p>
+</blockquote>
+<p><strong>Risks</strong></p>
+<blockquote>
+<p>As dynamic trading strategies assume that capital markets trade in a continuous fashion, gap risk is the main concern of CPPI writer, since a sudden drop in the risky underlying trading instrument(s) could reduce the overall CPPI net asset value below the value of the bond floor needed to guarantee the capital at maturity. In the models initially introduced by Black and Jones, Black &amp; Rouhani, this risk does not materialize: to measure it one needs to take into account sudden moves (jumps) in prices. Such sudden price moves may make it impossible to shift the position from the risky assets to the bond, leading the structure to a state where it is impossible to guarantee principal at maturity. With this feature being ensured by contract with the buyer, the writer has to put up money of his own to cover for the difference (the issuer has effectively written a put option on the structure NAV). Banks generally charge a small “protection” or “gap” fee to cover this risk, usually as a function of the notional leveraged exposure.</p>
+</blockquote>
+</div>
+<div id="cppi-implementation" class="section level3">
+<h3>CPPI Implementation</h3>
+<p><strong>Constant proportion portfolio insurance (CPPI)</strong> is a dynamic asset allocation strategy that aims at providing a guaranteed minimum level of wealth <span class="math inline">\(G\)</span> at maturity <span class="math inline">\(T\)</span> while allowing some participation in market profits. In its simplest incarnation, products with a guaranteed payback can be considered as a portfolio: the present value of the guaranteed payment, the floor <span class="math inline">\(F_t = Ge^{−r(T −t)}\)</span>, is invested in a risk-free asset, whereas the remainder of its current value <span class="math inline">\(V_t\)</span> , the cushion <span class="math inline">\(C_t = V_t −F_t\)</span> , is invested into a risky asset.</p>
+<p>This risky asset can be an option, and the product would be called option-based portfolio insurance (OBPI; see Leland and Rubinstein, 1976). Alternatively, a stock or an index could be used; however, since the cushion is usually rather small in proportion to the total value, the actual return of such a combination will mainly be driven by the risk-free asset’s yield.</p>
+<p>The CPPI strategy, therefore, suggests to invest a multiple <span class="math inline">\(m\)</span> of the cushion in the risky asset (exposure, <span class="math inline">\(E_t = m C_t\)</span>) and hold less than the floor in the safe asset, <span class="math inline">\(B_t = V_t − E_t = V_t − mC_t\)</span> . If the risky asset goes up, so will the cushion, and the exposure will be increased; if it goes down, the lower cushion will trigger a reduction in the exposure.</p>
+<p>The mechanism is so that <span class="math inline">\(V_t\)</span> never falls below the floor. Note that in bullish markets, the (theoretical) exposure could exceed <span class="math inline">\(V_t\)</span> . We assume that the investor may not (or does not want to) go short in the safe asset and, therefore, introduce a ceiling value on <span class="math inline">\(E_t\)</span> . In the absence of transaction costs, the entire model reads as follows:</p>
+<p><span class="math display">\[
+V_t = F_t + C_t \\
+F_t = G \text{exp}(-r_s (T-t)) \\
+E_t = \min(mC_t, V_t) \\
+B_t = V_t - E_t
+\]</span></p>
+<p>where <span class="math inline">\(V_t\)</span> is the total value, <span class="math inline">\(F_t\)</span> is the floor value, <span class="math inline">\(E_t\)</span> is the exposure, <span class="math inline">\(B_t\)</span> is the safe asset and <span class="math inline">\(r_s\)</span> is the safe return.</p>
+<blockquote>
+<p>Parametrization &amp; Data</p>
+</blockquote>
+<pre class="r"><code>#Input of the algorithm are Industry Returns df_ret
+risky_r = df_MarketCap %&gt;%
+  dplyr::select(Date, Industry, Return) %&gt;%
+  spread(Industry, Return) %&gt;%
+  dplyr::select(Date, Steel, Fin, Beer) %&gt;%
+  filter(Date &gt;= &#39;2000-01-01&#39;)
+  
+
+#We need to iterate for each date in the data set
+dates = unique(risky_r$Date)
+
+#Define the number of iterations
+n_steps = length(dates)
+
+
+#Set Initial values to store history of the Back Testing
+account_history = data.frame(Date = dates, risky_r[, -1])
+cushion_history = data.frame(Date = dates, risky_r[, -1])
+risky_w_history = data.frame(Date = dates, risky_r[, -1])</code></pre>
+<blockquote>
+<p>CPPI Function</p>
+</blockquote>
+<pre class="r"><code>CPPI_f = function(risky_r, Initial_value, account_value ,floor, safe, m){
+  floor_value = Initial_value * floor
+  account_value = account_value
+  cushion = (account_value - floor_value) / account_value
+  risky_w = cushion * m
+  risky_w = min(risky_w, 1)
+  risky_w = max(risky_w, 0)
+  safe_w = 1 - risky_w
+  
+  risky_alloc = account_value * risky_w
+  safe_alloc = account_value * safe_w
+  
+  account_value = risky_alloc * (1 + risky_r) + safe_alloc * (1 + safe)
+  x = c(account_value, risky_w, cushion)
+  return(x)
+}
+
+
+CPPI_f(0.078, 1000, 1000 ,0.8, 0.008, 3)</code></pre>
+<pre><code>## [1] 1050.0    0.6    0.2</code></pre>
+<blockquote>
+<p>CPPI Algorithm</p>
+</blockquote>
+<pre class="r"><code>#Get the number of observations
+n_steps = nrow(risky_r)
+
+#Iterate forear column j and row i
+for(j in 2 : ncol(risky_r)){
+  
+  Io = 1000 #Initial value invested
+  Vt = Io #Account valur
+  f = 0.8 #floor
+  safe = 0.03/12 #Safe rate
+  m = 3 #Multiplier
+  
+  #Iterate over each row
+  for(i in 1 : n_steps){
+    x = risky_r[i, j] #Get data form column j and row i
+    
+    #Update Account Value by using CPPI strategy
+    y = CPPI_f(x, Io, Vt, f, safe, m)
+    
+    #save CPPI results
+    account_history[i, j] = y[1]
+    risky_w_history[i, j] = y[2]
+    
+    #Updage account value for next i iteration
+    Vt = y[1]
+  }
+
+}</code></pre>
+<p>Now we can plot the results:</p>
+<pre class="r"><code>p1 = account_history %&gt;%
+  gather(Industry, CPPI, 2 : ncol(.)) %&gt;%
+  ggplot(aes(x = Date, y = CPPI, color = Industry)) +
+  geom_line(size = 1) +
+  labs(title = &#39;Account History from CPPI strategy&#39;)
+
+p2 = risky_w_history %&gt;%
+  gather(Industry, CPPI, 2 : ncol(.)) %&gt;%
+  ggplot(aes(x = Date, y = CPPI, color = Industry)) +
+  geom_step() +
+  theme(legend.position = &#39;none&#39;) +
+  labs(title = &#39;Weight History&#39;)
+
+#Use patchwork to create a panel of 2 graphs
+require(patchwork)
+p2 | p1</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-16-1.png" width="672" /></p>
+<p>It is useful to take a look on what would happened if CPPI is not implemented. Let´s use Beer Industry as example. In order to achieve this, we need to create a wealth index:</p>
+<pre class="r"><code>beer_index = risky_r %&gt;%
+  dplyr::select(Date, Beer) %&gt;%
+  mutate(Beer_Index = Io * cumprod((1 + Beer))) %&gt;%
+  dplyr::select(Date, Beer_Index) %&gt;%
+  left_join(account_history) %&gt;%
+  mutate(Delta = (Beer_Index - Beer) / Beer)</code></pre>
+<pre><code>## Joining, by = &quot;Date&quot;</code></pre>
+<pre class="r"><code>#Plot the data
+p1 = beer_index %&gt;%
+  ggplot(aes(x = Date, y = Beer_Index, col = &#39;red&#39;)) +
+  geom_line() +
+  geom_line(aes(y = Beer, x = Date), col = &#39;blue&#39;) +
+  labs(title = &#39;CPPI Strategy vs Comppond Rate&#39;) +
+  theme(legend.position = &#39;none&#39;)
+
+
+p2 = beer_index %&gt;%
+  ggplot(aes(x = Date, y = Delta, col = &#39;red&#39;)) +
+  geom_line() +
+   labs(title = &#39;Delta CPPI Strategy&#39;) +
+  theme(legend.position = &#39;none&#39;)
+
+p1 | p2</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-17-1.png" width="672" /></p>
+<p>It is clear that CPPI Strategy is achieving around 10% incremental gains vs just leaving the money over time.</p>
+</div>
+</div>
+</div>
+<div id="simulating-asset-returns" class="section level1">
+<h1>Simulating Asset Returns</h1>
+<div id="simulation-with-random-walks" class="section level2">
+<h2>Simulation with Random Walks</h2>
+<p>Now we are going to talk about how to generate meaningful, reasonable scenarios for asset returns using a random walk model, allows us to kind of the <strong>Monte-Carlo simulation</strong>. So we are going to look at very simple case, very simple setting with two assets a risky asset.</p>
+<p>You may want to think about a risky asset as a <strong>stock index</strong>. We’re going to call the value of that risky asset <span class="math inline">\(S_t\)</span> That’s the value of that stock index at time <span class="math inline">\(t\)</span>, and then we’re going to look at the <strong>risk-free asset</strong>. You might want to think about the risk-free asset as a <strong>one-year T-bill</strong>, the value that risk-free asset we call <span class="math inline">\(B_t\)</span></p>
+<p>A stochastic model for asset return assuming a <strong>Random Walk</strong> model can be modeled as:</p>
+<p><span class="math display">\[
+\frac{dS_t}{S_t} = \mu(t,X)dt + \sigma dW_t = (r+\sigma \lambda)dt + \sigma dW_t \\
+\frac{dB_t}{B_t} = rdt \Longleftrightarrow B_t = B_0e^{rt}
+\]</span></p>
+<p>were <span class="math inline">\(r\)</span> is the risk-free rate, <span class="math inline">\(\sigma\)</span> is the volatility of the stock and <span class="math inline">\(\lambda\)</span> is the Sharpe ratio of that stock index, <span class="math inline">\(dW_t\)</span> is a <strong>Bromian Motion Process</strong> equivalent to a <strong>Random Walk</strong> in continuous time modeled as a Gaussian process with <span class="math inline">\(\mu\)</span> is the annualized return and <span class="math inline">\(\sigma\)</span> is the volatility of the Gaussian Process. The Bromian Motion can be define as:</p>
+<p><span class="math display">\[
+\frac{S_{t + dt} - S_t}{S_t} = \mu dt + \sigma \sqrt{dt} \zeta_t
+\]</span></p>
+<p>And that’s basically saying the change in price divided by the price, the purchase price (return), is given by a Gaussian Process:</p>
+<pre class="r"><code>#function for Bromian Process
+gbm = function(n_years = 10, n_scenarios = 1000, mu = 0.07, sigma = 0.15, steps_per_year = 12, s_0 = 100){
+  
+  ###
+  #Evoluation of a Stock Price unisng Bromian Motion Model
+  ###
+  
+  dt = 1 / steps_per_year #delta t
+  n_steps = as.integer(n_years * steps_per_year) #Total realizations
+  xi = runif(n = n_steps * n_scenarios) #Random numbers
+  xi = matrix(xi, nrow = n_steps, ncol = n_scenarios) #Convert to Matrix
+  xi = qnorm(xi, mean = 0, sd = 1) #Compute Gaussian X
+  rets = mu * dt + (sigma * sqrt(dt) * xi) #Use Random Walk Process
+  
+  #Function for Commulative Results
+  ret_compound = function(x){
+    #Step 1: compute (1 + r)
+    x = 1 + x
+    #Step 2: compute cumprod
+    x = cumprod(x)
+    #step 3: compute cumprod - 1
+    x = x
+    
+    return(x)
+  }
+
+  #Compute Prices
+  prices = as.data.frame(rets) #Convert to DF
+  prices = sapply(prices, ret_compound) #Compute accum prod
+  prices = s_0 * prices # compute Invested values
+  prices = as.data.frame(prices) #convert to DF since sapply convert to matrix
+  prices$run = 1 : nrow(prices) #Create Id
+  
+  return(prices)
+}
+
+#Compute Bromiam Random Walk
+p = gbm(n_years = 10, n_scenarios = 1000)
+
+
+#Plot Cummulative Returns
+p %&gt;%
+  gather(scenario, price, 1 : (ncol(.) - 1)) %&gt;%
+  ggplot(aes(x = run, y = price, color = scenario)) +
+  geom_line(size = 1, alpha = 0.1) +
+  labs(title = &#39;Asset Retrun Simulation&#39;) +
+  theme(legend.position = &#39;none&#39;) +
+  scale_color_viridis_d(option = &#39;B&#39;, end = 0.9) +
+  geom_hline(yintercept = 100, color = &#39;firebrick&#39;, lty = 2, size = 1) +
+  annotate(geom = &#39;label&#39;, x = 10, y = 100,
+           label = prettyNum(100), fill = &#39;firebrick&#39;, color = &#39;white&#39;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-18-1.png" width="672" /></p>
+<div id="cppi-and-bromian-motion" class="section level3">
+<h3>CPPI and Bromian Motion</h3>
+<p>Now, the idea is to use our <code>gbm</code> function to simulate a <strong>risky asset</strong> and use it as an input for the <strong>CPPI</strong> algorithm.</p>
+<pre class="r"><code>#Initializing
+
+#First we generate the risky asset
+risky_r = gbm(n_years = 10, n_scenarios = 1000, mu = 0.07, sigma = 0.15, steps_per_year = 12, s_0 = 100)
+
+#Convert to Returns
+risky_r = sapply(risky_r, Delt)
+risky_r = as.data.frame(risky_r) 
+risky_r = na.omit(risky_r)
+
+#We need to iterate for each date in the data set
+dates = 1 : nrow(risky_r)
+
+#Define the number of iterations
+n_steps = length(dates)
+
+
+#Set Initial values to store history of the Back Testing
+account_history = data.frame(Date = dates, risky_r[, -1])
+cushion_history = data.frame(Date = dates, risky_r[, -1])
+risky_w_history = data.frame(Date = dates, risky_r[, -1])
+
+
+#Now we can compute the CPPI algorithm
+#Get the number of observations
+n_steps = nrow(risky_r)
+
+#Iterate forear column j and row i
+for(j in 2 : ncol(risky_r)){
+  
+  Io = 1000 #Initial value invested
+  Vt = Io #Account valur
+  f = 0.8 #floor
+  safe = 0.03/12 #Safe rate
+  m = 3 #Multiplier
+  
+  #Iterate over each row
+  for(i in 1 : n_steps){
+    x = risky_r[i, j] #Get data form column j and row i
+    
+    #Update Account Value by using CPPI strategy
+    y = CPPI_f(x, Io, Vt, f, safe, m)
+    
+    #save CPPI results
+    account_history[i, j] = y[1]
+    risky_w_history[i, j] = y[2]
+    
+    #Updage account value for next i iteration
+    Vt = y[1]
+  }
+  
+}
+
+#Create a plot of the results
+p1 = account_history %&gt;%
+  gather(Industry, CPPI, 2 : (ncol(.) - 1)) %&gt;%
+  ggplot(aes(x = Date, y = CPPI, color = Industry)) +
+  geom_line(size = 1, alpha = 0.08) +
+  labs(title = &#39;GBM CPPI strategy&#39;) +
+  theme(legend.position = &#39;none&#39;) +
+  geom_hline(yintercept = 1000, size = 1)
+
+
+p2 = account_history %&gt;%
+  gather(Industry, CPPI, 2 : (ncol(.) - 1)) %&gt;%
+  ggplot(aes(x = log(CPPI))) +
+  geom_histogram(color = &#39;white&#39;,bins = 70, fill = &#39;orange&#39;) +
+  labs(title = &#39;CPPI strategy Violations&#39;) +
+  theme(legend.position = &#39;none&#39;) +
+  geom_vline(xintercept = log(1000), size = 1)
+
+p1 | p2</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-19-1.png" width="672" /></p>
+<p>The cool thing on Montecarlo Simulation is that it allows to compute some statistics to aproximate the potential win/loss of our CPPI strategy:</p>
+<pre class="r"><code>#Computing the mean and 95% confidence interval for CPPI
+account_history = account_history %&gt;%
+  gather(Sim, CPPI, 2 : (ncol(.) - 1)) %&gt;%
+  mutate(Sim = factor(Sim)) %&gt;%
+  as.data.frame()
+
+#Summary Statistics
+summary_stat = account_history %&gt;%
+  group_by(Date) %&gt;%
+  dplyr::summarise(x = mean(CPPI),
+                   s = sd(CPPI),
+                   n = n_distinct(CPPI)) %&gt;%
+  mutate(se = s / sqrt(n))
+
+#Join and compute confidence interval
+account_history %&gt;%
+  group_by(Date) %&gt;%
+  dplyr::summarise(center = mean(CPPI),
+                   max = quantile(CPPI, 0.75),
+                   min = quantile(CPPI, 0.25)) %&gt;%
+  left_join(summary_stat) %&gt;%
+  mutate(lower = center - 1.96 * se,
+         upper = center + 1.96 * se) %&gt;%
+  ggplot(aes(x = Date, y = center)) +
+  geom_line(color = &#39;black&#39;, size = 1) +
+  geom_line(aes(y = upper), color = &#39;grey50&#39;, size = 1, lty = 2) +
+  geom_line(aes(y = lower), color = &#39;grey50&#39;, size = 1, lty = 2) +
+  geom_ribbon(aes(ymin = min, ymax = max), alpha = 0.2, fill = &#39;steelblue&#39;) +
+  labs(title = &#39;CPPI Simulations Results with 25th and 50th percentiles&#39;)</code></pre>
+<pre><code>## Joining, by = &quot;Date&quot;</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-20-1.png" width="672" /></p>
+<p>now that we learn how to summarize a Simulation, we can create <strong>scenarios</strong> for the model parameters. In this case, the <strong>multiplier</strong> and the <strong>floor</strong> value such as we maximize the average return.</p>
+<p>Let´s assume the multiplier could take values between 1.5 and 4 and floor can vary between 0.5 and 0.9. Let´s create a grid to simulate with the values:</p>
+<pre class="r"><code>mult_values = seq(1.5, 4, by = 0.5)
+floor_values = seq(0.5, 0.9, by = 0.1)
+
+grid = expand.grid(mult_values = mult_values, floor_values = floor_values)
+
+#let´s take a random sample to speed up computations
+grid = grid %&gt;%
+  sample_frac(size = 0.3)</code></pre>
+<p>Now we have 30 potential values to run our simulations. The next step is to code the scenarios by creating a function with the parameters we want to move:</p>
+<pre class="r"><code>gbm_sim = function(Io = 1000, floor_value, multiplier, safe = 0.03/12){
+
+  #Initializing
+  
+  #First we generate the risky asset
+  risky_r = gbm(n_years = 10, n_scenarios = 100, mu = 0.07, sigma = 0.15, steps_per_year = 12, s_0 = 100)
+  
+  #Convert to Returns
+  risky_r = sapply(risky_r, Delt)
+  risky_r = as.data.frame(risky_r) 
+  risky_r = na.omit(risky_r)
+  
+  #We need to iterate for each date in the data set
+  dates = 1 : nrow(risky_r)
+  
+  #Define the number of iterations
+  n_steps = length(dates)
+  
+  
+  #Set Initial values to store history of the Back Testing
+  account_history = data.frame(Date = dates, risky_r[, -1])
+  cushion_history = data.frame(Date = dates, risky_r[, -1])
+  risky_w_history = data.frame(Date = dates, risky_r[, -1])
+  
+  
+  #Now we can compute the CPPI algorithm
+  #Get the number of observations
+  n_steps = nrow(risky_r)
+  
+  #Iterate forear column j and row i
+  for(j in 2 : ncol(risky_r)){
+    
+    Io = Io #Initial value invested
+    Vt = Io #Account valur
+    f = floor_value #floor
+    safe = safe #Safe rate
+    m = multiplier #Multiplier
+    
+    #Iterate over each row
+    for(i in 1 : n_steps){
+      x = risky_r[i, j] #Get data form column j and row i
+      
+      #Update Account Value by using CPPI strategy
+      y = CPPI_f(x, Io, Vt, f, safe, m)
+      
+      #save CPPI results
+      account_history[i, j] = y[1]
+      risky_w_history[i, j] = y[2]
+      
+      #Updage account value for next i iteration
+      Vt = y[1]
+    }
+    
+  }
+  
+  return(account_history)
+}
+
+#testing the function
+temp = gbm_sim(Io = 1000, floor_value = 0.7, multiplier = 2.5, safe = 0.03/12)</code></pre>
+<p>Now we are ready to simulate with our grid:</p>
+<pre class="r"><code>#Create an empty data frame to store de resuts
+sim_res = NULL
+
+for(i in grid$mult_values){
+  
+  for(j in grid$floor_values){
+  
+    temp = gbm_sim(Io = 1000, floor_value = j, multiplier = i, safe = 0.03/12)
+    temp$mult_values = i
+    temp$f_val = j
+    
+    #Update results
+    sim_res = bind_rows(sim_res, temp)
+  }
+
+}</code></pre>
+<p>We are ready to analyse the results of our simulations:</p>
+<pre class="r"><code>#Select Comlumns
+sim_res = sim_res %&gt;%
+  dplyr::select(Date, mult_values, f_val ,starts_with(&#39;V&#39;)) %&gt;%
+  gather(Sim, CPPI, 4 : ncol(.))
+
+#Summarise the results
+sim_res %&gt;%
+  group_by(Date, mult_values, f_val) %&gt;%
+  dplyr::summarise(x = mean(CPPI)) %&gt;%
+  ggplot(aes(x = factor(mult_values), y = x)) +
+  geom_boxplot() +
+  facet_wrap(~f_val, nrow = 1) +
+  labs(title = &#39;Multiplier and floor simulation results&#39;)</code></pre>
+<pre><code>## `summarise()` has grouped output by &#39;Date&#39;, &#39;mult_values&#39;. You can override using the `.groups` argument.</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-24-1.png" width="672" /></p>
+<p>From the chart, we can conclude that our CPPI strategy should be set up with a multiplier of <span class="math inline">\(3.5\)</span> and a floor of <span class="math inline">\(0.6\)</span>.</p>
+</div>
+</div>
+</div>
