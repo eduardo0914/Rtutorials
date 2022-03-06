@@ -1,0 +1,1462 @@
+---
+title: Introduction to Linear Models
+author: Eduardo Villarreal
+date: '2022-03-05'
+slug: introduction-to-linear-models
+categories:
+  - Basic Statisitcs
+tags:
+  - Inference and Regression
+  - R
+---
+
+<script src="{{< blogdown/postref >}}index_files/header-attrs/header-attrs.js"></script>
+
+
+<p>In many ways, regression analysis lives at the heart of statistics. It’s a broad term for
+a set of methodologies used to predict a response variable (also called a dependent,
+criterion, or outcome variable) from one or more predictor variables (also called independent
+or explanatory variables).</p>
+<p>For example, an exercise physiologist might use regression analysis to develop
+an equation for predicting the expected number of calories a person will burn
+while exercising on a treadmill. The response variable is the number of calories
+burned (calculated from the amount of oxygen consumed), and the predictor variables
+might include duration of exercise (minutes), percentage of time spent at
+their target heart rate, average speed (mph), age (years), gender, and body mass
+index (BMI).</p>
+<div class="figure">
+<img src="Regression%20Types.png" alt="" />
+<p class="caption">Different types of Regression</p>
+</div>
+<p>From a theoretical point of view, the analysis will help answer such questions as
+these:</p>
+<ul>
+<li>What’s the relationship between exercise duration and calories burned? Is it linear
+or curvilinear? For example, does exercise have less impact on the number
+of calories burned after a certain point?</li>
+<li>How does effort (the percentage of time at the target heart rate, the average
+walking speed) factor in?</li>
+<li>Are these relationships the same for young and old, male and female, heavy
+and slim?</li>
+</ul>
+<p>From a practical point of view, the analysis will help answer such questions as the
+following:</p>
+<ul>
+<li>How many calories can a 30-year-old man with a BMI of 28.7 expect to burn if he
+walks for 45 minutes at an average speed of 4 miles per hour and stays within his
+target heart rate 80% of the time?</li>
+<li>What’s the minimum number of variables you need to collect in order to accurately
+predict the number of calories a person will burn when walking?</li>
+<li>How accurate will your prediction tend to be?</li>
+</ul>
+<p>we’ll focus on regression methods that fall under the rubric of <strong>ordinary
+least squares (OLS)</strong> regression, including simple linear regression, polynomial regression,
+and multiple linear regression.</p>
+<div id="ols-regression" class="section level3">
+<h3>OLS Regression</h3>
+<p>OLS regression fits models of the form:</p>
+<p><span class="math display">\[y_i = \beta_0 + \beta_1 x_{i1} + ... + \beta_n x_{in} + \epsilon_i\]</span></p>
+<p>where <span class="math inline">\(i\)</span> is the number of observations and <span class="math inline">\(n\)</span> is the number of predictor variables.
+(Although I’ve tried to keep equations out of these discussions, this is one of the few
+places where it simplifies things.) In this equation:</p>
+<ul>
+<li><span class="math inline">\(X_{in}\)</span> is the <em>nth</em> predictor value for the <em>ith</em> observation.</li>
+<li><span class="math inline">\(beta_0\)</span> is the intercept</li>
+<li><span class="math inline">\(\beta_n\)</span> is the regression coefficient for the <em>nth</em> predictor</li>
+</ul>
+<p>To properly interpret the coefficients of the OLS model, you must satisfy a number of
+statistical assumptions:</p>
+<ol style="list-style-type: decimal">
+<li><strong>Normality</strong>—For fixed values of the independent variables, the dependent variableis normally distributed.</li>
+<li><strong>Independence</strong>—The Yi values are independent of each other.</li>
+<li><strong>Linearity</strong>—The dependent variable is linearly related to the independent variables.</li>
+<li><strong>Homoscedasticity</strong>—The variance of the dependent variable doesn’t vary with the levels of the independent
+variables. (I could call this <em>constant variance</em>, but saying homoscedasticity makes me feel smarter</li>
+</ol>
+</div>
+<div id="fitting-ols-with-lm" class="section level3">
+<h3>Fitting OLS with <code>lm()</code></h3>
+<p>In R, the basic function for fitting a linear model is <code>lm()</code>. The format is</p>
+<p><code>myfit &lt;- lm(formula, data)</code></p>
+<p>where <code>formula</code> describes the model to be fit and <code>data</code> is the data frame containing the
+data to be used in fitting the model. The resulting object (<code>myfit</code>, in this case) is a list
+that contains extensive information about the fitted model.</p>
+<p>The <code>formula</code> is typically written as</p>
+<p><code>Y ~ X1 + X2 + ... + Xk</code></p>
+<div id="example-of-linear-regression" class="section level4">
+<h4>Example of Linear Regression</h4>
+<p>The dataset <code>women</code> in the <code>base</code> installation provides the height and weight for a set of 15 women
+ages 30 to 39. Suppose you want to predict <code>weight</code> from <code>height</code>.</p>
+<p>Having an equation for predicting weight from height can help you to identify overweight or underweight
+individuals:</p>
+<ol style="list-style-type: decimal">
+<li>By using <strong>ggplot</strong> produce a graph of <code>weight</code> vs <code>height</code></li>
+<li>By using <code>lm()</code> routine, fit a regression equation</li>
+<li>Is the model following the 4 basic principles?</li>
+</ol>
+<pre class="r"><code>#Plot weight vs heigh using ggplot
+require(tidyverse)</code></pre>
+<pre><code>## Loading required package: tidyverse</code></pre>
+<pre><code>## -- Attaching packages --------------------------------------- tidyverse 1.3.1 --</code></pre>
+<pre><code>## v ggplot2 3.3.5     v purrr   0.3.4
+## v tibble  3.1.6     v dplyr   1.0.7
+## v tidyr   1.1.4     v stringr 1.4.0
+## v readr   2.1.1     v forcats 0.5.1</code></pre>
+<pre><code>## -- Conflicts ------------------------------------------ tidyverse_conflicts() --
+## x dplyr::filter() masks stats::filter()
+## x dplyr::lag()    masks stats::lag()</code></pre>
+<pre class="r"><code>ggplot(women, aes(x = height, y = weight)) +
+  geom_point() +
+  geom_smooth(method = &#39;lm&#39;) +
+  labs(title = &#39;Weight vs Height&#39;) +
+  theme_bw()</code></pre>
+<pre><code>## `geom_smooth()` using formula &#39;y ~ x&#39;</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-1-1.png" width="672" /></p>
+<pre class="r"><code>#Linear regression with R
+
+fit &lt;- lm(weight ~ height, data = women)
+summary(fit)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = weight ~ height, data = women)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -1.7333 -1.1333 -0.3833  0.7417  3.1167 
+## 
+## Coefficients:
+##              Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept) -87.51667    5.93694  -14.74 1.71e-09 ***
+## height        3.45000    0.09114   37.85 1.09e-14 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 1.525 on 13 degrees of freedom
+## Multiple R-squared:  0.991,  Adjusted R-squared:  0.9903 
+## F-statistic:  1433 on 1 and 13 DF,  p-value: 1.091e-14</code></pre>
+<p>From the output, you see that the prediction equation is:</p>
+<p><span class="math display">\[\hat{y_i} = -87.516 + 3.45 x_i\]</span>
+In the previous section, you used the <code>lm()</code> function to fit an <strong>OLS</strong> regression model
+and the <code>summary()</code> function to obtain the model parameters and summary statistics.
+Unfortunately, nothing in this printout tells you whether the model you’ve fit is appropriate.</p>
+<p>Your confidence in inferences about regression parameters depends on the
+degree to which you’ve met the statistical assumptions of the OLS model.</p>
+<p>Why is this important? Irregularities in the data or misspecifications of the relationships
+between the predictors and the response variable can lead you to settle on a
+model that’s wildly inaccurate.</p>
+<p><strong>R’s</strong> base installation provides numerous methods for evaluating the statistical assumptions
+in a regression analysis. The most common approach is to apply the <code>plot()</code> function
+to the object returned by the <code>lm()</code></p>
+<pre class="r"><code>#Plot residual diagnostics for regression model
+par(mfrow = c(2, 2))
+plot(fit)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-3-1.png" width="672" /></p>
+<p>To understand these graphs, consider the assumptions of OLS regression:</p>
+<ol style="list-style-type: decimal">
+<li><p><strong>Normality</strong> —If the dependent variable is normally distributed for a fixed set of
+predictor values, then the residual values should be normally distributed with a
+mean of 0. The Normal Q-Q plot (upper right) is a probability plot of the standardized
+residuals against the values that would be expected under normality. If
+you’ve met the normality assumption, the points on this graph should fall on
+the straight 45-degree line. Because they don’t, you’ve clearly violated the normality
+assumption.</p></li>
+<li><p><strong>Independence</strong>—You can’t tell if the dependent variable values are independent
+from these plots. Residual vs Fitted plot shows a parabolic curve. This means a possbile polinomial
+relation between <code>height</code> and <code>weight</code>.</p></li>
+<li><p><strong>Homoscedasticity</strong>—If you’ve met the constant variance assumption, the points in
+the Scale-Location graph (bottom left) should be a random band around a horizontal
+line. You seem to meet this assumption.</p></li>
+</ol>
+<p>Finally, the Residuals vs. Leverage graph (bottom right) provides information about
+individual observations that you may wish to attend to. The graph identifies outliers,
+high-leverage points, and influential observations. Specifically:</p>
+<ol start="4" style="list-style-type: decimal">
+<li><p>An <strong>outlier</strong> is an observation that isn’t predicted well by the fitted regression
+model (that is, has a large positive or negative residual).</p></li>
+<li><p>An observation with a <strong>high leverage</strong> value has an unusual combination of predictor
+values. That is, it’s an outlier in the predictor space. The dependent variable
+value isn’t used to calculate an observation’s leverage.</p></li>
+<li><p>An <strong>influential observation</strong> is an observation that has a disproportionate impact on
+the determination of the model parameters. Influential observations are identified
+using a statistic called <strong>Cook’s distance, or Cook’s D</strong>.</p></li>
+</ol>
+<div class="figure">
+<img src="R%20Formulas%20Methods%201.png" alt="" />
+<p class="caption">Table 1</p>
+</div>
+<div class="figure">
+<img src="R%20Formulas%20Methods%202.png" alt="" />
+<p class="caption">Table 2</p>
+</div>
+<div class="figure">
+<img src="R%20Formulas%20Methods%203.png" alt="" />
+<p class="caption">Table 3</p>
+</div>
+</div>
+</div>
+<div id="polynomial-regression" class="section level3">
+<h3>Polynomial Regression</h3>
+<p>The residual analysis suggests that you might be able to improve your prediction
+using a regression with a quadratic term (that is, <span class="math inline">\(x^2\)</span>). You can fit a <strong>quadratic</strong> equation
+using the statement</p>
+<pre class="r"><code>fit2 = lm(weight ~ height + I(height ^ 2), data = women)
+summary(fit2)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = weight ~ height + I(height^2), data = women)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -0.50941 -0.29611 -0.00941  0.28615  0.59706 
+## 
+## Coefficients:
+##              Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept) 261.87818   25.19677  10.393 2.36e-07 ***
+## height       -7.34832    0.77769  -9.449 6.58e-07 ***
+## I(height^2)   0.08306    0.00598  13.891 9.32e-09 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.3841 on 12 degrees of freedom
+## Multiple R-squared:  0.9995, Adjusted R-squared:  0.9994 
+## F-statistic: 1.139e+04 on 2 and 12 DF,  p-value: &lt; 2.2e-16</code></pre>
+<p>The new term <code>I(height^2)</code> requires explanation. <code>height^2</code> adds a height-squared
+term to the prediction equation. The <code>I</code> function treats the contents within the parentheses
+as an R regular expression. You need this because the <code>^</code> operator has a special
+meaning in formulas that is to indicate an <strong>Interaction term</strong>.</p>
+<p>The regression ecuation is:</p>
+<p><span class="math display">\[\hat{y_i} = 261.87 - 7.34 x_1 ^ 2 + 0.083 x_i ^ 2\]</span></p>
+<p>Let´s review the residual plots to check for the assumptions:</p>
+<pre class="r"><code>#Residuals plot
+par(mfrow = c(2, 2))
+plot(fit2)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<p>Aswer the following questions:</p>
+<ol style="list-style-type: decimal">
+<li>Are the reiduals normaly distributed?</li>
+<li>Is the variance of residuals constant?</li>
+<li>Are the residuals independent?</li>
+<li>Is there any evidence of Outliers or Leverage points?</li>
+</ol>
+<p>The <code>summary</code> function gives more information:</p>
+<ol style="list-style-type: decimal">
+<li><code>height</code> is statistically significant since the <span class="math inline">\(p-val &lt; 0.05\)</span></li>
+<li>Having a square term <code>height^2</code> is significant and improves model addecuacy (according to residual plots)</li>
+<li>The model goodness of fit is <span class="math inline">\(R_{adj} ^ 2 = 0.99\)</span> (the model fits 99.94% of the data)</li>
+</ol>
+<p>In general, an nth-degree polynomial produces a curve with n-1 bends. To fit a cubic
+polynomial, you’d use</p>
+<p><code>fit3 &lt;- lm(weight ~ height + I(height ^ 2) +I(height ^ 3), data = women)</code></p>
+<p>Another alternative is to use the <code>poly()</code> function:</p>
+<pre class="r"><code>fit3 &lt;- lm(weight ~ poly(height, 3), data = women)
+summary(fit3)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = weight ~ poly(height, 3), data = women)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -0.40677 -0.17391  0.03091  0.12051  0.42191 
+## 
+## Coefficients:
+##                  Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)      136.7333     0.0667 2049.86  &lt; 2e-16 ***
+## poly(height, 3)1  57.7295     0.2583  223.46  &lt; 2e-16 ***
+## poly(height, 3)2   5.3351     0.2583   20.65 3.79e-10 ***
+## poly(height, 3)3   1.0178     0.2583    3.94  0.00231 ** 
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.2583 on 11 degrees of freedom
+## Multiple R-squared:  0.9998, Adjusted R-squared:  0.9997 
+## F-statistic: 1.679e+04 on 3 and 11 DF,  p-value: &lt; 2.2e-16</code></pre>
+<p>Is a Polinomial of grade 3 is still linear?</p>
+<div class="figure">
+<img src="linear%20vs%20nl.png" alt="" />
+<p class="caption">Linear vs No Linear</p>
+</div>
+</div>
+<div id="multiple-linear-regression" class="section level3">
+<h3>Multiple Linear Regression</h3>
+<p>When there’s more than one predictor variable, simple linear regression becomes
+<strong>multiple linear regression</strong>, and the analysis grows more involved. Technically, polynomial
+regression is a special case of multiple regression.</p>
+<p>We’ll use the <code>state.x77</code> dataset in the <code>base</code> package for this example. Suppose you
+want to explore the relationship between a state’s murder rate and other characteristics
+of the state, including population, illiteracy rate, average income, and frost levels
+(mean number of days below freezing).</p>
+<p>A good first step in multiple regression is to examine the relationships among the
+variables two at a time. The <strong>bivariate correlations</strong> are provided by the <code>cor()</code> function,
+and scatter plots are generated from the <code>scatterplotMatrix()</code> function in the <code>car</code>
+package.</p>
+<pre class="r"><code>library(car)</code></pre>
+<pre><code>## Loading required package: carData</code></pre>
+<pre><code>## 
+## Attaching package: &#39;car&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:dplyr&#39;:
+## 
+##     recode</code></pre>
+<pre><code>## The following object is masked from &#39;package:purrr&#39;:
+## 
+##     some</code></pre>
+<pre class="r"><code>#First we create the dataframe from the matrix state.x77 becose lm uses a data frame as input
+glimpse(state.x77)</code></pre>
+<pre><code>##  num [1:50, 1:8] 3615 365 2212 2110 21198 ...
+##  - attr(*, &quot;dimnames&quot;)=List of 2
+##   ..$ : chr [1:50] &quot;Alabama&quot; &quot;Alaska&quot; &quot;Arizona&quot; &quot;Arkansas&quot; ...
+##   ..$ : chr [1:8] &quot;Population&quot; &quot;Income&quot; &quot;Illiteracy&quot; &quot;Life Exp&quot; ...</code></pre>
+<pre class="r"><code>states &lt;- as.data.frame(state.x77[,c(&quot;Murder&quot;, &quot;Population&quot;,
+&quot;Illiteracy&quot;, &quot;Income&quot;, &quot;Frost&quot;)])
+glimpse(states)</code></pre>
+<pre><code>## Rows: 50
+## Columns: 5
+## $ Murder     &lt;dbl&gt; 15.1, 11.3, 7.8, 10.1, 10.3, 6.8, 3.1, 6.2, 10.7, 13.9, 6.2~
+## $ Population &lt;dbl&gt; 3615, 365, 2212, 2110, 21198, 2541, 3100, 579, 8277, 4931, ~
+## $ Illiteracy &lt;dbl&gt; 2.1, 1.5, 1.8, 1.9, 1.1, 0.7, 1.1, 0.9, 1.3, 2.0, 1.9, 0.6,~
+## $ Income     &lt;dbl&gt; 3624, 6315, 4530, 3378, 5114, 4884, 5348, 4809, 4815, 4091,~
+## $ Frost      &lt;dbl&gt; 20, 152, 15, 65, 20, 166, 139, 103, 11, 60, 0, 126, 127, 12~</code></pre>
+<pre class="r"><code>#The correlation matrix
+cor(states)</code></pre>
+<pre><code>##                Murder Population Illiteracy     Income      Frost
+## Murder      1.0000000  0.3436428  0.7029752 -0.2300776 -0.5388834
+## Population  0.3436428  1.0000000  0.1076224  0.2082276 -0.3321525
+## Illiteracy  0.7029752  0.1076224  1.0000000 -0.4370752 -0.6719470
+## Income     -0.2300776  0.2082276 -0.4370752  1.0000000  0.2262822
+## Frost      -0.5388834 -0.3321525 -0.6719470  0.2262822  1.0000000</code></pre>
+<pre class="r"><code>#scatter plot
+scatterplotMatrix(states, main = &quot;Scatter Plot Matrix&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+<div class="figure">
+<img src="correlation.jpg" alt="" />
+<p class="caption">Correlation</p>
+</div>
+<p>Now let’s fit the multiple regression model with the <code>lm()</code>:</p>
+<pre class="r"><code>fit.lm &lt;- lm(Murder ~ Population + Illiteracy + Income + Frost, data = states)
+summary(fit.lm)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = Murder ~ Population + Illiteracy + Income + Frost, 
+##     data = states)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -4.7960 -1.6495 -0.0811  1.4815  7.6210 
+## 
+## Coefficients:
+##              Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept) 1.235e+00  3.866e+00   0.319   0.7510    
+## Population  2.237e-04  9.052e-05   2.471   0.0173 *  
+## Illiteracy  4.143e+00  8.744e-01   4.738 2.19e-05 ***
+## Income      6.442e-05  6.837e-04   0.094   0.9253    
+## Frost       5.813e-04  1.005e-02   0.058   0.9541    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 2.535 on 45 degrees of freedom
+## Multiple R-squared:  0.567,  Adjusted R-squared:  0.5285 
+## F-statistic: 14.73 on 4 and 45 DF,  p-value: 9.133e-08</code></pre>
+<p>When there’s more than one predictor variable, the regression coefficients indicate
+the increase in the dependent variable for <strong>a unit change in a predictor variable, holding
+all other predictor variables constant</strong>. For example, the regression coefficient for
+<code>Illiteracy</code> is <span class="math inline">\(4.14\)</span>, suggesting that an increase of 1 in illiteracy is associated with a
+4.14% increase in the murder rate, controlling for population, income, and temperature.
+The coefficient is significantly different from zero at the <span class="math inline">\(p &lt; .0001\)</span> level.</p>
+<p>Let´s review if the assumption holds for the residuals:</p>
+<pre class="r"><code>#residual Plots
+par(mfrow = c(2, 2))
+plot(fit.lm)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<p>Base on the results, the Multiple Linear Model holds the assumptions? Can we improve the acccuracy of the model?</p>
+<div id="multiple-regression-with-interactions" class="section level4">
+<h4>Multiple Regression with Interactions</h4>
+<p>Some of the most interesting research findings are those involving interactions among
+predictor variables. Consider the automobile data in the <code>mtcars</code> data frame. Let’s say
+that you’re interested in the impact of automobile <code>weight</code> and <code>horsepower</code> on <code>mileage</code>.</p>
+<p>You could fit a regression model that includes both predictors, along with their
+interaction, as shown in the next listing.</p>
+<p><span class="math display">\[y_i = \beta_0 + \beta_1 hp_i + \beta_2 wt_i + \beta_{12} hp_i wt_i\]</span></p>
+<pre class="r"><code>fit.int &lt;- lm(mpg ~ hp + wt + hp : wt, data = mtcars)
+summary(fit.int)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = mpg ~ hp + wt + hp:wt, data = mtcars)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -3.0632 -1.6491 -0.7362  1.4211  4.5513 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept) 49.80842    3.60516  13.816 5.01e-14 ***
+## hp          -0.12010    0.02470  -4.863 4.04e-05 ***
+## wt          -8.21662    1.26971  -6.471 5.20e-07 ***
+## hp:wt        0.02785    0.00742   3.753 0.000811 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 2.153 on 28 degrees of freedom
+## Multiple R-squared:  0.8848, Adjusted R-squared:  0.8724 
+## F-statistic: 71.66 on 3 and 28 DF,  p-value: 2.981e-13</code></pre>
+<p>You can see from the <code>Pr(&gt;|t|)</code> column that the <strong>interaction</strong> between <code>horsepower</code> and
+car <code>weight</code> is <strong>significant</strong>. What does this mean? Here it means the relationship
+between miles per gallon and horsepower varies by car weight</p>
+<p>You can visualize interactions using the <code>effect()</code> function in the <code>effects</code> package.</p>
+<p><code>plot(effect(term, mod, xlevels), multiline=TRUE)</code></p>
+<pre class="r"><code>require(effects)</code></pre>
+<pre><code>## Loading required package: effects</code></pre>
+<pre><code>## lattice theme set by effectsTheme()
+## See ?effectsTheme for details.</code></pre>
+<pre class="r"><code>require(vcov)</code></pre>
+<pre><code>## Loading required package: vcov</code></pre>
+<pre class="r"><code>plot(effect(&quot;hp:wt&quot;, fit.int, , list(wt = c(2.2, 3.2, 4.2))), multiline = TRUE)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
+<p>When we compare the <span class="math inline">\(R^2\)</span> of the linear model against the linear model with interactions, it is clear that
+adding interactions terms improve from <span class="math inline">\(R^2 = 0.8148\)</span> to <span class="math inline">\(R^2 = 0.87\)</span>.</p>
+<pre class="r"><code>fit.lm =  lm(mpg ~ hp + wt, data = mtcars)
+summary(fit.lm)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = mpg ~ hp + wt, data = mtcars)
+## 
+## Residuals:
+##    Min     1Q Median     3Q    Max 
+## -3.941 -1.600 -0.182  1.050  5.854 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept) 37.22727    1.59879  23.285  &lt; 2e-16 ***
+## hp          -0.03177    0.00903  -3.519  0.00145 ** 
+## wt          -3.87783    0.63273  -6.129 1.12e-06 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 2.593 on 29 degrees of freedom
+## Multiple R-squared:  0.8268, Adjusted R-squared:  0.8148 
+## F-statistic: 69.21 on 2 and 29 DF,  p-value: 9.109e-12</code></pre>
+<p>Is this improvement good enough?</p>
+<p>To compute a <span class="math inline">\(\chi^2\)</span> difference test, the difference of the <span class="math inline">\(\chi^2\)</span> values of the two models in question
+is taken as well as the difference of the <em>degrees of freedom</em>. Frequently, models under
+investigation differ from each other by just one more free parameter or one more fixed parameter,
+respectively, so in these cases the difference of the degrees of freedom is 1.</p>
+<p><span class="math display">\[\chi^2 = \chi^2_s - \chi^2_l\]</span>
+<span class="math display">\[df = df_s - df_l\]</span></p>
+<p>Here, <span class="math inline">\(s\)</span> denotes the “smaller” model with fewer parameters and therefore more degrees of freedom, whereas <span class="math inline">\(l\)</span>
+denotes the “larger” model with more parameters and therefore fewer degrees of freedom.</p>
+<pre class="r"><code>#ANOVA test for Linear model vs Model with Interactions
+anova(fit.lm, fit.int)</code></pre>
+<pre><code>## Analysis of Variance Table
+## 
+## Model 1: mpg ~ hp + wt
+## Model 2: mpg ~ hp + wt + hp:wt
+##   Res.Df    RSS Df Sum of Sq      F    Pr(&gt;F)    
+## 1     29 195.05                                  
+## 2     28 129.76  1    65.286 14.088 0.0008108 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1</code></pre>
+<p>After running the test, the <span class="math inline">\(PR(&gt;F) \le 0.05\)</span>; so, including the interaction terms improved the model
+performance.</p>
+</div>
+</div>
+<div id="regression-diagnostics" class="section level3">
+<h3>Regression Diagnostics</h3>
+<p>In the previous section, you used the <code>lm()</code> function to fit an <strong>OLS</strong> regression model
+and the <code>summary()</code> function to obtain the model parameters and summary statistics and the <code>plot()</code>function
+to get basic remedial diagnostics.</p>
+<p>Remember, a good model needs to have some properties on the residuals:</p>
+<ol style="list-style-type: decimal">
+<li>Normaly Distributed <span class="math inline">\(\epsilon_i \sim N(0, \sigma^2)\)</span></li>
+<li>Variance must be constant and uncorrelated</li>
+<li>Predictor variables mut be <strong>linear Independent</strong> (uncorrelated)</li>
+</ol>
+<p>The <code>car</code> package provides a number of functions that significantly enhance your ability
+to fit and evaluate regression models:</p>
+<div class="figure">
+<img src="regression%20car%20pckg.png" alt="" />
+<p class="caption">Package car for regression</p>
+</div>
+<div id="normality" class="section level4">
+<h4>Normality</h4>
+<p>The <code>qqPlot()</code> function provides a more accurate method of assessing the normality
+assumption than that provided by the <code>plot()</code> function in the base package. It plots the
+studentized residuals (also called studentized deleted residuals or jackknifed residuals) against
+a <span class="math inline">\(t\)</span> distribution with <span class="math inline">\(n – p – 1\)</span> degrees of freedom:</p>
+<pre class="r"><code>require(car)
+#fitting the linear model
+fit.int &lt;- lm(mpg ~ hp + wt + hp : wt, data = mtcars)
+summary(fit.int)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = mpg ~ hp + wt + hp:wt, data = mtcars)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -3.0632 -1.6491 -0.7362  1.4211  4.5513 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept) 49.80842    3.60516  13.816 5.01e-14 ***
+## hp          -0.12010    0.02470  -4.863 4.04e-05 ***
+## wt          -8.21662    1.26971  -6.471 5.20e-07 ***
+## hp:wt        0.02785    0.00742   3.753 0.000811 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 2.153 on 28 degrees of freedom
+## Multiple R-squared:  0.8848, Adjusted R-squared:  0.8724 
+## F-statistic: 71.66 on 3 and 28 DF,  p-value: 2.981e-13</code></pre>
+<pre class="r"><code>qqPlot(fit.int, labels = row.names(states), id.method=&quot;identify&quot;, simulate = TRUE, main = &quot;Q-Q Plot&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-14-1.png" width="672" /></p>
+<pre><code>##       Fiat 128 Toyota Corolla 
+##             18             20</code></pre>
+<p>The qqPlot() function generates the probability plot displayed in. The option <code>id.method ="identify"</code>
+makes the plot interactive—after the graph is drawn, When <code>simulate = TRUE</code>, a 95% confidence envelope is
+produced using a parametric bootstrap.</p>
+<p>Another way to check for normality is by drawing a histogram of the residals:</p>
+<pre class="r"><code>z = rstudent(fit.int)
+
+hist(z, freq=FALSE, xlab=&quot;Studentized Residual&quot;, main=&quot;Distribution of Errors&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-15-1.png" width="672" /></p>
+</div>
+<div id="independence-of-errors" class="section level4">
+<h4>Independence of Errors</h4>
+<p>As indicated earlier, the best way to assess whether the dependent variable values (and
+thus the residuals) are independent is from your knowledge of how the data were collected.</p>
+<p>For example, time series data often display autocorrelation—observations collected closer in time are more
+correlated with each other than with observations distant in time. The car package provides a function for
+the Durbin–Watson test to detect such serially correlated errors.</p>
+<p>You can apply the Durbin–Watson test to the multiple-regression problem with the following code</p>
+<pre class="r"><code>durbinWatsonTest(fit.int)</code></pre>
+<pre><code>##  lag Autocorrelation D-W Statistic p-value
+##    1     -0.08388777      2.127504   0.932
+##  Alternative hypothesis: rho != 0</code></pre>
+<p>since the <code>p-value \ge 0.05</code> there is no evidence of autocorrelation on residuals. Thus, residuals are
+independent.</p>
+<p>Other way to look at this is by seeing at the <strong>autocorrelation plot</strong> for residuals by using the command
+<code>acf</code>:</p>
+<pre class="r"><code>acf(fit.int$residuals)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-17-1.png" width="672" /></p>
+<p>Here we see that residuals are independent.</p>
+</div>
+<div id="multicolinearity" class="section level4">
+<h4>Multicolinearity</h4>
+<p>We will revis this topic when we talk about <strong>regularization</strong>.</p>
+<p>Multicollinearity can be detected using a statistic called the <strong>variance inflation factor (VIF)</strong>.
+For any predictor variable, the square root of the VIF indicates the degree to
+which the confidence interval for that variable’s regression parameter is expanded relative
+to a model with uncorrelated predictors (hence the name). VIF values are provided
+by the <code>vif()</code> function in the <code>car</code> package. As a general rule, indicates a <strong>multicollinearity</strong> problem</p>
+<pre class="r"><code>#Variance Inflation Factor
+vif(fit.int)</code></pre>
+<pre><code>##       hp       wt    hp:wt 
+## 19.18172 10.32442 43.05685</code></pre>
+<pre class="r"><code>vif(fit.lm)</code></pre>
+<pre><code>##       hp       wt 
+## 1.766625 1.766625</code></pre>
+<p>Hence, the model shows a high degree of correlation between <code>hp</code> and <code>wt</code> drove by the interaction term. When
+an interaction term is include in the model, <strong>VIF</strong> tends to have higher values.</p>
+</div>
+<div id="outliers" class="section level4">
+<h4>Outliers</h4>
+<p>Outliers are observations that aren’t predicted well by the model. They have unusually
+large positive or negative. Positive residuals indicate that the model is underestimating the response value,
+whereas negative residuals indicate an overestimation.</p>
+<p>In order to detect Outliers, we use <strong>studentized residuals</strong></p>
+<pre class="r"><code>z = rstudent(fit.int)
+plot(z, main = &#39;Studentized Residuals&#39;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-19-1.png" width="672" /></p>
+<pre class="r"><code>#Running Outlier test
+outlierTest(fit.int)</code></pre>
+<pre><code>## No Studentized residuals with Bonferroni p &lt; 0.05
+## Largest |rstudent|:
+##          rstudent unadjusted p-value Bonferroni p
+## Fiat 128 2.419086           0.022572       0.7223</code></pre>
+</div>
+<div id="high-leverage-points" class="section level4">
+<h4>High-Leverage Points</h4>
+<p>Observations that have <strong>high leverage</strong> are outliers with regard to the other predictors.</p>
+<p>In other words, they have an unusual combination of predictor values. The response
+value isn’t involved in determining leverage.</p>
+<p>Observations with high leverage are identified through the hat statistic. For a given
+dataset, the average hat value is <code>p/n</code>, where p is the number of parameters estimated
+in the model (including the intercept) and <code>n</code> is the sample size.</p>
+<pre class="r"><code>hat.plot &lt;- function(fit){
+  
+  p &lt;- length(coefficients(fit))
+  n &lt;- length(fitted(fit))
+  plot(hatvalues(fit), main = &quot;Index Plot of Hat Values&quot;)
+  abline(h = c(2, 3)* p / n, col = &quot;red&quot;, lty = 2)
+  identify(1 : n, hatvalues(fit), names(hatvalues(fit)))
+  
+}
+
+hat.plot(fit.int)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-20-1.png" width="672" /></p>
+<pre><code>## integer(0)</code></pre>
+<p>The hat matrix provides a measure of leverage. It is useful for investigating whether one or more observations
+are outlying with regard to their X values, and therefore might be excessively influencing the regression results</p>
+<p><span class="math display">\[H = X(X^T X) ^{-1} X^T\]</span></p>
+<p>and determines the fitted values <span class="math inline">\(\hat{Y}\)</span></p>
+<p><span class="math display">\[\hat{y} = Hy\]</span>
+The diagonal elements of <span class="math inline">\(H\)</span>, <span class="math inline">\(h_{ii}\)</span>, are called leverages and satisfy</p>
+<p><span class="math display">\[0 \le h_{ii} \le 1\]</span>
+<span class="math display">\[\sum_{i = 1} ^ n h_{ii} = p\]</span></p>
+<p>where <span class="math inline">\(p\)</span> is the number of coefficients, and <span class="math inline">\(n\)</span> is the number of observations</p>
+<p>Outliers are sample observations with unusual response values, while sample observations
+with unusual predictor values have high leverage. We can consider both concepts together
+in a combined measure called Cook’s distance.</p>
+<p>An observation with a large Cook’s distance can be an outlier, a high-leverage observation, or both.</p>
+<p>How high would a Cook’s distance have to be for us to be concerned? As with most aspects of complex regression
+modeling, there are no hard and fast rules but, rather, general guidelines that work well in
+most situations. A useful rule of thumb is to consider investigating further if the highest
+Cook’s distance is greater than 0.5, particularly if it is greater than 1.</p>
+<p>Observations with a Cook’s distance less than 0.5 are rarely so influential that they should be removed
+from the main analysis. Those with a Cook’s distance between 0.5 and 1 are sufficiently
+influential that they should be removed from the main analysis. Those with a Cook’s
+distance greater than 1 are sufficiently influential that they should be removed from
+the main analysis. We should never remove an observation arbitrarily just to get a better-fitting
+model—this could be considered manipulating the analysis to suit our purposes.</p>
+<p>One formula for the /th observation’s Cook’s distance is:</p>
+<p><span class="math display">\[D_i = \frac{r_i^2 h_i}{(k + 1)(1 - h_i)}\]</span>
+where <span class="math inline">\(r_i\)</span>, is the rth observation’s standardized residual, <span class="math inline">\(h_i\)</span> is the rth observation’s leverage,
+and <span class="math inline">\(k\)</span> is the number of predictor terms in the model (excluding the constant intercept term)</p>
+</div>
+<div id="influential-observations" class="section level4">
+<h4>Influential Observations</h4>
+<p>Influential observations have a disproportionate impact on the values of the model
+parameters. Imagine finding that your model changes dramatically with the removal
+of a single observation. It’s this concern that leads you to examine your data for influential
+points.</p>
+<p>There are two methods for identifying influential observations: <strong>Cook’s distance (or
+D statistic)</strong> and <strong>added variable plots</strong>. Roughly speaking, Cook’s D values greater than
+<span class="math inline">\(4/(n – k – 1)\)</span>, where <span class="math inline">\(n\)</span> is the sample size and <span class="math inline">\(k\)</span> is the number of predictor variables,
+indicate influential observations. You can create a Cook’s D plot with the following code:</p>
+<pre class="r"><code>#Using the mtcar data set
+fit.int = fit.lm =  lm(mpg ~ hp + wt, data = mtcars)
+#sample size n
+n = nrow(mtcars)
+#number of predictors
+k = length(fit.int$coefficients)
+
+#Influential Observation plot
+cutoff &lt;- 4 / (n - k - 2)
+
+plot(fit.int, which = 4, cook.levels = cutoff) +
+abline(h=cutoff, lty=2, col=&quot;red&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-21-1.png" width="672" /></p>
+<pre><code>## integer(0)</code></pre>
+<p>You can combine the information from outlier, leverage, and influence plots into
+one highly informative plot using the <code>influencePlot()</code> function from the <code>car</code> package</p>
+<pre class="r"><code>library(car)
+influencePlot(fit.int, id.method = &quot;identify&quot;, main= &quot; Influence Plot&quot;, 
+              sub=&quot;Circle size is proportional to Cook&#39;s distance&quot;)</code></pre>
+<pre><code>## Warning in plot.window(...): &quot;id.method&quot; is not a graphical parameter</code></pre>
+<pre><code>## Warning in plot.xy(xy, type, ...): &quot;id.method&quot; is not a graphical parameter</code></pre>
+<pre><code>## Warning in axis(side = side, at = at, labels = labels, ...): &quot;id.method&quot; is not
+## a graphical parameter
+
+## Warning in axis(side = side, at = at, labels = labels, ...): &quot;id.method&quot; is not
+## a graphical parameter</code></pre>
+<pre><code>## Warning in box(...): &quot;id.method&quot; is not a graphical parameter</code></pre>
+<pre><code>## Warning in title(...): &quot;id.method&quot; is not a graphical parameter</code></pre>
+<pre><code>## Warning in plot.xy(xy.coords(x, y), type = type, ...): &quot;id.method&quot; is not a
+## graphical parameter</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-22-1.png" width="672" /></p>
+<pre><code>##                       StudRes        Hat     CookD
+## Lincoln Continental 0.4434296 0.20897838 0.0178091
+## Chrysler Imperial   2.5724776 0.18648721 0.4236109
+## Toyota Corolla      2.6051516 0.09950335 0.2083933
+## Maserati Bora       1.1250084 0.39420816 0.2720397</code></pre>
+</div>
+</div>
+<div id="how-a-full-regression-analysis-looks-like" class="section level3">
+<h3>How a full regression analysis looks like</h3>
+<p>Consider the <code>diamonds</code>data set. We are interested in predict <code>price</code> as afunction of <code>carat</code> (weight of the
+diamond), <code>cut</code> (quality), <code>color</code>, <code>clarity</code>, <code>x</code> (lenght), <code>y</code> (widht), <code>z</code> (depth) and a combined variable
+that measures between <code>x, y and z</code> called <code>depth</code>.</p>
+<pre class="r"><code>#Visualize the data with corplot
+require(corrplot)</code></pre>
+<pre><code>## Loading required package: corrplot</code></pre>
+<pre><code>## corrplot 0.92 loaded</code></pre>
+<pre class="r"><code>require(tidyverse)
+col &lt;- colorRampPalette(c(&quot;#BB4444&quot;, &quot;#EE9988&quot;, &quot;#FFFFFF&quot;, &quot;#77AADD&quot;, &quot;#4477AA&quot;))
+
+diamonds %&gt;%
+  dplyr::select(price, carat, depth, table, x, y, z) %&gt;%
+  cor() %&gt;%
+  corrplot(method=&quot;color&quot;,  
+         type=&quot;lower&quot;, order=&quot;hclust&quot;, 
+         addCoef.col = &quot;black&quot;, # Add coefficient of correlation
+         tl.col=&quot;black&quot;, tl.srt=45, #Text label color and rotation
+         # hide correlation coefficient on the principal diagonal
+         diag=FALSE)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-23-1.png" width="672" /></p>
+<pre class="r"><code>#Visualize relationship between categorical variables
+
+p1 = ggplot(diamonds, aes(x = cut, y = price, fill = cut)) +
+  geom_boxplot() +
+  theme(legend.position = &#39;none&#39;)
+p2 = ggplot(diamonds, aes(x = color, y = price, fill = color)) +
+  geom_boxplot() +
+  theme(legend.position = &#39;none&#39;)
+p3 = ggplot(diamonds, aes(x = clarity, y = price, fill = clarity)) +
+  geom_boxplot() +
+  theme(legend.position = &#39;none&#39;)
+
+require(gridExtra)</code></pre>
+<pre><code>## Loading required package: gridExtra</code></pre>
+<pre><code>## 
+## Attaching package: &#39;gridExtra&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:dplyr&#39;:
+## 
+##     combine</code></pre>
+<pre class="r"><code>grid.arrange(p1, p2, p3)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-23-2.png" width="672" /></p>
+<pre class="r"><code>ggplot(diamonds, aes(x = carat, y = price, color = clarity, alpha = 0.8)) +
+  geom_point()</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-23-3.png" width="672" /></p>
+<pre class="r"><code>#Create the model
+model1 = lm(price ~  carat + cut + color + clarity + depth, data = diamonds)
+summary(model1)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = price ~ carat + cut + color + clarity + depth, data = diamonds)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -16805.0   -680.3   -197.9    466.2  10393.4 
+## 
+## Coefficients:
+##              Estimate Std. Error  t value Pr(&gt;|t|)    
+## (Intercept) -3264.660    232.513  -14.041  &lt; 2e-16 ***
+## carat        8885.816     12.034  738.362  &lt; 2e-16 ***
+## cut.L         686.238     21.377   32.102  &lt; 2e-16 ***
+## cut.Q        -319.729     18.383  -17.393  &lt; 2e-16 ***
+## cut.C         180.446     15.556   11.600  &lt; 2e-16 ***
+## cut^4           0.679     12.496    0.054   0.9567    
+## color.L     -1908.788     17.729 -107.667  &lt; 2e-16 ***
+## color.Q      -627.976     16.121  -38.955  &lt; 2e-16 ***
+## color.C      -172.431     15.072  -11.440  &lt; 2e-16 ***
+## color^4        21.905     13.840    1.583   0.1135    
+## color^5       -85.781     13.076   -6.560 5.43e-11 ***
+## color^6       -50.112     11.889   -4.215 2.50e-05 ***
+## clarity.L    4214.426     30.873  136.508  &lt; 2e-16 ***
+## clarity.Q   -1831.631     28.829  -63.533  &lt; 2e-16 ***
+## clarity.C     922.123     24.686   37.354  &lt; 2e-16 ***
+## clarity^4    -361.446     19.741  -18.310  &lt; 2e-16 ***
+## clarity^5     215.655     16.117   13.381  &lt; 2e-16 ***
+## clarity^6       2.606     14.039    0.186   0.8528    
+## clarity^7     110.305     12.383    8.908  &lt; 2e-16 ***
+## depth          -7.160      3.727   -1.921   0.0547 .  
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 1157 on 53920 degrees of freedom
+## Multiple R-squared:  0.9159, Adjusted R-squared:  0.9159 
+## F-statistic: 3.092e+04 on 19 and 53920 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>#Check for multicolinearity
+vif(model1)</code></pre>
+<pre><code>##             GVIF Df GVIF^(1/(2*Df))
+## carat   1.311603  1        1.145253
+## cut     1.253736  4        1.028669
+## color   1.168640  6        1.013071
+## clarity 1.302174  7        1.019039
+## depth   1.148801  1        1.071821</code></pre>
+<pre class="r"><code>#Checking assumptions
+par(mfrow = c(2, 2))
+qqPlot(model1, labels = row.names(states), id.method=&quot;identify&quot;, 
+       simulate = TRUE, main = &quot;Q-Q Plot&quot;) #Normality</code></pre>
+<pre><code>## [1] 16284 27416</code></pre>
+<pre class="r"><code>acf(model1$residuals) #Autocorrelation in residuals
+
+#Compute Studentized residuals
+z = rstudent(model1)
+plot(z, main = &#39;Studentized Residuals&#39;) +
+  abline(h = c(-2.5, 2.5), col = &#39;red&#39;, lty = 2)</code></pre>
+<pre><code>## integer(0)</code></pre>
+<pre class="r"><code>#Leverage
+#sample size n
+n = nrow(diamonds)
+#number of predictors
+k = length(model1$coefficients)
+
+#Influential Observation plot
+cutoff &lt;- 4 / (n - k - 2)
+
+plot(model1, which = 4, cook.levels = cutoff) +
+abline(h=cutoff, lty=2, col=&quot;red&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-23-4.png" width="672" /></p>
+<pre><code>## integer(0)</code></pre>
+<p>What are your conclusions onhe analysis?</p>
+</div>
+<div id="remedial-actions-for-linear-regression" class="section level3">
+<h3>Remedial actions for Linear Regression</h3>
+<div id="transforming-variables" class="section level4">
+<h4>Transforming Variables</h4>
+<p>When models don’t meet the normality, linearity, or homoscedasticity assumptions,
+transforming one or more variables can often improve or correct the situation. Transformations
+typically involve replacing a variable <span class="math inline">\(y\)</span> with <span class="math inline">\(y^\lambda\)</span>. Common values of <span class="math inline">\(λ\)</span> and
+their interpretations are given. If <span class="math inline">\(y\)</span> is a proportion, a logit transformation
+<span class="math inline">\(ln(\frac{y}{1-Y})\)</span> is often used.</p>
+<div class="figure">
+<img src="transformations.png" alt="" />
+<p class="caption">Common Transformations</p>
+</div>
+<p>Let´s see how transformation works. for example, we will applied a <span class="math inline">\(log(y)\)</span> transformation.</p>
+<pre class="r"><code>ggplot(diamonds, aes(x = log(carat), y = log(price), color = clarity, alpha = 0.8)) +
+  geom_point()</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-24-1.png" width="672" /></p>
+<p>From the previus analysis, it seems that if we applied a <span class="math inline">\(log(y)\)</span> transformation, the model could be
+improved.</p>
+<pre class="r"><code>#Create the model
+temp = diamonds %&gt;%
+  filter(x &gt; 0 &amp; y &gt; 0 &amp; z &gt; 0)
+
+model2 = lm(log(price) ~  log(carat) + cut + color + clarity + log(depth) + log(x) +log(y) + log(z), data = temp)
+summary(model2)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = log(price) ~ log(carat) + cut + color + clarity + 
+##     log(depth) + log(x) + log(y) + log(z), data = temp)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -1.03305 -0.08566  0.00051  0.08344  1.92309 
+## 
+## Coefficients:
+##              Estimate Std. Error  t value Pr(&gt;|t|)    
+## (Intercept)  2.799699   0.346193    8.087 6.24e-16 ***
+## log(carat)   1.323804   0.027592   47.978  &lt; 2e-16 ***
+## cut.L        0.114533   0.002477   46.247  &lt; 2e-16 ***
+## cut.Q       -0.039876   0.002125  -18.764  &lt; 2e-16 ***
+## cut.C        0.019484   0.001821   10.697  &lt; 2e-16 ***
+## cut^4        0.001075   0.001447    0.742   0.4578    
+## color.L     -0.439491   0.002019 -217.707  &lt; 2e-16 ***
+## color.Q     -0.095508   0.001853  -51.540  &lt; 2e-16 ***
+## color.C     -0.014733   0.001734   -8.495  &lt; 2e-16 ***
+## color^4      0.011931   0.001593    7.491 6.92e-14 ***
+## color^5     -0.002503   0.001505   -1.663   0.0963 .  
+## color^6      0.002060   0.001368    1.506   0.1321    
+## clarity.L    0.918289   0.003573  257.021  &lt; 2e-16 ***
+## clarity.Q   -0.244411   0.003318  -73.661  &lt; 2e-16 ***
+## clarity.C    0.132779   0.002844   46.686  &lt; 2e-16 ***
+## clarity^4   -0.066740   0.002273  -29.357  &lt; 2e-16 ***
+## clarity^5    0.027392   0.001856   14.758  &lt; 2e-16 ***
+## clarity^6   -0.001685   0.001615   -1.043   0.2970    
+## clarity^7    0.033548   0.001425   23.546  &lt; 2e-16 ***
+## log(depth)   0.616612   0.055646   11.081  &lt; 2e-16 ***
+## log(x)       1.892607   0.082273   23.004  &lt; 2e-16 ***
+## log(y)      -0.250457   0.042818   -5.849 4.96e-09 ***
+## log(z)       0.047566   0.040031    1.188   0.2348    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.1331 on 53897 degrees of freedom
+## Multiple R-squared:  0.9828, Adjusted R-squared:  0.9828 
+## F-statistic: 1.4e+05 on 22 and 53897 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>#Checking assumptions
+par(mfrow = c(2, 2))
+qqPlot(model2, labels = row.names(states), id.method=&quot;identify&quot;, 
+       simulate = TRUE, main = &quot;Q-Q Plot&quot;) #Normality</code></pre>
+<pre><code>## [1] 46460 49755</code></pre>
+<pre class="r"><code>acf(model2$residuals) #Autocorrelation in residuals
+
+#Compute Studentized residuals
+z = rstudent(model2)
+plot(z, main = &#39;Studentized Residuals&#39;) +
+  abline(h = c(-2.5, 2.5), col = &#39;red&#39;, lty = 2)</code></pre>
+<pre><code>## integer(0)</code></pre>
+<pre class="r"><code>#Leverage
+#sample size n
+n = nrow(diamonds)
+#number of predictors
+k = length(model2$coefficients)
+
+#Influential Observation plot
+cutoff &lt;- 4 / (n - k - 2)
+
+plot(model2, which = 4, cook.levels = cutoff) +
+abline(h=cutoff, lty=2, col=&quot;red&quot;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-25-1.png" width="672" /></p>
+<pre><code>## integer(0)</code></pre>
+<p>What changed from <code>model1</code> to <code>model2</code>?</p>
+</div>
+</div>
+<div id="remove-variables" class="section level3">
+<h3>Remove Variables</h3>
+<p>Changing the variables in a model will impact the fit of the model. Sometimes, adding
+an important variable will correct many of the problems that we’ve discussed. Deleting
+a troublesome variable can do the same thing.</p>
+<p>Deleting variables is a particularly important approach for dealing with multicollinearity.
+If your only goal is to make predictions, then multicollinearity isn’t a problem.
+But if you want to make interpretations about individual predictor variables, then
+you must deal with it.</p>
+<p>The most common approach is to delete one of the variables involved in the multicollinearity
+(that is, one of the variables with a <span class="math inline">\(\sqrt{VIF} &gt; 2\)</span>. Then, remove variables, one at a time, with
+<span class="math inline">\(p_{val} &gt; 0.05\)</span> starting with the highest <span class="math inline">\(p_{val}\)</span></p>
+<p>However, one of the mos effective approacehs is to use <strong>Stepwise Regression</strong>.</p>
+<p>In stepwise selection, variables are added to or deleted from a model one at a time,
+until some stopping criterion is reached. For example, in <em>forward stepwise</em> regression,
+you add predictor variables to the model one at a time, stopping when the addition of
+variables would no longer improve the model. In <em>backward stepwise</em> regression, you start
+with a model that includes all predictor variables, and then you delete them one at a
+time until removing variables would degrade the quality of the model. In <em>stepwise stepwise</em>
+regression (usually called stepwise to avoid sounding silly), you combine the forward
+and backward stepwise approaches. Variables are entered one at a time, but at
+each step, the variables in the model are reevaluated, and those that don’t contribute
+to the model are deleted. The <code>step()</code>function is used for it:</p>
+<pre class="r"><code>model2 = lm(log(price) ~  carat + cut + color + clarity + log(depth) + log(x) +log(y) + log(z), data = temp)
+summary(model2)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = log(price) ~ carat + cut + color + clarity + log(depth) + 
+##     log(x) + log(y) + log(z), data = temp)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -1.74742 -0.08695  0.00055  0.08610  1.89448 
+## 
+## Coefficients:
+##               Estimate Std. Error  t value Pr(&gt;|t|)    
+## (Intercept) -10.226449   0.216190  -47.303  &lt; 2e-16 ***
+## carat         0.027219   0.004334    6.281 3.40e-10 ***
+## cut.L         0.097574   0.002503   38.981  &lt; 2e-16 ***
+## cut.Q        -0.046002   0.002166  -21.242  &lt; 2e-16 ***
+## cut.C         0.024266   0.001857   13.066  &lt; 2e-16 ***
+## cut^4         0.002306   0.001477    1.561   0.1185    
+## color.L      -0.440710   0.002086 -211.298  &lt; 2e-16 ***
+## color.Q      -0.096087   0.001897  -50.651  &lt; 2e-16 ***
+## color.C      -0.014768   0.001770   -8.342  &lt; 2e-16 ***
+## color^4       0.012452   0.001626    7.656 1.95e-14 ***
+## color^5      -0.003224   0.001536   -2.099   0.0358 *  
+## color^6       0.001705   0.001397    1.221   0.2222    
+## clarity.L     0.915603   0.003647  251.087  &lt; 2e-16 ***
+## clarity.Q    -0.247811   0.003399  -72.907  &lt; 2e-16 ***
+## clarity.C     0.133055   0.002908   45.757  &lt; 2e-16 ***
+## clarity^4    -0.067606   0.002321  -29.134  &lt; 2e-16 ***
+## clarity^5     0.026681   0.001895   14.083  &lt; 2e-16 ***
+## clarity^6    -0.001452   0.001649   -0.881   0.3786    
+## clarity^7     0.033377   0.001455   22.934  &lt; 2e-16 ***
+## log(depth)    2.028857   0.048033   42.239  &lt; 2e-16 ***
+## log(x)        5.090555   0.048380  105.220  &lt; 2e-16 ***
+## log(y)        0.222711   0.042510    5.239 1.62e-07 ***
+## log(z)        0.305894   0.040485    7.556 4.23e-14 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.1359 on 53897 degrees of freedom
+## Multiple R-squared:  0.9821, Adjusted R-squared:  0.9821 
+## F-statistic: 1.342e+05 on 22 and 53897 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>#Remove variables with multicolineality
+vif(model2)</code></pre>
+<pre><code>##                  GVIF Df GVIF^(1/(2*Df))
+## carat       12.316607  1        3.509502
+## cut          1.336717  4        1.036943
+## color        1.179854  6        1.013878
+## clarity      1.356416  7        1.022014
+## log(depth)   3.649008  1        1.910238
+## log(x)     256.547240  1       16.017092
+## log(y)     196.003019  1       14.000108
+## log(z)     180.589282  1       13.438351</code></pre>
+<pre class="r"><code>#Removing x since it has the highest VIF
+model2 = lm(log(price) ~  carat + cut + color + clarity + log(depth) +log(y) + log(z), data = temp)
+summary(model2)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = log(price) ~ carat + cut + color + clarity + log(depth) + 
+##     log(y) + log(z), data = temp)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -7.0304 -0.0893  0.0001  0.0878  3.4543 
+## 
+## Coefficients:
+##               Estimate Std. Error  t value Pr(&gt;|t|)    
+## (Intercept)  0.2520152  0.2106733    1.196 0.231609    
+## carat        0.1037800  0.0046905   22.126  &lt; 2e-16 ***
+## cut.L        0.0838390  0.0027445   30.548  &lt; 2e-16 ***
+## cut.Q       -0.0251279  0.0023676  -10.613  &lt; 2e-16 ***
+## cut.C       -0.0059123  0.0020146   -2.935 0.003340 ** 
+## cut^4       -0.0136943  0.0016133   -8.488  &lt; 2e-16 ***
+## color.L     -0.4434319  0.0022898 -193.659  &lt; 2e-16 ***
+## color.Q     -0.0993535  0.0020825  -47.709  &lt; 2e-16 ***
+## color.C     -0.0156702  0.0019437   -8.062 7.65e-16 ***
+## color^4      0.0135722  0.0017856    7.601 2.98e-14 ***
+## color^5     -0.0035123  0.0016867   -2.082 0.037312 *  
+## color^6      0.0025226  0.0015333    1.645 0.099939 .  
+## clarity.L    0.8927708  0.0039965  223.390  &lt; 2e-16 ***
+## clarity.Q   -0.2468909  0.0037318  -66.159  &lt; 2e-16 ***
+## clarity.C    0.1302158  0.0031924   40.789  &lt; 2e-16 ***
+## clarity^4   -0.0650730  0.0025476  -25.543  &lt; 2e-16 ***
+## clarity^5    0.0242986  0.0020799   11.683  &lt; 2e-16 ***
+## clarity^6   -0.0009772  0.0018105   -0.540 0.589358    
+## clarity^7    0.0330309  0.0015978   20.673  &lt; 2e-16 ***
+## log(depth)  -0.1829456  0.0474175   -3.858 0.000114 ***
+## log(y)       2.8451669  0.0378089   75.251  &lt; 2e-16 ***
+## log(z)       2.5895205  0.0375217   69.014  &lt; 2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.1492 on 53898 degrees of freedom
+## Multiple R-squared:  0.9784, Adjusted R-squared:  0.9784 
+## F-statistic: 1.162e+05 on 21 and 53898 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>vif(model2)</code></pre>
+<pre><code>##                  GVIF Df GVIF^(1/(2*Df))
+## carat       11.969406  1        3.459683
+## cut          1.262234  4        1.029538
+## color        1.179302  6        1.013838
+## clarity      1.348851  7        1.021605
+## log(depth)   2.950148  1        1.717600
+## log(y)     128.628421  1       11.341447
+## log(z)     128.690008  1       11.344162</code></pre>
+<pre class="r"><code>#Removing y
+model2 = lm(log(price) ~  carat + cut + color + clarity + log(depth) + log(z), data = temp)
+summary(model2)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = log(price) ~ carat + cut + color + clarity + log(depth) + 
+##     log(z), data = temp)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -12.0480  -0.0881   0.0013   0.0874   7.0352 
+## 
+## Coefficients:
+##              Estimate Std. Error  t value Pr(&gt;|t|)    
+## (Intercept) 13.164041   0.128496  102.447  &lt; 2e-16 ***
+## carat        0.161242   0.004865   33.144  &lt; 2e-16 ***
+## cut.L        0.091115   0.002883   31.602  &lt; 2e-16 ***
+## cut.Q       -0.033755   0.002486  -13.578  &lt; 2e-16 ***
+## cut.C        0.007353   0.002110    3.486 0.000491 ***
+## cut^4       -0.008199   0.001694   -4.839 1.31e-06 ***
+## color.L     -0.445168   0.002407 -184.956  &lt; 2e-16 ***
+## color.Q     -0.101063   0.002189  -46.169  &lt; 2e-16 ***
+## color.C     -0.015228   0.002043   -7.453 9.25e-14 ***
+## color^4      0.013717   0.001877    7.308 2.75e-13 ***
+## color^5     -0.004633   0.001773   -2.613 0.008980 ** 
+## color^6      0.002866   0.001612    1.778 0.075365 .  
+## clarity.L    0.896262   0.004201  213.352  &lt; 2e-16 ***
+## clarity.Q   -0.252456   0.003922  -64.367  &lt; 2e-16 ***
+## clarity.C    0.135264   0.003355   40.315  &lt; 2e-16 ***
+## clarity^4   -0.066347   0.002678  -24.775  &lt; 2e-16 ***
+## clarity^5    0.026320   0.002186   12.039  &lt; 2e-16 ***
+## clarity^6   -0.000306   0.001903   -0.161 0.872251    
+## clarity^7    0.032111   0.001680   19.119  &lt; 2e-16 ***
+## log(depth)  -2.947622   0.031513  -93.538  &lt; 2e-16 ***
+## log(z)       5.281870   0.011884  444.459  &lt; 2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.1568 on 53899 degrees of freedom
+## Multiple R-squared:  0.9761, Adjusted R-squared:  0.9761 
+## F-statistic: 1.102e+05 on 20 and 53899 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>vif(model2)</code></pre>
+<pre><code>##                 GVIF Df GVIF^(1/(2*Df))
+## carat      11.652181  1        3.413529
+## cut         1.242450  4        1.027507
+## color       1.178905  6        1.013810
+## clarity     1.347659  7        1.021541
+## log(depth)  1.179112  1        1.085869
+## log(z)     11.681871  1        3.417875</code></pre>
+<pre class="r"><code>#using step function
+model3 = step(model2)</code></pre>
+<pre><code>## Start:  AIC=-199785.9
+## log(price) ~ carat + cut + color + clarity + log(depth) + log(z)
+## 
+##              Df Sum of Sq    RSS     AIC
+## &lt;none&gt;                    1325.1 -199786
+## - carat       1      27.0 1352.1 -198700
+## - cut         4      29.3 1354.4 -198615
+## - log(depth)  1     215.1 1540.2 -191677
+## - color       6     892.6 2217.8 -172029
+## - clarity     7    1746.8 3071.9 -154464
+## - log(z)      1    4856.6 6181.7 -116745</code></pre>
+<pre class="r"><code>summary(model3)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = log(price) ~ carat + cut + color + clarity + log(depth) + 
+##     log(z), data = temp)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -12.0480  -0.0881   0.0013   0.0874   7.0352 
+## 
+## Coefficients:
+##              Estimate Std. Error  t value Pr(&gt;|t|)    
+## (Intercept) 13.164041   0.128496  102.447  &lt; 2e-16 ***
+## carat        0.161242   0.004865   33.144  &lt; 2e-16 ***
+## cut.L        0.091115   0.002883   31.602  &lt; 2e-16 ***
+## cut.Q       -0.033755   0.002486  -13.578  &lt; 2e-16 ***
+## cut.C        0.007353   0.002110    3.486 0.000491 ***
+## cut^4       -0.008199   0.001694   -4.839 1.31e-06 ***
+## color.L     -0.445168   0.002407 -184.956  &lt; 2e-16 ***
+## color.Q     -0.101063   0.002189  -46.169  &lt; 2e-16 ***
+## color.C     -0.015228   0.002043   -7.453 9.25e-14 ***
+## color^4      0.013717   0.001877    7.308 2.75e-13 ***
+## color^5     -0.004633   0.001773   -2.613 0.008980 ** 
+## color^6      0.002866   0.001612    1.778 0.075365 .  
+## clarity.L    0.896262   0.004201  213.352  &lt; 2e-16 ***
+## clarity.Q   -0.252456   0.003922  -64.367  &lt; 2e-16 ***
+## clarity.C    0.135264   0.003355   40.315  &lt; 2e-16 ***
+## clarity^4   -0.066347   0.002678  -24.775  &lt; 2e-16 ***
+## clarity^5    0.026320   0.002186   12.039  &lt; 2e-16 ***
+## clarity^6   -0.000306   0.001903   -0.161 0.872251    
+## clarity^7    0.032111   0.001680   19.119  &lt; 2e-16 ***
+## log(depth)  -2.947622   0.031513  -93.538  &lt; 2e-16 ***
+## log(z)       5.281870   0.011884  444.459  &lt; 2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.1568 on 53899 degrees of freedom
+## Multiple R-squared:  0.9761, Adjusted R-squared:  0.9761 
+## F-statistic: 1.102e+05 on 20 and 53899 DF,  p-value: &lt; 2.2e-16</code></pre>
+<p>We will explore more on transformations on <strong>General Linear models</strong> and more on variable selection and
+multicolinearity on <strong>Regularization</strong>.</p>
+</div>
+<div id="exersise-on-regression" class="section level3">
+<h3>Exersise on Regression</h3>
+<p>The <code>mlbench</code> package provide several datasets. One them is the <code>BostonHousing</code> that has the price of
+hauses in Boston area:</p>
+<div class="figure">
+<img src="Bostonhousing2.png" alt="" />
+<p class="caption">Boston Hosing data</p>
+</div>
+<p>The variable of interest is <code>cmedvc</code> wich is the corrected median value o occupied homes. Build a
+linnear regression model to predict <code>cmedv</code> in Boston area.</p>
+<pre class="r"><code>require(mlbench)</code></pre>
+<pre><code>## Loading required package: mlbench</code></pre>
+<pre class="r"><code>data(&quot;BostonHousing&quot;)
+head(BostonHousing)</code></pre>
+<pre><code>##      crim zn indus chas   nox    rm  age    dis rad tax ptratio      b lstat
+## 1 0.00632 18  2.31    0 0.538 6.575 65.2 4.0900   1 296    15.3 396.90  4.98
+## 2 0.02731  0  7.07    0 0.469 6.421 78.9 4.9671   2 242    17.8 396.90  9.14
+## 3 0.02729  0  7.07    0 0.469 7.185 61.1 4.9671   2 242    17.8 392.83  4.03
+## 4 0.03237  0  2.18    0 0.458 6.998 45.8 6.0622   3 222    18.7 394.63  2.94
+## 5 0.06905  0  2.18    0 0.458 7.147 54.2 6.0622   3 222    18.7 396.90  5.33
+## 6 0.02985  0  2.18    0 0.458 6.430 58.7 6.0622   3 222    18.7 394.12  5.21
+##   medv
+## 1 24.0
+## 2 21.6
+## 3 34.7
+## 4 33.4
+## 5 36.2
+## 6 28.7</code></pre>
+<pre class="r"><code>str(BostonHousing)</code></pre>
+<pre><code>## &#39;data.frame&#39;:    506 obs. of  14 variables:
+##  $ crim   : num  0.00632 0.02731 0.02729 0.03237 0.06905 ...
+##  $ zn     : num  18 0 0 0 0 0 12.5 12.5 12.5 12.5 ...
+##  $ indus  : num  2.31 7.07 7.07 2.18 2.18 2.18 7.87 7.87 7.87 7.87 ...
+##  $ chas   : Factor w/ 2 levels &quot;0&quot;,&quot;1&quot;: 1 1 1 1 1 1 1 1 1 1 ...
+##  $ nox    : num  0.538 0.469 0.469 0.458 0.458 0.458 0.524 0.524 0.524 0.524 ...
+##  $ rm     : num  6.58 6.42 7.18 7 7.15 ...
+##  $ age    : num  65.2 78.9 61.1 45.8 54.2 58.7 66.6 96.1 100 85.9 ...
+##  $ dis    : num  4.09 4.97 4.97 6.06 6.06 ...
+##  $ rad    : num  1 2 2 3 3 3 5 5 5 5 ...
+##  $ tax    : num  296 242 242 222 222 222 311 311 311 311 ...
+##  $ ptratio: num  15.3 17.8 17.8 18.7 18.7 18.7 15.2 15.2 15.2 15.2 ...
+##  $ b      : num  397 397 393 395 397 ...
+##  $ lstat  : num  4.98 9.14 4.03 2.94 5.33 ...
+##  $ medv   : num  24 21.6 34.7 33.4 36.2 28.7 22.9 27.1 16.5 18.9 ...</code></pre>
+<pre class="r"><code>#Exploratory Data Analysis
+#y = medv
+
+#Distribicion del Valor MEdio de casas
+
+
+hist(BostonHousing$medv)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-28-1.png" width="672" /></p>
+<pre class="r"><code>mean(BostonHousing$medv)</code></pre>
+<pre><code>## [1] 22.53281</code></pre>
+<pre class="r"><code>summary(BostonHousing$medv)</code></pre>
+<pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##    5.00   17.02   21.20   22.53   25.00   50.00</code></pre>
+<pre class="r"><code>#Hipotesis 1
+#El Valor de una casa depende de la cercania al Rio. Mientras mas cerca del rio mas caro
+require(tidyverse)
+ggplot(BostonHousing, aes(x = chas, y = medv, fill = chas)) +
+  geom_boxplot()</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-28-2.png" width="672" /></p>
+<pre class="r"><code>#Correlacion entre la variables
+correlacion = BostonHousing %&gt;%
+  select(-chas) %&gt;%
+  cor()
+
+col &lt;- colorRampPalette(c(&quot;#BB4444&quot;, &quot;#EE9988&quot;, &quot;#FFFFFF&quot;, &quot;#77AADD&quot;, &quot;#4477AA&quot;))
+require(corrplot)
+
+corrplot(correlacion, method=&quot;color&quot;, col=col(200),  
+         type=&quot;upper&quot;, order=&quot;hclust&quot;, 
+         addCoef.col = &quot;black&quot;, # Add coefficient of correlation
+         tl.col=&quot;black&quot;, tl.srt = 45, #Text label color and rotation
+         # hide correlation coefficient on the principal diagonal
+         diag=FALSE 
+         )</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-28-3.png" width="672" /></p>
+<pre class="r"><code>#Analisis de Regresion
+
+#Forma larga
+m.lm = lm(medv ~ crim + zn + indus + chas + nox + 
+            rm + age + dis + rad + tax + ptratio + b + lstat,
+          data = BostonHousing)
+
+m.lm2 = lm(medv ~. , data = BostonHousing)
+summary(m.lm)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = medv ~ crim + zn + indus + chas + nox + rm + age + 
+##     dis + rad + tax + ptratio + b + lstat, data = BostonHousing)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -15.595  -2.730  -0.518   1.777  26.199 
+## 
+## Coefficients:
+##               Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)  3.646e+01  5.103e+00   7.144 3.28e-12 ***
+## crim        -1.080e-01  3.286e-02  -3.287 0.001087 ** 
+## zn           4.642e-02  1.373e-02   3.382 0.000778 ***
+## indus        2.056e-02  6.150e-02   0.334 0.738288    
+## chas1        2.687e+00  8.616e-01   3.118 0.001925 ** 
+## nox         -1.777e+01  3.820e+00  -4.651 4.25e-06 ***
+## rm           3.810e+00  4.179e-01   9.116  &lt; 2e-16 ***
+## age          6.922e-04  1.321e-02   0.052 0.958229    
+## dis         -1.476e+00  1.995e-01  -7.398 6.01e-13 ***
+## rad          3.060e-01  6.635e-02   4.613 5.07e-06 ***
+## tax         -1.233e-02  3.760e-03  -3.280 0.001112 ** 
+## ptratio     -9.527e-01  1.308e-01  -7.283 1.31e-12 ***
+## b            9.312e-03  2.686e-03   3.467 0.000573 ***
+## lstat       -5.248e-01  5.072e-02 -10.347  &lt; 2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 4.745 on 492 degrees of freedom
+## Multiple R-squared:  0.7406, Adjusted R-squared:  0.7338 
+## F-statistic: 108.1 on 13 and 492 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>summary(m.lm2)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = medv ~ ., data = BostonHousing)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -15.595  -2.730  -0.518   1.777  26.199 
+## 
+## Coefficients:
+##               Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)  3.646e+01  5.103e+00   7.144 3.28e-12 ***
+## crim        -1.080e-01  3.286e-02  -3.287 0.001087 ** 
+## zn           4.642e-02  1.373e-02   3.382 0.000778 ***
+## indus        2.056e-02  6.150e-02   0.334 0.738288    
+## chas1        2.687e+00  8.616e-01   3.118 0.001925 ** 
+## nox         -1.777e+01  3.820e+00  -4.651 4.25e-06 ***
+## rm           3.810e+00  4.179e-01   9.116  &lt; 2e-16 ***
+## age          6.922e-04  1.321e-02   0.052 0.958229    
+## dis         -1.476e+00  1.995e-01  -7.398 6.01e-13 ***
+## rad          3.060e-01  6.635e-02   4.613 5.07e-06 ***
+## tax         -1.233e-02  3.760e-03  -3.280 0.001112 ** 
+## ptratio     -9.527e-01  1.308e-01  -7.283 1.31e-12 ***
+## b            9.312e-03  2.686e-03   3.467 0.000573 ***
+## lstat       -5.248e-01  5.072e-02 -10.347  &lt; 2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 4.745 on 492 degrees of freedom
+## Multiple R-squared:  0.7406, Adjusted R-squared:  0.7338 
+## F-statistic: 108.1 on 13 and 492 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>#Algoritmo de Seleccion de Variables
+m.lm3 = step(m.lm2)</code></pre>
+<pre><code>## Start:  AIC=1589.64
+## medv ~ crim + zn + indus + chas + nox + rm + age + dis + rad + 
+##     tax + ptratio + b + lstat
+## 
+##           Df Sum of Sq   RSS    AIC
+## - age      1      0.06 11079 1587.7
+## - indus    1      2.52 11081 1587.8
+## &lt;none&gt;                 11079 1589.6
+## - chas     1    218.97 11298 1597.5
+## - tax      1    242.26 11321 1598.6
+## - crim     1    243.22 11322 1598.6
+## - zn       1    257.49 11336 1599.3
+## - b        1    270.63 11349 1599.8
+## - rad      1    479.15 11558 1609.1
+## - nox      1    487.16 11566 1609.4
+## - ptratio  1   1194.23 12273 1639.4
+## - dis      1   1232.41 12311 1641.0
+## - rm       1   1871.32 12950 1666.6
+## - lstat    1   2410.84 13490 1687.3
+## 
+## Step:  AIC=1587.65
+## medv ~ crim + zn + indus + chas + nox + rm + dis + rad + tax + 
+##     ptratio + b + lstat
+## 
+##           Df Sum of Sq   RSS    AIC
+## - indus    1      2.52 11081 1585.8
+## &lt;none&gt;                 11079 1587.7
+## - chas     1    219.91 11299 1595.6
+## - tax      1    242.24 11321 1596.6
+## - crim     1    243.20 11322 1596.6
+## - zn       1    260.32 11339 1597.4
+## - b        1    272.26 11351 1597.9
+## - rad      1    481.09 11560 1607.2
+## - nox      1    520.87 11600 1608.9
+## - ptratio  1   1200.23 12279 1637.7
+## - dis      1   1352.26 12431 1643.9
+## - rm       1   1959.55 13038 1668.0
+## - lstat    1   2718.88 13798 1696.7
+## 
+## Step:  AIC=1585.76
+## medv ~ crim + zn + chas + nox + rm + dis + rad + tax + ptratio + 
+##     b + lstat
+## 
+##           Df Sum of Sq   RSS    AIC
+## &lt;none&gt;                 11081 1585.8
+## - chas     1    227.21 11309 1594.0
+## - crim     1    245.37 11327 1594.8
+## - zn       1    257.82 11339 1595.4
+## - b        1    270.82 11352 1596.0
+## - tax      1    273.62 11355 1596.1
+## - rad      1    500.92 11582 1606.1
+## - nox      1    541.91 11623 1607.9
+## - ptratio  1   1206.45 12288 1636.0
+## - dis      1   1448.94 12530 1645.9
+## - rm       1   1963.66 13045 1666.3
+## - lstat    1   2723.48 13805 1695.0</code></pre>
+<pre class="r"><code>summary(m.lm3)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = medv ~ crim + zn + chas + nox + rm + dis + rad + 
+##     tax + ptratio + b + lstat, data = BostonHousing)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -15.5984  -2.7386  -0.5046   1.7273  26.2373 
+## 
+## Coefficients:
+##               Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)  36.341145   5.067492   7.171 2.73e-12 ***
+## crim         -0.108413   0.032779  -3.307 0.001010 ** 
+## zn            0.045845   0.013523   3.390 0.000754 ***
+## chas1         2.718716   0.854240   3.183 0.001551 ** 
+## nox         -17.376023   3.535243  -4.915 1.21e-06 ***
+## rm            3.801579   0.406316   9.356  &lt; 2e-16 ***
+## dis          -1.492711   0.185731  -8.037 6.84e-15 ***
+## rad           0.299608   0.063402   4.726 3.00e-06 ***
+## tax          -0.011778   0.003372  -3.493 0.000521 ***
+## ptratio      -0.946525   0.129066  -7.334 9.24e-13 ***
+## b             0.009291   0.002674   3.475 0.000557 ***
+## lstat        -0.522553   0.047424 -11.019  &lt; 2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 4.736 on 494 degrees of freedom
+## Multiple R-squared:  0.7406, Adjusted R-squared:  0.7348 
+## F-statistic: 128.2 on 11 and 494 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>#El modelo es valido?
+#Revisar los supuestos NID(0, sigma2)
+
+plot(m.lm3)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-28-4.png" width="672" /><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-28-5.png" width="672" /><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-28-6.png" width="672" /><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-28-7.png" width="672" /></p>
+<pre class="r"><code>#El modelo Lineal no es adecuado
+#Provar con otro modelo: Transformar todas las variables a Log
+
+
+temp = BostonHousing %&gt;%
+  gather(Var.name, Var.Value, 1 : 13) %&gt;%
+  filter(Var.name != &quot;chas&quot;)</code></pre>
+<pre><code>## Warning: attributes are not identical across measure variables;
+## they will be dropped</code></pre>
+<pre class="r"><code>ggplot(temp, aes(x = Var.Value, y = medv, color = Var.name)) +
+  geom_point() +
+  facet_wrap(~Var.name, scales = &#39;free&#39;) +
+  theme_bw() +
+  theme(legend.position = &#39;none&#39;) +
+  geom_smooth()</code></pre>
+<pre><code>## `geom_smooth()` using method = &#39;loess&#39; and formula &#39;y ~ x&#39;</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-28-8.png" width="672" /></p>
+<pre class="r"><code>m.lm = lm(log(medv) ~ log(crim) + zn + log(indus) + chas + log(nox) + 
+            log(rm) + log(age) + log(dis) + log(rad) + log(tax) + log(ptratio) + log(b) + log(lstat),
+          data = BostonHousing)
+m.lm2 = step(m.lm)</code></pre>
+<pre><code>## Start:  AIC=-1621.27
+## log(medv) ~ log(crim) + zn + log(indus) + chas + log(nox) + log(rm) + 
+##     log(age) + log(dis) + log(rad) + log(tax) + log(ptratio) + 
+##     log(b) + log(lstat)
+## 
+##                Df Sum of Sq    RSS     AIC
+## - log(indus)    1    0.0011 19.437 -1623.2
+## &lt;none&gt;                      19.436 -1621.3
+## - log(age)      1    0.1333 19.569 -1619.8
+## - zn            1    0.1533 19.589 -1619.3
+## - chas          1    0.3082 19.744 -1615.3
+## - log(crim)     1    0.3125 19.748 -1615.2
+## - log(nox)      1    0.4581 19.894 -1611.5
+## - log(rm)       1    0.4870 19.923 -1610.8
+## - log(tax)      1    0.5362 19.972 -1609.5
+## - log(dis)      1    0.6443 20.080 -1606.8
+## - log(b)        1    0.7004 20.136 -1605.4
+## - log(rad)      1    0.7288 20.165 -1604.6
+## - log(ptratio)  1    1.6484 21.084 -1582.1
+## - log(lstat)    1   10.3977 29.833 -1406.4
+## 
+## Step:  AIC=-1623.24
+## log(medv) ~ log(crim) + zn + chas + log(nox) + log(rm) + log(age) + 
+##     log(dis) + log(rad) + log(tax) + log(ptratio) + log(b) + 
+##     log(lstat)
+## 
+##                Df Sum of Sq    RSS     AIC
+## &lt;none&gt;                      19.437 -1623.2
+## - log(age)      1    0.1327 19.570 -1621.8
+## - zn            1    0.1870 19.624 -1620.4
+## - log(crim)     1    0.3118 19.749 -1617.2
+## - chas          1    0.3205 19.757 -1617.0
+## - log(nox)      1    0.4618 19.899 -1613.4
+## - log(rm)       1    0.4870 19.924 -1612.7
+## - log(tax)      1    0.5562 19.993 -1611.0
+## - log(dis)      1    0.6746 20.111 -1608.0
+## - log(b)        1    0.7017 20.139 -1607.3
+## - log(rad)      1    0.7303 20.167 -1606.6
+## - log(ptratio)  1    1.6673 21.104 -1583.6
+## - log(lstat)    1   10.5087 29.945 -1406.5</code></pre>
+<pre class="r"><code>summary(m.lm2)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = log(medv) ~ log(crim) + zn + chas + log(nox) + log(rm) + 
+##     log(age) + log(dis) + log(rad) + log(tax) + log(ptratio) + 
+##     log(b) + log(lstat), data = BostonHousing)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -0.95110 -0.10221 -0.00153  0.11016  0.82671 
+## 
+## Coefficients:
+##                Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)   5.3494016  0.4332027  12.348  &lt; 2e-16 ***
+## log(crim)    -0.0312589  0.0111150  -2.812 0.005115 ** 
+## zn           -0.0011832  0.0005433  -2.178 0.029886 *  
+## chas1         0.1020826  0.0358056   2.851 0.004541 ** 
+## log(nox)     -0.3631961  0.1061186  -3.423 0.000672 ***
+## log(rm)       0.3826376  0.1088704   3.515 0.000481 ***
+## log(age)      0.0404974  0.0220773   1.834 0.067205 .  
+## log(dis)     -0.1448544  0.0350195  -4.136 4.15e-05 ***
+## log(rad)      0.0945437  0.0219676   4.304 2.03e-05 ***
+## log(tax)     -0.1740737  0.0463468  -3.756 0.000193 ***
+## log(ptratio) -0.5874768  0.0903384  -6.503 1.93e-10 ***
+## log(b)        0.0533253  0.0126402   4.219 2.92e-05 ***
+## log(lstat)   -0.4181123  0.0256099 -16.326  &lt; 2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.1986 on 493 degrees of freedom
+## Multiple R-squared:  0.7696, Adjusted R-squared:  0.764 
+## F-statistic: 137.3 on 12 and 493 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>plot(m.lm2)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-28-9.png" width="672" /><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-28-10.png" width="672" /><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-28-11.png" width="672" /><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-28-12.png" width="672" /></p>
+<pre class="r"><code>#Cual es el papel de la intercepcion
+mean(m.lm$residuals)</code></pre>
+<pre><code>## [1] 2.097267e-18</code></pre>
+<pre class="r"><code>#Modelo sin Constante
+m.sc = lm(log(medv) ~ log(crim) + zn + log(indus) + chas + log(nox) + 
+            log(rm) + log(age) + log(dis) + log(rad) + log(tax) + log(ptratio) + log(b) + log(lstat) - 1,
+          data = BostonHousing)
+mean(m.sc$residuals)</code></pre>
+<pre><code>## [1] 1.65659e-17</code></pre>
+</div>
