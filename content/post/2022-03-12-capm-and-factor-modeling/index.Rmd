@@ -1,0 +1,617 @@
+---
+title: CAPM and Factor Modeling
+author: Eduardo Villarreal
+date: '2022-03-12'
+slug: capm-and-factor-modeling
+categories:
+  - Finance
+tags:
+  - Finance
+  - Inference and Regression
+  - Optimization
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Note
+
+For this module, basic knowledge of **linear regression** is needed. You can check this following the link!!!
+
+[Introduction to Linear Regression](https://eduardo0914rtutorials.netlify.app/post/2022/03/05/introduction-to-linear-models/)
+
+# Introduction
+
+For many years, active fund managers and institutional investors have often used a factor-based approach either to strategically construct portfolios or to tilt their portfolios toward well-known risk factors, such as low volatility, value, momentum, dividend, size, and quality, to capture the factor risk premium. Investors seeking to identify skilled active managers look to dissect fund performance into returns generated from factor exposures and alpha that is attributable to fund manager skill, which in turn should affect fund flows.
+
+An analogy used to explain this concept associates factors to nutrients and stock returns to food items. Different food items (such as pulses, milk, vegetables, bread, burgers, pizza, etc.) contain nutrients (such as carbs, vitamins, proteins, fats, minerals, etc.) in varying proportions. Similarly, a stock's risk/return characteristics can be thought of as being explained by different risk factors. A factor index looks to bucket stocks with similar risk/return characteristics. Extending this analogy, different individuals (e.g., an athlete versus someone with a desk job) have different nutrient requirements, therefore they would consume different combinations of food items. Similarly, investors with different risk appetites would allocate accordingly to different factors to generate returns. For example, an investor who is keen on a low risk or defensive portfolio would potentially look to allocate a higher proportion to low volatility and quality factors, whereas an aggressive investor might look to add exposure to value and size (small-cap) factors. Factor-based investing provides a route to objectively capture inexpensive companies (via value factors) or companies with robust balance sheets and steady returns on equity (via quality factors).
+
+## Pasive Investing
+
+**Passive investing involves investing over the long term with very limited buying and selling**. It focuses on a **buy-and-hold** strategy, although you can also follow such a strategy with active investing. Passive investments often track an index like the Nasdaq 100, which means that when a stock is added to or removed from the index, the index fund automatically buys or sells that stock.
+
+Passive investments generally don't outperform the market, but rather, perform in line with the market. This means that when the stock index the fund is tracking has a difficult year, your portfolio does too because no one is actively picking the stocks it contains.
+
+Some examples of passive investments include exchange-traded funds that track an index like the S&P 500 (SP500) or Dow Jones Industrial Average (DJI) or mutual funds.
+
+## Active Investing
+
+**Active investing involves taking a hands-on approach by a portfolio manager or some other market participant who makes decisions about where to invest the money in the fund**. Active management aims to outperform indices like the S&P 500 or whatever other benchmark is used by the fund. **Every fund manager chooses a benchmark that contains the type of investments their fund contains**.
+
+Active management requires a deep understanding of the markets and how assets move based on what's happening in the economy, the rest of the market, politics, or other factors. Portfolio managers use their experience, knowledge, and analysis to make choices about what to buy or sell in the portfolio.
+
+Some examples of actively managed investments are hedge funds and a stock portfolio actively managed by the investor via an online brokerage account.
+
+> Active investing involves actively choosing stocks or other assets to invest in, while passive investing limits selections to an index or other preset selection of investments.
+
+There is much debate about active vs. passive investing and which one is better, but in reality, a combination of both strategies may offer more portfolio diversification. However, there are some advantages and disadvantages of both types of investing.
+
+One big difference between the two is the expense. Unless you are picking the stocks yourself through an online brokerage account, actively managed funds are much more expensive than passive funds that track an index.
+
+Actively managed hedge funds usually charge a management fee and a performance fee, with the traditional fee structure being a 2% management fee and 20% performance fee.
+
+On the other hand, passive funds are limited to a certain index or preset selection of investments without any variance, while actively managed funds can contain any investments the manager chooses. It gives them the option to exit stocks or sectors that aren't performing well. Additionally, passive funds typically won't outperform the market because they are tracking a major stock index. However, active fund managers aim to outperform the market through stock picking.
+
+> In general, passive investments do better during a bull market because it's difficult for hedge fund managers to outperform major indices.
+
+[Source: Seeking Alpha](https://seekingalpha.com/article/4433881-active-vs-passive-investing?external=true&gclid=CjwKCAiAsYyRBhACEiwAkJFKojFP3j0bZ5vytT-WRMRtsIG37_L6oMG4SqoUes09QNQfkvcM2hKkihoC9D4QAvD_BwE&utm_campaign=14926960698&utm_medium=cpc&utm_source=google&utm_term=127894704186%5Eaud-1172366382705%3Adsa-1427141793820%5E%5E552341146729%5E%5E%5Eg#what-is-passive-investing)
+
+## Factor Investing
+
+Factor investing is a [strategy](https://www.investopedia.com/terms/i/investmentstrategy.asp) that chooses securities on attributes that are associated with higher returns. There are two main types of factors that have driven returns of stocks, bonds, and other factors: [macroeconomic factors](https://www.investopedia.com/terms/m/macroeconomic-factor.asp) and style factors. The former captures broad risks across asset classes while the latter aims to explain returns and risks within asset classes.
+
+Some common macroeconomic factors include: the rate of inflation; GDP growth; and the unemployment rate. Microeconomic factors include: a company's credit; its share liquidity; and stock price volatility. Style factors encompass growth versus value stocks; market capitalization; and industry sector.
+
+KEY TAKEAWAYS
+
+<div>
+
+> Factor investing utilizes multiple factors, including macroeconomic as well as fundamental and statistical, are used to analyze and explain asset prices and build an investment strategy.
+
+</div>
+
+<div>
+
+> Factors that have been identified by investors include: growth vs. value; market capitalization; credit rating; and stock price volatility - among several others.
+
+</div>
+
+<div>
+
+> Smart beta is a common application of a factor investing strategy.
+
+</div>
+
+Factor investing, from a theoretical standpoint, is designed to enhance diversification, generate above-market returns and manage risk. Portfolio [diversification](https://www.investopedia.com/terms/d/diversification.asp) has long been a popular safety tactic, but the gains of diversification are lost if the chosen securities move in lockstep with the broader market. For example, an investor may choose a mixture of stocks and bonds that all decline in value when certain market conditions arise. The good news is factor investing can offset potential risks by targeting broad, persistent, and long recognized drivers of returns.
+
+Since traditional [portfolio](https://www.investopedia.com/terms/p/portfolio.asp) allocations, like 60% stocks and 40% bonds, are relatively easy to implement, factor investing can seem overwhelming given the number of factors to choose from. Rather than look at complex attributes, such as momentum, beginners to factor investing can focus on simpler elements, such as style (growth vs. value), size ([large cap](https://www.investopedia.com/terms/l/large-cap.asp) vs. [small cap](https://www.investopedia.com/investing/introduction-to-small-cap-stocks/)), and risk (beta). These attributes are readily available for most securities and are listed on popular stock research websites.
+
+## Foundations of Factor Investing
+
+### Value
+
+[Value](https://www.investopedia.com/terms/v/valuestock.asp) aims to capture excess returns from stocks that have low prices relative to their fundamental value. This is commonly tracked by price to book, price to earnings, dividends, and free cash flow. 
+
+### Size
+
+Historically, portfolios consisting of small-cap stocks exhibit greater returns than portfolios with just large-cap stocks. Investors can capture size by looking at the market capitalization of a stock.
+
+### Momentum
+
+Stocks that have outperformed in the past tend to exhibit strong returns going forward. A [momentum strategy](https://www.investopedia.com/terms/m/momentum.asp) is grounded in relative returns from three months to a one-year time frame.
+
+### Quality
+
+Quality is defined by low debt, stable earnings, consistent asset growth, and strong corporate governance. Investors can identify quality stocks by using common financial metrics like a return to equity, debt to equity and earnings variability. 
+
+### Volatility
+
+Empirical research suggests that stocks with low [volatility](https://www.investopedia.com/terms/v/volatility.asp) earn greater risk-adjusted returns than highly volatile assets. Measuring standard deviation from a one- to three-year time frame is a common method of capturing beta.
+
+[Source: Investopedia](https://www.investopedia.com/terms/f/factor-investing.asp)
+
+# Capital Asset Pricing Model
+
+The **CAPM (capital asset pricing model)** has a variety of uses. It providesa theoretical justification for the widespread practice of passive investing by holding index funds.
+
+The CAPM can provide estimates of expected rates of return on individual investments and can establish "fair" rates of return on invested capital in regulated firms or in firms working on a cost-plus basis.
+
+The CAPM starts with the question, what would be the risk premiums on securities if the following assumptions were true?
+
+1.  The market prices are "in equilibrium." In particular, for each asset, supply equals demand.
+
+2.  Everyone has the same forecasts of expected returns and risks.
+
+3.  All investors choose portfolios optimally according to the principles of efficient diversification. This implies that everyone holds a tangency portfolio of risky assets as well as the risk-free asset.
+
+## The Capital Market Line
+
+The market rewards people for assuming unavoidable risk, but there is no reward for needless risks due to inefficient portfolio selection. Therefore, the risk premium on a single security is not due to its "standalone" risk, but rather to its contribution to the risk of the tangency portfolioThe Market Capital Line
+
+The capital market line (CML) relates the excess expected return on an efficient portfolio to its risk. Excess expected return is the expected return minus the risk-free rate and is also called the risk premium. The CML is:
+
+$$
+\mu_R = \mu_f + \frac{\mu_M - \mu_f}{\sigma_M} \sigma_R
+$$
+
+where $R$ is the return on a given efficient portfolio (mixture of the market portfolio \[= tangency portfolio\] and the risk-free asset), $μ_R = E(R)$, $μ_f$ is the risk-free rate, $R_M$ is the return on the market portfolio, $μ_M = E(RM)$, $σ_M$ is the standard deviation of $R_M$, and $σ_R$ is the standard deviation of $R$. The risk premium of $R$ is $\mu_R − \mu_f$ and the risk premium of the market portfolio is $μ_M − μ_f$.
+
+The slope of the Capital Market Line is:
+
+$$
+\frac{\mu_M-\mu_f}{\sigma_M}
+$$
+
+which can be interpreted as the ratio of the risk premium to the standard deviation of the market portfolio. This is **Sharpe's famous "reward-to-risk ratio**".
+
+The CAPM says that the optimal way to invest is to
+
+1.  decide on the risk σR that you can tolerate, $0 ≤ σ_R ≤ σ_M$
+
+2.  calculate $w = σ_R/σ_M$;
+
+3.  invest $w$ proportion of your investment in a market index fund, that is, a fund that tracks the market as a whole;
+
+4.  invest $1 − w$ proportion of your investment in risk-free Treasury bills, or a money-market fund.
+
+## Betas and the Security Market Line
+
+The **security market line (SML)** relates the **excess return** on an asset to the slope of its regression on the market portfolio. The SML differs from the CML in that the SML applies to all assets while the CML applies only to efficient portfolios. Suppose that there are many securities indexed by $j$. Define
+
+$$
+\sigma_{jM}= \text{covariance between returnon the jth security and market portfolio}
+$$
+
+Also, define
+
+$$
+\beta_j = \frac{\sigma_{jM}}{\sigma_M^2}
+$$
+
+It follows from the theory of best linear prediction that $β_j$ is the slope of the best linear predictor of the jth security's returns using returns of the market portfolio as the predictor variable. In fact, the best linear predictor of $R_j$ based on $R_M$ is:
+
+$$
+\hat{R}_j = \beta_{0,j} + \beta_j R_M
+$$ were $\beta_{0,j}$ is the intercept.
+
+Let $μ_j$ be the expected return on the $jth$ security. Then $μ_j − μ_f$ is the risk premium (or reward for risk or excess expected return) for that security. Using the CAPM, it can be shown that:
+
+$$
+\mu_j -\mu_f=\beta_j(\mu_M-\mu_f)
+$$ $β_j$ is a variable in the linear equation, not the slope. More precisely, $μ_j$ is a linear function of $β_j$ with slope $μ_M − μ_f$ . This point is worth remembering. Otherwise, there could be some confusion since $β_j$ was defined earlier as a slope of a regression model. In other words, $β_j$ is a slope in one context but is the independent variable in the different context of the SML. One can estimate $β_j$ using the equation to estimate $\hat{R}_j$ and then plug into de **CAPM**.
+
+Consequently, $β_j$ is a measure of how "aggressive" the $jth$ asset is. By definition, the beta for the market portfolio is 1:
+
+$$
+\beta_j>1\rightarrow\text{aggressive} \\
+\beta_j=1\rightarrow\text{average risk} \\
+\beta_j<1\rightarrow\text{not aggrsive} \\
+$$
+
+Alpha is the average return in excess of a benchmark. Thus, the concept of alpha requires first defining a benchmark against which alpha can be measured. This terminology assumes that **the benchmark is passive** and can be produced without any particular investment knowledge or even human intervention.
+
+> Common passive benchmarks are market-weighted portfolios, like the **S&P 500** or the **Russell 1000**, which investors can track by buying low-cost index funds
+
+## R lab for CAPM
+
+The data we are going to need are:
+
+1.  Berkshire Hathaway monthly return
+2.  US T-bills as the free risk return
+3.  S&P 500 Index as Market Return
+
+> Loading Libraries and Data
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+library(tidyquant)
+library(timetk)
+library(quantmod)
+require(moments)
+
+theme_set(theme_bw())
+
+#Downloading the Data from Jan 1990 to May 2012
+#tickers = c('BRK-A', '^GSPC')
+tickers = c('BRK-A', '^GSPC')
+
+#Get the Data
+stocks = tq_get(tickers,
+                from = '1990-01-01',
+                to = '2012-05-31',
+                get = 'stock.prices',
+                complete_cases = T)
+
+#Get T-Bills from FRED
+tbills = tq_get('IR3TBB01AUM156N',
+                from = '1990-01-01',
+                to = '2012-05-31',
+                get = "economic.data") %>%
+  mutate(price = price / 100) %>%
+  mutate(price = price / 12) %>%
+  dplyr::select(-symbol)
+```
+
+> Compute Returns, Normalize data and Merge
+
+```{r}
+#Convert to returns
+stocks_ret = stocks %>%
+  group_by(symbol) %>%
+  tq_transmute(select = adjusted,
+    mutate_fun = periodReturn,
+    period = 'monthly') %>%
+  spread(symbol, monthly.returns) %>%
+  mutate(date = round_date(date, 'month'))
+
+#join
+CAPM_df = left_join(stocks_ret, tbills)
+```
+
+> Compute Excess Returns
+
+```{r}
+#Compute Market excess return and stock excess returns
+CAPM_df = CAPM_df %>%
+  mutate(stock_excess = `BRK-A` - price,
+         market_excess = `^GSPC` - price)
+```
+
+> Compute alpha and beta
+
+```{r}
+capm_model = lm(stock_excess ~ market_excess, data = CAPM_df)
+summary(capm_model)
+```
+
+This implies that the CAPM benchmark consists of $0.39$ in T-bills and $0.61\text{%}$ in the market portfolio, $r_\text{bench} = 0.39r_f + 0.61r_m$, Relative to this benchmark portfolio, Buffett is adding $0.61\text{%}$ $\alpha$ per month.
+
+This is impressive performance! Buffett is generating an alpha of 0.0061 × 12 = 7.32% per year with a risk β =0.61. The alpha estimated using a market portfolio benchmark in equation is often called **Jensen's alpha**. The adjusted $R^2$ of the CAPM regression is 18%, which is also relatively high. For most stocks, CAPM regressions produce $R^2$s of less than 10%.
+
+Other alternative for the Market Excess Return is to use the **Famma-French** Factor data set witch already has a benchmark:
+
+> Ussing the Famma-French 3-Factor Model
+
+```{r message=FALSE, warning=FALSE}
+
+require(FFdownload)
+#Let´s define the set of data we want. In this case is just 1 database:
+inputlist <- c('F-F_Research_Data_Factors.zip')
+
+#Let´s create a temporal directory to store the data
+tempd <- tempdir()
+
+#Now we can download the data usisn FFdownload. Since we are looking for monthly
+#data, I set exclude_daily = TRUE
+FFdownload(exclude_daily = TRUE, 
+           tempd = tempd,
+           download = TRUE,
+           download_only = TRUE,
+           inputlist = inputlist) #This is the input list of data
+
+#Let´s process de CSV file here
+tempf <- paste0(tempd,"\\FFdata.RData") #Concatenate the temp file name
+
+FFdownload(output_file = tempf, 
+           exclude_daily = TRUE,
+           tempd = tempd,
+           download = FALSE,
+           download_only = FALSE,
+           inputlist = inputlist)
+
+#Let´s load the data file
+load(file = tempf)
+#Get Monthly Data
+FFdata = FFdata$`x_F-F_Research_Data_Factors`$monthly
+FFdata = FFdata$Temp2
+
+#Create Date
+dates = seq(as.Date("1926/7/1"), as.Date("2022/1/1"), "months")
+
+#convert to DF
+FFdata = as.data.frame(FFdata)
+FFdata$date = dates
+
+#join
+CAPM_df = left_join(stocks_ret, tbills)
+CAPM_df = left_join(CAPM_df, FFdata)
+CAPM_df$Mkt.RF = CAPM_df$Mkt.RF / 100
+CAPM_df$RF = CAPM_df$RF / 100
+CAPM_df$SMB = CAPM_df$SMB / 100
+CAPM_df$HML = CAPM_df$HML / 100
+
+#compute excess returns
+CAPM_df = CAPM_df %>%
+  mutate(stock_excess = `BRK-A` - RF)
+
+#Compute regression
+capm_model = lm(stock_excess ~ Mkt.RF, data = CAPM_df)
+summary(capm_model)
+```
+
+# Factor Models: Fama-French
+
+A factor model for excess equity returns is:
+
+$$
+R_{j}=\beta_{0,j} + \sum_{i=1}^p\beta_{i,j}F_{i.t}+\epsilon_{j,t}
+$$
+
+where $R_{j}$ is the excess return and $F_{i.t}$ is a variable we call **Factor** that represent the state of the finantial market.
+
+The CAPM is a factor model where $p = 1$ and $F_1$,t is the excess return on the market portfolio. In the CAPM, the market risk factor is the only source of risk besides the unique risk of each asset. Because the market risk factor is the only risk that any two assets share, it is the sole source of correlation between asset returns. Factor models generalize the CAPM by allowing more factors than simply the market risk and the unique risk of each asset.
+
+**Fama and French (1995)** have developed a fundamental factor model with three risk factors,
+
+-   The first being the excess return of the market portfolio, which is the sole factor in the CAPM.
+
+-   The second risk factor, which is called small minus big (SMB), is the difference in returns on a portfolio of small stocks and a portfolio of large stocks. Here "small" and "big" refer to the size of the market value, which is the share price times the number of shares outstanding.
+
+-   The third factor, HML (high minus low), is the difference in returns on a portfolio of high book-to-market value (BE/ME) stocks and a portfolio of low BE/ME stocks. Book value is the net worth of the firm according to its accounting balance sheet.
+
+Fama and French argue that most pricing anomalies that are inconsistent with the CAPM disappear in the three factor model. Their model of the return on the jth asset for the tth holding period is
+
+$$
+\mu_j -\mu_f=\beta_{0,j} + \beta_{1,j}(\mu_M-\mu_f) + \beta_{2,j}SMB_t + \beta_{3,j}HML_t + \epsilon_{j,t}
+$$
+
+now, we can apply linear regression:
+
+```{r}
+model_ff = lm(stock_excess ~ Mkt.RF + SMB + HML, data = CAPM_df)
+summary(model_ff)
+```
+
+Our estimate of alpha is now 0.53% x 12 = 6.36% per month with a risk of 0.67. We notice that BRK-A has a negative slope with SMB (Value of the Market) of -0.50 and a positive slope with HML.
+
+First, note that the market beta has moved from 0.53 in the pure CAPM regression to 0.67 in the Fama--French specification. This is an indication that adding the SMB and HML factors is doing something---the market beta would stay the same only if the SMB and HML factors would have no ability to explain Buffett's returns.
+
+The SMB factor loading in the Fama--French regression is s = −0.50. The negative sign indicates that Berkshire Hathaway is acting the opposite way from a small stock (remember, SMB is long small stocks and short large stocks). That is, Berkshire Hathaway has large stock exposure. Note that being large counts against Buffett's outstanding performance because large stocks, according to the Fama--French model, tend to underperform small stocks.
+
+The HML loading of h = 0.40 says that Berkshire Hathaway has a strong value orientation; it tends to move together with other value stocks. Thus, the negative SMB and positive HML factor loadings suggest that Berkshire Hathaway is a large, value investor. Duh, of course it is! It doesn't take the finance cognoscenti to know that this is the investing technique that Buffett has touted since founding Berkshire Hathaway in the 1960s. It is comforting that an econometric technique yields the same result as common sense. But the statistical technique gives us the appropriate benchmark to compute Buffett's risk-adjusted alpha.
+
+The surprising result in the Fama--French regression is that Buffett is still generating considerable profits relative to the size- and value-factor controls: Buffett's monthly alpha of 0.53% is still outsized; the Fama--French model reduces the CAPM alpha by less than 1% per year. This is not because the size and value factors are inappropriate risk factors. Quite the contrary. The Fama-- French regression has an adjusted $R^2$ of 28%, which is large by empirical finance standards, and much higher than the adjusted $R^2$ of 14% in the CAPM benchmark. The size and value factors, therefore, substantially improve the fit relative to the CAPM benchmark. Buffett's performance is clearly not merely from being a value investor, at least the way value is being measured relative to the CAPM.
+
+> The benchmark implied by the Fama--French regression estimates is:
+>
+> 1.  (1 − 0.67) = \$0.33 in T-bills
+>
+> 2.  \+ \$0.67 in the market portfolio
+>
+> 3.  − \$0.50 in small caps + \$0.50 in large caps
+>
+> 4.  \+ \$0.40 in value stocks − \$0.40 in growth stocks
+>
+> 5.  In addition to this benchmark, Buffet is generating + 0.53% (alpha) per month.
+
+# Sharpe Style Analysis
+
+The traditional view of asset allocation assumes that an investor allocates assets among (potentially many) funds, each of which holds (potentially many) securities. Ultimately one is interested in the investor's exposures to the key asset classes. These are a function of 1) the amounts of the investor's portfolio invested in the various funds and 2) the exposures of each such fund to the asset classes. The exposures of a fund to the various asset classes are, in turn, a function of 1) the amounts that the fund has invested in various securities and 2) the exposures of the securities to the asset classes.
+
+**Returns-based style analysis** is a statistical technique used in [finance](https://en.wikipedia.org/wiki/Finance "Finance") to deconstruct the returns of investment strategies using a variety of explanatory variables. The model results in a strategy's exposures to asset classes or other factors, interpreted as a measure of a fund or portfolio manager's style. While the model is most frequently used to show an equity [mutual fund](https://en.wikipedia.org/wiki/Mutual_fund "Mutual fund")'s style with reference to common style axes (such as large/small and value/growth), recent applications have extended the model's utility to model more complex strategies, such as those employed by [hedge funds](https://en.wikipedia.org/wiki/Hedge_funds "Hedge funds"). Returns based strategies that use factors such as momentum signals (e.g., 52-week high) have been popular to the extent that industry analysts incorporate their use in their Buy/Sell recommendations.
+
+[William F. Sharpe](https://en.wikipedia.org/wiki/William_F._Sharpe "William F. Sharpe") first presented the model in his 1988 article "Determining a Fund's Effective Asset Mix". Under the name RBSA, this model was made available in commercial software soon after and retains a consistent presence in mutual fund analysis reporting.
+
+As the investment community has expanded beyond security selection to the embrace of asset allocation as the critical driver of performance, additional papers and studies further supported the concept of using RBSA in conjunction with holdings-based analysis. In 1995, the paper 'Determinants of Portfolio Performance' by Gary Brinson, L. Randolph Hood, and Gilbert L. Beebower, demonstrated that asset allocation decisions accounted for greater than 90% of the variability in a portfolio's performance.
+
+RBSA uses the [capital asset pricing model](https://en.wikipedia.org/wiki/Capital_asset_pricing_model "Capital asset pricing model") as its backbone, of which William Sharpe was also a primary contributor.^[\[4\]](https://en.wikipedia.org/wiki/Returns-based_style_analysis#cite_note-sharpeCAPM-4)^ In CAPM, a single index is often used as a proxy to represent the return of the market. The first step is to extend this to allow for multiple market proxy indices, thus:
+
+$$
+R_{j}=\beta_{0,j} + \sum_{i=1}^p\beta_{i,j}F_{i.t}+\epsilon_{j,t}
+$$
+
+The [beta](https://en.wikipedia.org/wiki/Beta_(finance) "Beta (finance)") coefficients are interpreted as exposures to the types of market returns represented by each chosen index. Since these exposures theoretically represent percentages of a replicating portfolio, we often apply the following constraints:
+
+$$
+\sum_{i=1}^p\beta_{i,j}=1\\
+\beta_{i,j} \geq 0
+$$
+
+To solve this problem, we use **Quadratic Programming.**
+
+Let´s build an example. We will try to explain the Return of BRK-A by using some mutual founds like **SPYG, SPYV, SPY and OEF**.
+
+> Get the Data
+
+```{r}
+#Downloading the Data from Jan 1990 to May 2012
+tickers = c('BRK-A', 'SPYG', 'SPYV', 'SPY', 'FMAGX')
+
+#Get the Data
+stocks = tq_get(tickers,
+                from = '2012-01-01',
+                to = '2021-12-31',
+                get = 'stock.prices',
+                complete_cases = T)
+
+#Convert to Returns
+stocks_ret = stocks %>%
+  group_by(symbol) %>%
+  tq_transmute(select = adjusted,
+    mutate_fun = periodReturn,
+    period = 'daily') %>%
+  spread(symbol, daily.returns)
+  
+```
+
+> Visualize the data
+
+```{r}
+#Function for cummulative returns
+ret_compound = function(x){
+  #Step 1: compute (1 + r)
+  x = 1 + x
+  #Step 2: compute cumprod
+  x = cumprod(x)
+  #step 3: compute cumprod - 1
+  x = x - 1
+  
+  return(x)
+}
+
+#Compute Returns
+cumm_ret = stocks_ret
+cumm_ret[, 2 : ncol(cumm_ret)] = lapply(cumm_ret[, 2 : ncol(cumm_ret)], ret_compound)
+
+#Plot the Data
+cumm_ret %>%
+  gather(symbol, cumm_ret, 2 : ncol(.)) %>%
+  ggplot(aes(x = date, y = cumm_ret, color = symbol)) +
+  geom_line() +
+  labs(title = 'Cummulative Returns')
+
+
+```
+
+> Quadratic Programming Algorithm
+
+The quadratic form of constraint linear regression is:
+
+$$
+\text{min }\epsilon'\epsilon = (Y-Xw)'(Y-Xw)=\frac{1}{2}w'X'Xw-Y'Xw\\
+\text{s.a } 1'w=1\\
+w\ge0
+$$
+
+```{r}
+
+require(quadprog)
+
+#This is the Quadratic programming algorithm
+X = as.matrix(stocks_ret[, 3 : ncol(stocks_ret)])
+y = stocks_ret[, 2]
+
+#QP Matrix formulation
+Dmat = t(X) %*% X
+dvec = t(y) %*% X
+
+#Constraints
+constr_1 = rep(1, ncol(X)) #Sum of weights is 1
+constr_2 = diag(ncol(X)) #Identity matrix for Waeights Identification
+Amat = rbind(constr_1, constr_2)
+
+# Vector holding the value of b0 for the Amat constrint
+bvec <- c(1, rep(0, ncol(X)))
+
+#Solving the QP problem ------>
+# meq indicates how many constraints are equality 
+# Only the second constraint is equality so meq = 2
+qp <- solve.QP(Dmat = Dmat, dvec = dvec, Amat = t(Amat), bvec = bvec, meq = 1)
+w = qp$solution
+names(w) = colnames(X)
+#Plot the solution
+barplot(w)
+```
+
+> Compute pseudo R2
+
+We can compute a type of $R^2$ call **pseudo-R2**:
+
+$$
+R_{\text{pse}}^2 = \text{cor}(y, \hat{y})^2 \\
+\text{where: }\hat{y}=Xw'
+$$
+
+```{r}
+#compute pseudo r2
+y_hat = X %*% w
+
+#Plot y vs yhat
+plot(as.matrix(y), y_hat)
+
+pseudo_r2 = cor(as.matrix(y), y_hat)^2
+pseudo_r2
+```
+
+It is useful to plot the actual vs fitted values and take a look on the behavior of the scatter plot. Usually, the model is "correct" if the relation between $y$ and $\hat{y}$ is linear. Also, we can check that the $R^2=0.70$. This is a good value.
+
+### About SPYV
+
+The investment seeks to provide investment results that, before fees and expenses, correspond generally to the total return performance of the S&P 500 Value Index that tracks the performance of large capitalization exchange traded U.S. equity securities exhibiting "value" characteristics. The fund employs a sampling strategy in seeking to track the performance of the S&P 500 Value Index. It generally invests substantially all, but at least 80%, of its total assets in the securities comprising the index. The index measures the performance of the large capitalization value segment of the U.S. equity market.
+
+[Source for SPYV](https://money.usnews.com/funds/etfs/large-value/spdr-portfolio-s-p-500-value-etf/spyv#sectorweights)
+
+### About SPYG
+
+The investment seeks to provide investment results that, before fees and expenses, correspond generally to the total return performance of the S&P 500 Growth Index that tracks the performance of large capitalization exchange traded U.S. equity securities exhibiting "growth" characteristics. The fund generally invests substantially all, but at least 80%, of its total assets in the securities comprising the index. The index measures the performance of the large-capitalization growth segment of the U.S. equity market. It is non-diversified.
+
+[Source for SPYG](https://money.usnews.com/funds/etfs/large-growth/spdr-portfolio-s-p-500-growth-etf/spyg#about)
+
+### Rolling Window Style Analysis
+
+Assuming weights are constant over time is not the best approach since a lot of decisions can change over time. Usually, rolling windows of 30 to 180 days are useful to understand how weights change over time between factors.
+
+> Compile a QP function for Style analysis
+
+```{r}
+
+style_analysis = function(x){
+  #x is a dataframe containing the y and X matrix. By definition the first
+  #column of x is a Date and the second column is y
+  #the function returns the optimal weights
+  
+  x = as.data.frame(x)
+  #This is the Quadratic programming algorithm
+  X = as.matrix(x[, 3 : ncol(x)])
+  y = x[, 2]
+  
+  #QP Matrix formulation
+  Dmat = t(X) %*% X
+  dvec = t(y) %*% X
+  
+  #Constraints
+  constr_1 = rep(1, ncol(X)) #Sum of weights is 1
+  constr_2 = diag(ncol(X)) #Identity matrix for Waeights Identification
+  Amat = rbind(constr_1, constr_2)
+  
+  # Vector holding the value of b0 for the Amat constrint
+  bvec <- c(1, rep(0, ncol(X)))
+  
+  #Solving the QP problem ------>
+  # meq indicates how many constraints are equality 
+  # Only the second constraint is equality so meq = 2
+  qp <- solve.QP(Dmat = Dmat, dvec = dvec, Amat = t(Amat), bvec = bvec, meq = 1)
+  w = qp$solution
+  names(w) = colnames(X)
+  
+  return(w)
+  
+}
+
+#Testing the function
+style_analysis(stocks_ret)
+```
+
+Now we can create a rolling window algo.
+
+> Compute rolling weights
+
+```{r}
+
+#create window
+window_l = 120
+n_runs = nrow(stocks_ret) - 2 * window_l + 1
+Results = NULL
+i0 = window_l
+
+for(i in 1 : n_runs){
+  index = i0 : (i0 + window_l)
+
+  temp = stocks_ret[index, ]
+  w = style_analysis(temp)
+  w = data.frame(symbol = names(w), w = w, date = temp$date[1], id = i)
+  i0 = i0 + 1
+  Results = rbind(Results, w)
+  
+}
+
+#Plot Results
+Results %>%
+  ggplot(aes(x = date, y = w, fill = symbol)) +
+  geom_area(alpha = 0.7) +
+  scale_fill_viridis_d(end = 0.8, option = 'B') +
+  labs(title = 'Style Analysis of BRK-A')
+```
+
+It is interesting to see that BRK-A is replicating the SPYG ETF for Growth, during the post crisis is mainly traiying to mimic SP500 and from 2015 returns to Value.
