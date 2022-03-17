@@ -1,0 +1,674 @@
+---
+title: Introduccion a Tidy Data (Español)
+author: Eduardo Villarreal
+date: '2022-03-16'
+slug: introduccion-a-tidy-data-espa-ol
+categories:
+  - Basic Statisitcs
+  - Tidyverse
+tags:
+  - R
+  - Descriptive Statisitcs
+---
+
+<script src="{{< blogdown/postref >}}index_files/header-attrs/header-attrs.js"></script>
+
+
+<div id="introducción" class="section level1">
+<h1>Introducción</h1>
+<div class="figure">
+<img src="TidyVerse.PNG" alt="" />
+<p class="caption"><em>Fig.1 - Tidyverse framework</em></p>
+</div>
+<p>En esta sección vamos a revisar las forma de trabajar con datos. Se dice que un <strong>Dataframe</strong> es **Tidy* si:</p>
+<ol style="list-style-type: decimal">
+<li>Cada <strong>variable</strong> es una sola columna</li>
+<li>Cada <strong>Observación</strong> tiene asignado 1 solo renglón</li>
+<li>Cada <strong>Valor</strong> se encuentra en una celda</li>
+</ol>
+<div class="figure">
+<img src="TidyData.PNG" alt="" />
+<p class="caption"><em>Fig.2 - Tidy Data</em></p>
+</div>
+<div id="tidy-data-con-tidyr" class="section level2">
+<h2>Tidy Data con tidyr</h2>
+<p>El paquete <strong>tidyr</strong> forma parte de un ecosistema dentro de <strong>R</strong> denominado <strong>tidyverse</strong> con conjunta varios paquetes de <strong>R</strong> para manejar y visualizar datos.</p>
+<p>Para instalar <strong>tidyr</strong> podemos escribir en la consola:</p>
+<p><code>install.packages('tidyverse', dependencies = TRUE)</code></p>
+<p>Una vez que el paquete se haya descargado e instalado, escribimos:</p>
+<p><code>require(tidyverse)</code></p>
+<pre class="r"><code>library(tidyverse)</code></pre>
+<p>El principio de <strong>tidydata</strong> pareciera ser obvio pero en realidad, existen muchos datos que están en un formato inadecuado para ser tratados por un lenguaje de programación con <strong>R</strong> o <strong>Python</strong>. Existen un sin fin de razones por las cuales un conjunto de datos no se encuentra en el formato adecuado:</p>
+<ul>
+<li>La mayor parte de las personas no está acostumbrada a trabajar con datos</li>
+<li>Los datos son organizados de tal manera que su recolección es lo más rápida y sencilla</li>
+</ul>
+<p>De aquí que muchas veces será necesatio <strong>Manipular</strong> los datos para que puedan ser tratados. Existen 2 funciones muy poderosas para el manejo de datos en <strong>R</strong>:</p>
+<ol style="list-style-type: decimal">
+<li><code>gather(data, key = "key", value = "value", ..., na.rm = FALSE)</code></li>
+<li><code>spread(data, key, value, fill = NA)</code></li>
+</ol>
+<div id="gather" class="section level3">
+<h3>Gather</h3>
+<p>Un problema común es que en un dataset, algunas de las columanas se encuentran como valores de alguna variable. Por ejemplo, considere la tabla <strong>table4a</strong> que viene pre cargada en el paquete <strong>tidyverse</strong></p>
+<pre class="r"><code>table4a</code></pre>
+<pre><code># A tibble: 3 x 3
+  country     `1999` `2000`
+* &lt;chr&gt;        &lt;int&gt;  &lt;int&gt;
+1 Afghanistan    745   2666
+2 Brazil       37737  80488
+3 China       212258 213766</code></pre>
+<p>En este caso, las calumnas <strong>1999</strong> y <strong>2000</strong> deberían ser posibles <strong>valores</strong> dentro de una variable que se llame <strong>year</strong>. Para lograr esto, utilizaos la siguiente sintaxis:</p>
+<pre class="r"><code>table4a %&gt;%
+  gather(key = &#39;year&#39;, value = &#39;causes&#39;, 2 : 3)</code></pre>
+<pre><code># A tibble: 6 x 3
+  country     year  causes
+  &lt;chr&gt;       &lt;chr&gt;  &lt;int&gt;
+1 Afghanistan 1999     745
+2 Brazil      1999   37737
+3 China       1999  212258
+4 Afghanistan 2000    2666
+5 Brazil      2000   80488
+6 China       2000  213766</code></pre>
+<p>El operador <code>%&gt;%</code>se denomina <strong>pipe</strong> y lo que nos dice es que la tabla <strong>table4a</strong> pasa como argumento de ña función <strong>gather</strong>. La ventaja de utilizar el operador <strong>pipe</strong> es que nos permite <strong>encadenar</strong> series o secuencuas de comandos sin la necesidad de guardar o crear variables intermedias. La forma tradicional de utilizar el comando <strong>gather</strong> es:</p>
+<p><code>gather(table4a, key = 'year', value = 'causes', 2 : 3)</code></p>
+<div class="figure">
+<img src="gather.PNG" alt="" />
+<p class="caption"><em>Fig.3 - gather</em></p>
+</div>
+</div>
+<div id="spread" class="section level3">
+<h3>Spread</h3>
+<p><strong>Spread</strong> hace lo opuesto a <strong>gather</strong>. Este comando es últil cuando cada observación se encuentra en múltiples renglones. Por ejemplo, la tabla <strong>table2</strong> contine datos dedistintos paises por año pero cada onservación se encuentra distribuida a lo largo de 2 renglones:</p>
+<pre class="r"><code>table2</code></pre>
+<pre><code># A tibble: 12 x 4
+   country      year type            count
+   &lt;chr&gt;       &lt;int&gt; &lt;chr&gt;           &lt;int&gt;
+ 1 Afghanistan  1999 cases             745
+ 2 Afghanistan  1999 population   19987071
+ 3 Afghanistan  2000 cases            2666
+ 4 Afghanistan  2000 population   20595360
+ 5 Brazil       1999 cases           37737
+ 6 Brazil       1999 population  172006362
+ 7 Brazil       2000 cases           80488
+ 8 Brazil       2000 population  174504898
+ 9 China        1999 cases          212258
+10 China        1999 population 1272915272
+11 China        2000 cases          213766
+12 China        2000 population 1280428583</code></pre>
+<p>En el contexto del problema, para que la tabla <strong>table2</strong> sea <strong>tidy</strong> necesitamos que los valores de la columna <strong>type</strong> se conviertan en <strong>columnas</strong> haciendolas <strong>variables</strong></p>
+<p>El comando <strong>spread</strong> funciona de la siguiente manera:</p>
+<p><code>spread(data, key, value, fill = NA)</code></p>
+<p>al igual que con <strong>gather</strong> podemos hacer uso del operador <strong>pipe</strong> (<code>%&gt;%</code>) para pasar el dataframe al argumento de <strong>data</strong> y construir cadenas de comandos que veremos más adelante:</p>
+<pre class="r"><code>table2 %&gt;%
+  spread(type, count, fill = 0)</code></pre>
+<pre><code># A tibble: 6 x 4
+  country      year  cases population
+  &lt;chr&gt;       &lt;int&gt;  &lt;dbl&gt;      &lt;dbl&gt;
+1 Afghanistan  1999    745   19987071
+2 Afghanistan  2000   2666   20595360
+3 Brazil       1999  37737  172006362
+4 Brazil       2000  80488  174504898
+5 China        1999 212258 1272915272
+6 China        2000 213766 1280428583</code></pre>
+<p>Este dataset, puede ser utilizado para hacer una regresión en donde el <em>tiempo</em> está representado por la variable <em>year</em></p>
+<div class="figure">
+<img src="spread.PNG" alt="" />
+<p class="caption"><em>Fig.4 - spread</em></p>
+</div>
+</div>
+<div id="valores-faltantes-missing-data" class="section level3">
+<h3>Valores Faltantes (Missing Data)</h3>
+<p>Los valores faltantes o <strong>missing data</strong> generalmente se representan por el contexto <code>NA</code>. Considere el siguiente <strong>dataframe</strong> en fomrmato <em>tibble</em></p>
+<pre class="r"><code>stocks &lt;- tibble(
+year = c(2015, 2015, 2015, 2015, 2016, 2016, 2016),
+qtr = c( 1, 2, 3, 4, 2, 3, 4),
+return = c(1.88, 0.59, 0.35, NA, 0.92, 0.17, 2.66)
+)
+
+stocks</code></pre>
+<pre><code># A tibble: 7 x 3
+   year   qtr return
+  &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;
+1  2015     1   1.88
+2  2015     2   0.59
+3  2015     3   0.35
+4  2015     4  NA   
+5  2016     2   0.92
+6  2016     3   0.17
+7  2016     4   2.66</code></pre>
+<p>En este caso hay 2 valores faltantes:</p>
+<ol style="list-style-type: decimal">
+<li>El retorno de la acción de la cuarta observación</li>
+<li>El valor del primer cuarto del 2016 que simplemente no aparece en la tabla</li>
+</ol>
+<pre class="r"><code>stocks %&gt;%
+  spread(year, return)</code></pre>
+<pre><code># A tibble: 4 x 3
+    qtr `2015` `2016`
+  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;
+1     1   1.88  NA   
+2     2   0.59   0.92
+3     3   0.35   0.17
+4     4  NA      2.66</code></pre>
+<p>Para evitar esto, podemos hacer uso de 2 argumentos en <strong>gather</strong>:</p>
+<ol style="list-style-type: decimal">
+<li><p><code>na.rm = TRUE</code>que simplemente remueve los renglones con <code>NA</code></p></li>
+<li><p><code>fill = valor</code> que coloca el <code>valor</code>especificado por el usuario cad avez que se encuentra un <code>NA</code></p></li>
+</ol>
+<pre class="r"><code>#Remueve los NA´s
+stocks %&gt;%
+  spread(year, return) %&gt;%
+  gather(year, return, `2015`:`2016`, na.rm = TRUE)</code></pre>
+<pre><code># A tibble: 6 x 3
+    qtr year  return
+  &lt;dbl&gt; &lt;chr&gt;  &lt;dbl&gt;
+1     1 2015    1.88
+2     2 2015    0.59
+3     3 2015    0.35
+4     2 2016    0.92
+5     3 2016    0.17
+6     4 2016    2.66</code></pre>
+<p>Otra foerma de hacer esto es con <code>na.omit(data)</code> que elimina todos los renglones con <code>NA</code></p>
+<p>Con la siguiente linea, colocamos un 0:</p>
+<pre class="r"><code>stocks %&gt;%
+  spread(year, return, fill = 0)</code></pre>
+<pre><code># A tibble: 4 x 3
+    qtr `2015` `2016`
+  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;
+1     1   1.88   0   
+2     2   0.59   0.92
+3     3   0.35   0.17
+4     4   0      2.66</code></pre>
+</div>
+</div>
+<div id="tablas-relacionales-con-dplyr" class="section level2">
+<h2>Tablas relacionales con dplyr</h2>
+<p>Por lo general, el analisis de datos involucra 1 sola tabla que tipicamente proviene de tratar o juntar múltiples tablas. Collectivamente hablando, este tipo de tablas se denominan <strong>tablas relacionales</strong> o <strong>bases de datos relacionales</strong></p>
+<p>Para trabajar con <strong>datos relacionales</strong> existen 3 operaciones básicas:</p>
+<ul>
+<li>Mutating Joins : este tipo de transformaciones agregan <strong>nuevas columnas</strong> o <strong>variables</strong> a un dataframe haciendo un match 1 a 1</li>
+<li>Filtering Joins: con esta operación buscamos filtrar un conjunto de datos en función de 1 o varios criterios para 1 o varias columnas</li>
+<li>Set Operations: este tipo de operación trata cada observación como si se tratara de conjuntos de datos distintos</li>
+</ul>
+<p>Si en el pasado utilizaste <strong>SQL</strong>, <strong>dplyr</strong> hará el trabajo más sencillo.</p>
+<div id="prerequisitos" class="section level3">
+<h3>Prerequisitos</h3>
+<p>En esta sección vamos a explorar el data set <strong>nycflights13</strong> utilizando <strong>dplyr</strong> del ecosistema <strong>tidyverse</strong>:</p>
+<pre class="r"><code>require(tidyverse)
+#install.packages(&#39;nycflights13&#39;)
+require(nycflights13)</code></pre>
+</div>
+<div id="nycflights13" class="section level3">
+<h3>nycflights13</h3>
+<p><strong>nycflights13</strong> contiene 4 tablas que estan relacionadas con la tabla <strong>flights</strong>:</p>
+<pre class="r"><code>flights = flights</code></pre>
+<ol style="list-style-type: decimal">
+<li><code>airlines</code> que contiene el nombre de la aerolinea y su abreviatura:</li>
+</ol>
+<pre class="r"><code>airlines = airlines</code></pre>
+<p>2.<code>airports</code>que contiene el nombre del aeroperto y sus siglas conforme a la <em>faa</em></p>
+<pre class="r"><code>airports = airports</code></pre>
+<ol start="3" style="list-style-type: decimal">
+<li><code>planes</code>que identifica cada avión de acuerdo al número de embarque</li>
+</ol>
+<pre class="r"><code>planes = planes</code></pre>
+<ol start="4" style="list-style-type: decimal">
+<li><code>weather</code>que proporciona el clima por hora en cada aereopuerto de la ciudad de <strong>NY</strong></li>
+</ol>
+<pre class="r"><code>weather = weather</code></pre>
+<p>Una forma de visualiar las relaciones enre las tablas es con el siguiente diagrama:</p>
+<div class="figure">
+<img src="RelationalData.PNG" alt="" />
+<p class="caption"><em>Fig.5 - Relaciones entre tablas para nycfligts13</em></p>
+</div>
+</div>
+<div id="keys-o-campos-llave" class="section level3">
+<h3>Keys o campos llave</h3>
+<p>A las <strong>variables</strong> utilizadas para conectar dos o mas tablas se les llama <strong>keys</strong> o <strong>campos llave</strong>. Un <strong>campo llave</strong> es una variable que identifica de manera <strong>unica</strong> una observación dentro de una tabla (ejemplo: el <strong>CURP</strong>). En el caso de <strong>nycflights13</strong>, la tabla <strong>planes</strong> identifica cada avión con su <em>número de matricula</em>. Existen 2 tipos de <strong>llaves</strong>:</p>
+<ol style="list-style-type: decimal">
+<li><p><strong>Primary Key</strong>: identifica de manera única cada observación. Por ejemplo <code>planes$tailnum</code></p></li>
+<li><p><strong>Foreign Key</strong>: utilizada para identificar una observación en otra tabla. Por ejemplo <code>flights$tailnum</code></p></li>
+</ol>
+<p>Una vez que se ha identificado el <strong>campo llave</strong>, una buena práctica es verificar que se <strong>unica</strong> para cada observación. Esto podemos hacerlos mediante el comando <code>count()</code> y mirar las entradas en donde <code>n &gt; 1</code>:</p>
+<pre class="r"><code>planes %&gt;%
+  count(tailnum)</code></pre>
+<pre><code># A tibble: 3,322 x 2
+   tailnum     n
+   &lt;chr&gt;   &lt;int&gt;
+ 1 N10156      1
+ 2 N102UW      1
+ 3 N103US      1
+ 4 N104UW      1
+ 5 N10575      1
+ 6 N105UW      1
+ 7 N107US      1
+ 8 N108UW      1
+ 9 N109UW      1
+10 N110UW      1
+# ... with 3,312 more rows</code></pre>
+<pre class="r"><code>#Ahora filtramos n &gt; 1
+
+planes %&gt;% 
+  count(tailnum) %&gt;% 
+  filter(n &gt; 1)</code></pre>
+<pre><code># A tibble: 0 x 2
+# ... with 2 variables: tailnum &lt;chr&gt;, n &lt;int&gt;</code></pre>
+<p>Nuestro <strong>campo llave</strong> es <strong>unico</strong>.</p>
+<p>cuál es el <strong>campo llave</strong> e la tabla <code>flights</code>?</p>
+<pre class="r"><code>flights %&gt;%
+count(year, month, day, flight) %&gt;%
+filter(n &gt; 1)</code></pre>
+<pre><code># A tibble: 29,768 x 5
+    year month   day flight     n
+   &lt;int&gt; &lt;int&gt; &lt;int&gt;  &lt;int&gt; &lt;int&gt;
+ 1  2013     1     1      1     2
+ 2  2013     1     1      3     2
+ 3  2013     1     1      4     2
+ 4  2013     1     1     11     3
+ 5  2013     1     1     15     2
+ 6  2013     1     1     21     2
+ 7  2013     1     1     27     4
+ 8  2013     1     1     31     2
+ 9  2013     1     1     32     2
+10  2013     1     1     35     2
+# ... with 29,758 more rows</code></pre>
+</div>
+<div id="mutating-joins" class="section level3">
+<h3>Mutating Joins</h3>
+<p><strong>Mutating Joins</strong> permite combinar variables de dos tablas. Primero hace un match entre sus dos <strong>campos llaves</strong> y posteriormente hace una relación 1 a 1.</p>
+<p>De la tabla <code>flights</code> vamos a utilizar un conjunto de variables:</p>
+<pre class="r"><code>flights2 &lt;- flights %&gt;%
+  select(year:day, hour, origin, dest, tailnum, carrier)
+flights2</code></pre>
+<pre><code># A tibble: 336,776 x 8
+    year month   day  hour origin dest  tailnum carrier
+   &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;dbl&gt; &lt;chr&gt;  &lt;chr&gt; &lt;chr&gt;   &lt;chr&gt;  
+ 1  2013     1     1     5 EWR    IAH   N14228  UA     
+ 2  2013     1     1     5 LGA    IAH   N24211  UA     
+ 3  2013     1     1     5 JFK    MIA   N619AA  AA     
+ 4  2013     1     1     5 JFK    BQN   N804JB  B6     
+ 5  2013     1     1     6 LGA    ATL   N668DN  DL     
+ 6  2013     1     1     5 EWR    ORD   N39463  UA     
+ 7  2013     1     1     6 EWR    FLL   N516JB  B6     
+ 8  2013     1     1     6 LGA    IAD   N829AS  EV     
+ 9  2013     1     1     6 JFK    MCO   N593JB  B6     
+10  2013     1     1     6 LGA    ORD   N3ALAA  AA     
+# ... with 336,766 more rows</code></pre>
+<p>Imagine que queremos agregar el nombre completo de la <em>aerolinea</em> a la nueva tabla <strong>flights2</strong>. Podemos utilizar un <code>left_join()</code></p>
+<pre class="r"><code>flights2 %&gt;%
+  select(-origin, -dest) %&gt;%
+  left_join(airlines, by = &quot;carrier&quot;)</code></pre>
+<pre><code># A tibble: 336,776 x 7
+    year month   day  hour tailnum carrier name                    
+   &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;dbl&gt; &lt;chr&gt;   &lt;chr&gt;   &lt;chr&gt;                   
+ 1  2013     1     1     5 N14228  UA      United Air Lines Inc.   
+ 2  2013     1     1     5 N24211  UA      United Air Lines Inc.   
+ 3  2013     1     1     5 N619AA  AA      American Airlines Inc.  
+ 4  2013     1     1     5 N804JB  B6      JetBlue Airways         
+ 5  2013     1     1     6 N668DN  DL      Delta Air Lines Inc.    
+ 6  2013     1     1     5 N39463  UA      United Air Lines Inc.   
+ 7  2013     1     1     6 N516JB  B6      JetBlue Airways         
+ 8  2013     1     1     6 N829AS  EV      ExpressJet Airlines Inc.
+ 9  2013     1     1     6 N593JB  B6      JetBlue Airways         
+10  2013     1     1     6 N3ALAA  AA      American Airlines Inc.  
+# ... with 336,766 more rows</code></pre>
+</div>
+<div id="entendiendo-el-operador-join" class="section level3">
+<h3>Entendiendo el operador Join</h3>
+<p>Para entender mejor, vamos a simplificar utilizando 2 tablas:</p>
+<pre class="r"><code>x &lt;- tribble( ~key, ~val_x,
+              1, &quot;x1&quot;, 
+              2, &quot;x2&quot;,
+              3, &quot;x3&quot;)
+
+y &lt;- tribble( ~key, ~val_y,
+              1, &quot;y1&quot;,
+              2, &quot;y2&quot;,
+              4, &quot;y3&quot;)</code></pre>
+<div class="figure">
+<img src="XYtibble.PNG" alt="" />
+<p class="caption"><em>Fig.6 - X,Y</em></p>
+</div>
+<p>Un <strong>join</strong> es una forma de conectar cada <strong>renglon</strong> en <code>x</code> con ninguno, uno o mas rengones en <code>y</code></p>
+<div class="figure">
+<img src="Join1.PNG" alt="" />
+<p class="caption"><em>Fig.7 - Representación de un Join</em></p>
+</div>
+</div>
+<div id="inner-join" class="section level3">
+<h3>Inner Join</h3>
+<p>Un <strong>inner join</strong> hace el match de todos los renglones en donde los campos llave son iguales. La salida de un <em>inner join</em> es un dataframe que contiene el <strong>campo llave</strong>, los valores de <code>x</code> y los valores de <code>y</code>:</p>
+<pre class="r"><code>x %&gt;% 
+  inner_join(y, by = &quot;key&quot;)</code></pre>
+<pre><code># A tibble: 2 x 3
+    key val_x val_y
+  &lt;dbl&gt; &lt;chr&gt; &lt;chr&gt;
+1     1 x1    y1   
+2     2 x2    y2   </code></pre>
+<p>La propiedad más importante de un <em>inner join</em> es que todas las observaciones que no hacen <em>match</em> se pierden y no foarman parte del resultado. Esta propiedad hace que un <em>inner join</em> no sea apropiado para analisis ya que existe la posibilidad de perder información.</p>
+</div>
+<div id="outer-joins" class="section level3">
+<h3>Outer Joins</h3>
+<p>En escencia un <em>inner join</em> conserva las observaciones en <code>x</code> y en <code>y</code>. Un <em>outer join</em> conserva las <strong>todas</strong> las observaciones de almenos una de las tablas. Existen 3 tipos de <em>outer join</em>:</p>
+<ol style="list-style-type: decimal">
+<li><code>left_join</code>: conserva todas las observaciones en <code>x</code></li>
+<li><code>right_join</code>: conserva todas las observaciones en <code>y</code></li>
+<li><code>full_join</code>: conserva todas las observaciones en <code>x</code> y en <code>y</code></li>
+</ol>
+<div class="figure">
+<img src="Join2.PNG" alt="" />
+<p class="caption"><em>Fig.8 - left, right &amp; full join</em></p>
+</div>
+<p>Otra forma de representar un <em>join</em> es con un diagrama de <strong>Venn</strong></p>
+<div class="figure">
+<img src="Join3.PNG" alt="" />
+<p class="caption"><em>Fig.9 - Diagrama de Venn: tipos de join</em></p>
+</div>
+<p>La nomenclatura en <strong>R</strong> para cada tipo de <em>join</em> es:</p>
+<p><code>left_join(x, y, by = key)</code></p>
+<p><code>right_join(x, y, by = key)</code></p>
+<p><code>full_join(x, y, by = key)</code></p>
+<p><code>inner_join(x, y, by = key)</code></p>
+<p>por default el argumento <code>by = NULL</code>lo que quiere decir que el <em>join</em> va a tomar como campos clave todos los campos en <code>x</code> y en <code>y</code>. Por ejemplo:</p>
+<pre class="r"><code>flights2 %&gt;% 
+  left_join(weather)</code></pre>
+<pre><code># A tibble: 336,776 x 18
+    year month   day  hour origin dest  tailnum carrier  temp  dewp humid
+   &lt;int&gt; &lt;int&gt; &lt;int&gt; &lt;dbl&gt; &lt;chr&gt;  &lt;chr&gt; &lt;chr&gt;   &lt;chr&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+ 1  2013     1     1     5 EWR    IAH   N14228  UA       39.0  28.0  64.4
+ 2  2013     1     1     5 LGA    IAH   N24211  UA       39.9  25.0  54.8
+ 3  2013     1     1     5 JFK    MIA   N619AA  AA       39.0  27.0  61.6
+ 4  2013     1     1     5 JFK    BQN   N804JB  B6       39.0  27.0  61.6
+ 5  2013     1     1     6 LGA    ATL   N668DN  DL       39.9  25.0  54.8
+ 6  2013     1     1     5 EWR    ORD   N39463  UA       39.0  28.0  64.4
+ 7  2013     1     1     6 EWR    FLL   N516JB  B6       37.9  28.0  67.2
+ 8  2013     1     1     6 LGA    IAD   N829AS  EV       39.9  25.0  54.8
+ 9  2013     1     1     6 JFK    MCO   N593JB  B6       37.9  27.0  64.3
+10  2013     1     1     6 LGA    ORD   N3ALAA  AA       39.9  25.0  54.8
+# ... with 336,766 more rows, and 7 more variables: wind_dir &lt;dbl&gt;,
+#   wind_speed &lt;dbl&gt;, wind_gust &lt;dbl&gt;, precip &lt;dbl&gt;, pressure &lt;dbl&gt;,
+#   visib &lt;dbl&gt;, time_hour &lt;dttm&gt;</code></pre>
+</div>
+</div>
+<div id="operaciones-con-dplyr" class="section level2">
+<h2>Operaciones con dplyr</h2>
+<p>Todo el proceso para juntar las diferentes bases de datos se ve así:</p>
+<pre class="r"><code>flights_db = left_join(flights, planes) %&gt;%
+  left_join(weather) %&gt;%
+  left_join(airlines) %&gt;%
+  left_join(airports)
+  
+flights_db</code></pre>
+<pre><code># A tibble: 336,776 x 43
+    year month   day dep_time sched_dep_time dep_delay arr_time sched_arr_time
+   &lt;int&gt; &lt;int&gt; &lt;int&gt;    &lt;int&gt;          &lt;int&gt;     &lt;dbl&gt;    &lt;int&gt;          &lt;int&gt;
+ 1  2013     1     1      517            515         2      830            819
+ 2  2013     1     1      533            529         4      850            830
+ 3  2013     1     1      542            540         2      923            850
+ 4  2013     1     1      544            545        -1     1004           1022
+ 5  2013     1     1      554            600        -6      812            837
+ 6  2013     1     1      554            558        -4      740            728
+ 7  2013     1     1      555            600        -5      913            854
+ 8  2013     1     1      557            600        -3      709            723
+ 9  2013     1     1      557            600        -3      838            846
+10  2013     1     1      558            600        -2      753            745
+# ... with 336,766 more rows, and 35 more variables: arr_delay &lt;dbl&gt;,
+#   carrier &lt;chr&gt;, flight &lt;int&gt;, tailnum &lt;chr&gt;, origin &lt;chr&gt;, dest &lt;chr&gt;,
+#   air_time &lt;dbl&gt;, distance &lt;dbl&gt;, hour &lt;dbl&gt;, minute &lt;dbl&gt;, time_hour &lt;dttm&gt;,
+#   type &lt;chr&gt;, manufacturer &lt;chr&gt;, model &lt;chr&gt;, engines &lt;int&gt;, seats &lt;int&gt;,
+#   speed &lt;int&gt;, engine &lt;chr&gt;, temp &lt;dbl&gt;, dewp &lt;dbl&gt;, humid &lt;dbl&gt;,
+#   wind_dir &lt;dbl&gt;, wind_speed &lt;dbl&gt;, wind_gust &lt;dbl&gt;, precip &lt;dbl&gt;,
+#   pressure &lt;dbl&gt;, visib &lt;dbl&gt;, name &lt;chr&gt;, faa &lt;chr&gt;, lat &lt;dbl&gt;, ...</code></pre>
+<div class="figure">
+<img src="RelationalData.PNG" alt="" />
+<p class="caption"><em>Fig.5 - Relaciones entre tablas para nycfligts13</em></p>
+</div>
+<p>Existen varias operaciones básicas que nos ayudan a tratar los datos de manera eficiente:</p>
+<ol style="list-style-type: decimal">
+<li><code>group_by</code>: agrupa un dataframe por una o varias variables. Util cuando queremos estratificar la información agrupada por algún criterio.</li>
+<li><code>filter</code>: obtiene un sub conjunto del dataframe con base a un criterio</li>
+<li><code>mutate</code>: se utiliza para crear nuevas variables o columnas utilizando operaciones lógicas o ariméticas</li>
+<li><code>summarise</code>: resume un conjunto de variables utilizando <em>estadísticos</em> como la media, mediana, suma, etc</li>
+</ol>
+<div id="agregar-y-agrupar-con-group_by-summarise" class="section level3">
+<h3>Agregar y agrupar con <code>group_by</code> &amp; <code>summarise</code></h3>
+<p>Ya que tenemos nuestra base de datos, ahora podemos trabajar para computar, por ejemplo, el promedio y la desviación estándar de la combinación <code>origin</code>, <code>dest</code>. Para esto usaremos la función <code>group_by()</code> y <code>summarise()</code>. La variables de interes es el tiempo de vuelo <code>airtime</code>.</p>
+<pre class="r"><code>flights_db %&gt;%
+  group_by(origin, dest) %&gt;%
+  summarise(mean_time = mean(air_time, na.rm = T),
+            sd_time = sd(air_time, na.rm = T))</code></pre>
+<pre><code># A tibble: 224 x 4
+# Groups:   origin [3]
+   origin dest  mean_time sd_time
+   &lt;chr&gt;  &lt;chr&gt;     &lt;dbl&gt;   &lt;dbl&gt;
+ 1 EWR    ALB        31.8    3.08
+ 2 EWR    ANC       413.    14.7 
+ 3 EWR    ATL       112.     9.99
+ 4 EWR    AUS       211.    17.9 
+ 5 EWR    AVL        89.8    7.45
+ 6 EWR    BDL        25.5    3.29
+ 7 EWR    BNA       115.    10.9 
+ 8 EWR    BOS        40.3    4.92
+ 9 EWR    BQN       196.     8.88
+10 EWR    BTV        46.3    3.67
+# ... with 214 more rows</code></pre>
+<p>Si quisieramos hacer una comparación por aerolinea, simplemente agregamos la variable <code>carrier</code> dentro de <code>group_by</code></p>
+<pre class="r"><code>flights_db %&gt;%
+  group_by(carrier, origin, dest) %&gt;%
+  summarise(mean_time = mean(air_time, na.rm = T),
+            sd_time = sd(air_time, na.rm = T))</code></pre>
+<pre><code># A tibble: 439 x 5
+# Groups:   carrier, origin [35]
+   carrier origin dest  mean_time sd_time
+   &lt;chr&gt;   &lt;chr&gt;  &lt;chr&gt;     &lt;dbl&gt;   &lt;dbl&gt;
+ 1 9E      EWR    ATL       111      5.16
+ 2 9E      EWR    CVG        95.3    8.15
+ 3 9E      EWR    DTW        85.6    7.63
+ 4 9E      EWR    MSP       157.    12.5 
+ 5 9E      JFK    ATL       121.     9.72
+ 6 9E      JFK    AUS       222      4.24
+ 7 9E      JFK    BNA       115.    11.1 
+ 8 9E      JFK    BOS        38.9    5.27
+ 9 9E      JFK    BUF        57.2    4.82
+10 9E      JFK    BWI        38.8    4.29
+# ... with 429 more rows</code></pre>
+<p>También podemos agregar más computos dentro de <code>summarise</code> con otras variables, por ejemplo, la velocidad del viento <code>wind_speed</code>:</p>
+<pre class="r"><code>flights_db %&gt;%
+  group_by(carrier, origin, dest) %&gt;%
+  summarise(mean_time = mean(air_time, na.rm = T),
+            sd_time = sd(air_time, na.rm = T),
+            mean_wind = mean(wind_speed, na.rm = T),
+            max_wind = max(wind_speed))</code></pre>
+<pre><code># A tibble: 439 x 7
+# Groups:   carrier, origin [35]
+   carrier origin dest  mean_time sd_time mean_wind max_wind
+   &lt;chr&gt;   &lt;chr&gt;  &lt;chr&gt;     &lt;dbl&gt;   &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;
+ 1 9E      EWR    ATL       111      5.16      8.34     11.5
+ 2 9E      EWR    CVG        95.3    8.15     10.4      NA  
+ 3 9E      EWR    DTW        85.6    7.63      9.80     NA  
+ 4 9E      EWR    MSP       157.    12.5      10.1      NA  
+ 5 9E      JFK    ATL       121.     9.72     11.4      29.9
+ 6 9E      JFK    AUS       222      4.24     17.3      21.9
+ 7 9E      JFK    BNA       115.    11.1      13.9      NA  
+ 8 9E      JFK    BOS        38.9    5.27     13.5      NA  
+ 9 9E      JFK    BUF        57.2    4.82     12.7      NA  
+10 9E      JFK    BWI        38.8    4.29     12.6      NA  
+# ... with 429 more rows</code></pre>
+</div>
+<div id="campos-calculados-con-mutate" class="section level3">
+<h3>Campos calculados con <code>mutate</code></h3>
+<p>Si quisieramos calcular la velocidad promedio tendríamos que calcular <code>distance / air_distance</code>. Hay varias formas de hacerlo y podemos empezar utilizando <strong>baseR</strong> con <strong>dplyr</strong>:</p>
+<pre class="r"><code>velocity = flights_db %&gt;%
+  group_by(origin, dest) %&gt;%
+  summarise(mean_time = mean(air_time, na.rm = T),
+            mean_distance = mean(distance, na.rm = T))
+
+#ahora computamos la velocidad promedio
+velocity$speed = velocity$mean_distance / velocity$mean_time
+
+#Hagamos ahora un hitograma
+ggplot(velocity, aes(x = speed)) +
+  geom_histogram(col = &#39;white&#39;) +
+  labs(title = &#39;Histogram of Speed&#39;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-27-1.png" width="672" /></p>
+<p>El siguente <strong>pipeline</strong> es equivalente:</p>
+<pre class="r"><code>flights_db %&gt;%
+  group_by(origin, dest) %&gt;%
+  summarise(mean_time = mean(air_time, na.rm = T),
+            mean_distance = mean(distance, na.rm = T)) %&gt;%
+  mutate(speed = mean_distance / mean_time) %&gt;%
+  ggplot(aes(x = speed)) +
+  geom_histogram(col = &#39;white&#39;) +
+  labs(title = &#39;Histogram of Speed&#39;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-28-1.png" width="672" /></p>
+</div>
+<div id="filtrar-la-base-de-datos-con-filter" class="section level3">
+<h3>Filtrar la base de datos con <code>filter</code></h3>
+<p>Supongamos que nos interesa sólo el orign <code>ATL</code> podemos filter utilizando conicionantes o con <strong>dplyr</strong>:</p>
+<p>Utilizando condicionantes:</p>
+<pre class="r"><code>flights_db[flights_db$dest == &#39;ATL&#39;, ]</code></pre>
+<pre><code># A tibble: 17,215 x 43
+    year month   day dep_time sched_dep_time dep_delay arr_time sched_arr_time
+   &lt;int&gt; &lt;int&gt; &lt;int&gt;    &lt;int&gt;          &lt;int&gt;     &lt;dbl&gt;    &lt;int&gt;          &lt;int&gt;
+ 1  2013     1     1      554            600        -6      812            837
+ 2  2013     1     1      600            600         0      837            825
+ 3  2013     1     1      606            610        -4      837            845
+ 4  2013     1     1      615            615         0      833            842
+ 5  2013     1     1      658            700        -2      944            939
+ 6  2013     1     1      754            759        -5     1039           1041
+ 7  2013     1     1      807            810        -3     1043           1043
+ 8  2013     1     1      814            810         4     1047           1030
+ 9  2013     1     1      830            835        -5     1052           1105
+10  2013     1     1      855            859        -4     1143           1145
+# ... with 17,205 more rows, and 35 more variables: arr_delay &lt;dbl&gt;,
+#   carrier &lt;chr&gt;, flight &lt;int&gt;, tailnum &lt;chr&gt;, origin &lt;chr&gt;, dest &lt;chr&gt;,
+#   air_time &lt;dbl&gt;, distance &lt;dbl&gt;, hour &lt;dbl&gt;, minute &lt;dbl&gt;, time_hour &lt;dttm&gt;,
+#   type &lt;chr&gt;, manufacturer &lt;chr&gt;, model &lt;chr&gt;, engines &lt;int&gt;, seats &lt;int&gt;,
+#   speed &lt;int&gt;, engine &lt;chr&gt;, temp &lt;dbl&gt;, dewp &lt;dbl&gt;, humid &lt;dbl&gt;,
+#   wind_dir &lt;dbl&gt;, wind_speed &lt;dbl&gt;, wind_gust &lt;dbl&gt;, precip &lt;dbl&gt;,
+#   pressure &lt;dbl&gt;, visib &lt;dbl&gt;, name &lt;chr&gt;, faa &lt;chr&gt;, lat &lt;dbl&gt;, ...</code></pre>
+<p>Podemos hacer lo mismo con <strong>dplyr</strong>:</p>
+<pre class="r"><code>flights %&gt;% filter(dest == &#39;ATL&#39;)</code></pre>
+<pre><code># A tibble: 17,215 x 19
+    year month   day dep_time sched_dep_time dep_delay arr_time sched_arr_time
+   &lt;int&gt; &lt;int&gt; &lt;int&gt;    &lt;int&gt;          &lt;int&gt;     &lt;dbl&gt;    &lt;int&gt;          &lt;int&gt;
+ 1  2013     1     1      554            600        -6      812            837
+ 2  2013     1     1      600            600         0      837            825
+ 3  2013     1     1      606            610        -4      837            845
+ 4  2013     1     1      615            615         0      833            842
+ 5  2013     1     1      658            700        -2      944            939
+ 6  2013     1     1      754            759        -5     1039           1041
+ 7  2013     1     1      807            810        -3     1043           1043
+ 8  2013     1     1      814            810         4     1047           1030
+ 9  2013     1     1      830            835        -5     1052           1105
+10  2013     1     1      855            859        -4     1143           1145
+# ... with 17,205 more rows, and 11 more variables: arr_delay &lt;dbl&gt;,
+#   carrier &lt;chr&gt;, flight &lt;int&gt;, tailnum &lt;chr&gt;, origin &lt;chr&gt;, dest &lt;chr&gt;,
+#   air_time &lt;dbl&gt;, distance &lt;dbl&gt;, hour &lt;dbl&gt;, minute &lt;dbl&gt;, time_hour &lt;dttm&gt;</code></pre>
+<p>La diferencia es que utilizando pipelines <code>%&gt;%</code> podemos hacer secuencias de pasos. Suponga que queremos computar la velocidad promedio para el destino de <code>ATL</code>:</p>
+<pre class="r"><code>flights_db %&gt;%
+  filter(dest == &#39;ATL&#39;) %&gt;%
+  group_by(origin, dest) %&gt;%
+  summarise(mean_time = mean(air_time, na.rm = T),
+            mean_distance = mean(distance, na.rm = T)) %&gt;%
+  mutate(speed = mean_distance / mean_time)</code></pre>
+<pre><code># A tibble: 3 x 5
+# Groups:   origin [3]
+  origin dest  mean_time mean_distance speed
+  &lt;chr&gt;  &lt;chr&gt;     &lt;dbl&gt;         &lt;dbl&gt; &lt;dbl&gt;
+1 EWR    ATL        112.           746  6.66
+2 JFK    ATL        112.           760  6.78
+3 LGA    ATL        114.           762  6.71</code></pre>
+<p>Suponga que ahora queremos un grupo de destinos: <code>ATL</code>, <code>DTW</code>, <code>AUS</code>. Existen 2 formas de hacerlo:</p>
+<ol style="list-style-type: decimal">
+<li><p>Utilizando una cadena de <code>filters</code></p></li>
+<li><p>Utilizando el operador <code>%in%</code></p></li>
+</ol>
+<pre class="r"><code>flights_db %&gt;%
+  filter(dest == &#39;ATL&#39; | dest == &#39;DTW&#39; | dest == &#39;AUS&#39;) %&gt;%
+  group_by(origin, dest) %&gt;%
+  summarise(mean_time = mean(air_time, na.rm = T),
+            mean_distance = mean(distance, na.rm = T)) %&gt;%
+  mutate(speed = mean_distance / mean_time)</code></pre>
+<pre><code># A tibble: 8 x 5
+# Groups:   origin [3]
+  origin dest  mean_time mean_distance speed
+  &lt;chr&gt;  &lt;chr&gt;     &lt;dbl&gt;         &lt;dbl&gt; &lt;dbl&gt;
+1 EWR    ATL       112.            746  6.66
+2 EWR    AUS       211.           1504  7.12
+3 EWR    DTW        84.8           488  5.75
+4 JFK    ATL       112.            760  6.78
+5 JFK    AUS       214.           1521  7.12
+6 JFK    DTW        87.6           509  5.81
+7 LGA    ATL       114.            762  6.71
+8 LGA    DTW        84.2           502  5.96</code></pre>
+<p>Con <code>%in%</code> el código es más compacto y leíble:</p>
+<pre class="r"><code>#creamos una lista con los criterios de filtrado
+destinos = c(&#39;ATL&#39;, &#39;DTW&#39;, &#39;AUS&#39;)
+
+flights_db %&gt;%
+  filter(dest %in% destinos) %&gt;%
+  group_by(origin, dest) %&gt;%
+  summarise(mean_time = mean(air_time, na.rm = T),
+            mean_distance = mean(distance, na.rm = T)) %&gt;%
+  mutate(speed = mean_distance / mean_time)</code></pre>
+<pre><code># A tibble: 8 x 5
+# Groups:   origin [3]
+  origin dest  mean_time mean_distance speed
+  &lt;chr&gt;  &lt;chr&gt;     &lt;dbl&gt;         &lt;dbl&gt; &lt;dbl&gt;
+1 EWR    ATL       112.            746  6.66
+2 EWR    AUS       211.           1504  7.12
+3 EWR    DTW        84.8           488  5.75
+4 JFK    ATL       112.            760  6.78
+5 JFK    AUS       214.           1521  7.12
+6 JFK    DTW        87.6           509  5.81
+7 LGA    ATL       114.            762  6.71
+8 LGA    DTW        84.2           502  5.96</code></pre>
+<p>Podemos hacer filtros más complejos. Suponga ahora que queremos todos los vuelos que fueron a <code>ATL</code>, <code>DTW</code>, <code>AUS</code> y que tuvieron una velocidad de viento <code>wind_speed</code> mayor a <span class="math inline">\(20\)</span></p>
+<pre class="r"><code>#creamos una lista con los criterios de filtrado
+destinos = c(&#39;ATL&#39;, &#39;DTW&#39;, &#39;AUS&#39;)
+
+flights_db %&gt;%
+  filter(dest %in% destinos &amp; wind_speed &gt; 20) %&gt;%
+  select(origin, dest, wind_speed, air_time, distance)</code></pre>
+<pre><code># A tibble: 1,729 x 5
+   origin dest  wind_speed air_time distance
+   &lt;chr&gt;  &lt;chr&gt;      &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;
+ 1 EWR    ATL         20.7      121      746
+ 2 EWR    ATL         24.2      118      746
+ 3 EWR    AUS         21.9      232     1504
+ 4 EWR    ATL         21.9      113      746
+ 5 JFK    ATL         20.7      119      760
+ 6 JFK    DTW         20.7       88      509
+ 7 LGA    ATL         23.0      116      762
+ 8 LGA    ATL         23.0      118      762
+ 9 LGA    ATL         20.7      121      762
+10 LGA    ATL         20.7      115      762
+# ... with 1,719 more rows</code></pre>
+<p>Con la función <code>select()</code> nos quedamos <strong>únicamente con las columnas que nos interesan</strong>.</p>
+<p>Finalmente, podemos guardar en una base de datos nuestro trabajo:</p>
+<pre class="r"><code>destinos = c(&#39;ATL&#39;, &#39;DTW&#39;, &#39;AUS&#39;)
+
+flights_db %&gt;%
+  filter(dest %in% destinos &amp; wind_speed &gt; 20) %&gt;%
+  select(origin, dest, wind_speed, air_time, distance) %&gt;%
+  write.csv(&#39;flights_destiny_wind.csv&#39;, row.names = FALSE)</code></pre>
+<p>La función <code>write.csv()</code> escribe todo el pipeline en un archivo de texto plano para poder enviarlo o verlo después en <strong>excel</strong>.</p>
+</div>
+</div>
+<div id="pipelines-y-visualizaciones-con-ggplot2" class="section level2">
+<h2>Pipelines y visualizaciones con <code>ggplot2</code></h2>
+<p>Dado que <code>dplyr</code> y <code>ggplot2</code> forman parte del ecosistema <code>tidyverse</code>, es fácil integrarlos:</p>
+<pre class="r"><code>flights_db %&gt;%
+  group_by(origin, dest, carrier) %&gt;%
+  summarise(time = mean(air_time, na.rm = T)) %&gt;%
+  ggplot(aes(x = carrier, y = time, fill = origin)) +
+  geom_boxplot() +
+  facet_wrap(~origin, scales = &#39;free&#39;, nrow = 1)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-36-1.png" width="672" /></p>
+<p>La primera parte del pipeline agrupa por <code>origin</code>, <code>dest</code> y <code>carrier</code> y computa el promedio del tiempo de vuelo en la variable <code>time</code>.</p>
+<p>La segunda parte utliza <code>ggplot</code> poniendo en el eje horizontal el <code>carrier</code> y en el eje vertical <code>time</code>. Finalmente hacemos el boxplot y separamos por <code>origin</code>.</p>
+<p>En el paper <a href="https://rpubs.com/blad0914/746366" class="uri">https://rpubs.com/blad0914/746366</a> hay una introducción más profunda a <code>ggplot2</code>. En el libro de <strong>Hadley Wickham</strong> y <strong>Garret Grolemund</strong> <em>R for Data Science: Import, Tidy, Transform, Visualize, and Model Data</em> hay un detalle más preciso de <code>tidyverse</code> y<code>ggplot2</code>.</p>
+</div>
+</div>

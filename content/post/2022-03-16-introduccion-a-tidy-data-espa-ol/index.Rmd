@@ -1,0 +1,534 @@
+---
+title: Introduccion a Tidy Data (Español)
+author: Eduardo Villarreal
+date: '2022-03-16'
+slug: introduccion-a-tidy-data-espa-ol
+categories:
+  - Basic Statisitcs
+  - Tidyverse
+tags:
+  - R
+  - Descriptive Statisitcs
+---
+
+# Introducción
+
+```{r knitr_init, echo=FALSE, message=FALSE, warning=FALSE, cache=FALSE}
+library(knitr)
+library(rmdformats)
+
+
+## Global options
+options(max.print="75")
+opts_chunk$set(echo=TRUE,
+	             cache=TRUE,
+               prompt=FALSE,
+               tidy=TRUE,
+               comment=NA,
+               message=FALSE,
+               warning=FALSE)
+#opts_knit$set(width=75)
+```
+![*Fig.1 - Tidyverse framework*](TidyVerse.png)
+
+En esta sección vamos a revisar las forma de trabajar con datos. Se dice que un **Dataframe** es **Tidy* si:
+
+1. Cada **variable** es una sola columna
+2. Cada **Observación** tiene asignado 1 solo renglón
+3. Cada **Valor** se encuentra en una celda
+
+![*Fig.2 - Tidy Data*](TidyData.png)
+
+## Tidy Data con tidyr
+
+El paquete **tidyr** forma parte de un ecosistema dentro de **R** denominado **tidyverse** con conjunta varios paquetes de **R** para manejar y visualizar datos.
+
+Para instalar **tidyr** podemos escribir en la consola:
+
+`install.packages('tidyverse', dependencies = TRUE)`
+
+Una vez que el paquete se haya descargado e instalado, escribimos:
+
+`require(tidyverse)`
+
+```{r message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+
+El principio de **tidydata** pareciera ser obvio pero en realidad, existen muchos datos que están en un formato inadecuado para ser tratados por un lenguaje de programación con **R** o **Python**. Existen un sin fin de razones por las cuales un conjunto de datos no se encuentra en el formato adecuado:
+
+* La mayor parte de las personas no está acostumbrada a trabajar con datos
+* Los datos son organizados de tal manera que su recolección es lo más rápida y sencilla
+
+De aquí que muchas veces será necesatio **Manipular** los datos para que puedan ser tratados. Existen 2 funciones muy poderosas para el manejo de datos en **R**:
+
+1. `gather(data, key = "key", value = "value", ..., na.rm = FALSE)`
+2. `spread(data, key, value, fill = NA)`
+
+### Gather
+
+Un problema común es que en un dataset, algunas de las columanas se encuentran como valores de alguna variable. Por ejemplo, considere la tabla **table4a** que viene pre cargada en el paquete **tidyverse**
+
+```{r}
+table4a
+```
+
+En este caso, las calumnas **1999** y **2000** deberían ser posibles **valores** dentro de una variable que se llame **year**. Para lograr esto, utilizaos la siguiente sintaxis:
+
+```{r echo=TRUE}
+table4a %>%
+  gather(key = 'year', value = 'causes', 2 : 3)
+```
+
+El operador `%>%`se denomina **pipe** y lo que nos dice es que la tabla **table4a** pasa como argumento de ña función **gather**. La ventaja de utilizar el operador **pipe** es que nos permite **encadenar** series o secuencuas de comandos sin la necesidad de guardar o crear variables intermedias. La forma tradicional de utilizar el comando **gather** es:
+
+`gather(table4a, key = 'year', value = 'causes', 2 : 3)`
+
+![*Fig.3 - gather*](gather.png)
+
+### Spread
+
+**Spread** hace lo opuesto a **gather**. Este comando es últil cuando cada observación se encuentra en múltiples renglones. Por ejemplo, la tabla **table2** contine datos dedistintos paises por año pero cada onservación se encuentra distribuida a lo largo de 2 renglones:
+
+```{r}
+table2
+```
+En el contexto del problema, para que la tabla **table2** sea **tidy** necesitamos que los valores de la columna **type** se conviertan en **columnas** haciendolas **variables**
+
+El comando **spread** funciona de la siguiente manera:
+
+`spread(data, key, value, fill = NA)`
+
+al igual que con **gather** podemos hacer uso del operador **pipe** (`%>%`) para pasar el dataframe al argumento de **data** y construir cadenas de comandos que veremos más adelante:
+
+```{r echo=TRUE}
+table2 %>%
+  spread(type, count, fill = 0)
+```
+
+Este dataset, puede ser utilizado para hacer una regresión en donde el *tiempo* está representado por la variable *year*
+
+![*Fig.4 - spread*](spread.png)
+
+### Valores Faltantes (Missing Data)
+
+Los valores faltantes o **missing data** generalmente se representan por el contexto `NA`. Considere el siguiente **dataframe** en fomrmato *tibble*
+
+```{r echo=TRUE}
+stocks <- tibble(
+year = c(2015, 2015, 2015, 2015, 2016, 2016, 2016),
+qtr = c( 1, 2, 3, 4, 2, 3, 4),
+return = c(1.88, 0.59, 0.35, NA, 0.92, 0.17, 2.66)
+)
+
+stocks
+```
+
+En este caso hay 2 valores faltantes:
+
+1. El retorno de la acción de la cuarta observación
+2. El valor del primer cuarto del 2016 que simplemente no aparece en la tabla
+
+```{r echo=TRUE}
+stocks %>%
+  spread(year, return)
+```
+
+Para evitar esto, podemos hacer uso de 2 argumentos en **gather**:
+
+1. `na.rm = TRUE`que simplemente remueve los renglones con `NA`
+
+2. `fill = valor` que coloca el `valor`especificado por el usuario cad avez que se encuentra un `NA`
+
+```{r echo=TRUE}
+
+#Remueve los NA´s
+stocks %>%
+  spread(year, return) %>%
+  gather(year, return, `2015`:`2016`, na.rm = TRUE)
+```
+
+Otra foerma de hacer esto es con `na.omit(data)` que elimina todos los renglones con `NA`
+
+Con la siguiente linea, colocamos un 0:
+
+```{r echo=TRUE}
+stocks %>%
+  spread(year, return, fill = 0)
+```
+
+
+## Tablas relacionales con dplyr
+
+Por lo general, el analisis de datos involucra 1 sola tabla que tipicamente proviene de tratar o juntar múltiples tablas. Collectivamente hablando, este tipo de tablas se denominan **tablas relacionales** o **bases de datos relacionales**
+
+Para trabajar con **datos relacionales** existen 3 operaciones básicas:
+
+* Mutating Joins : este tipo de transformaciones agregan **nuevas columnas** o **variables** a un dataframe haciendo un match 1 a 1
+* Filtering Joins: con esta operación buscamos filtrar un conjunto de datos en función de 1 o varios criterios para 1 o varias columnas
+* Set Operations: este tipo de operación trata cada observación como si se tratara de conjuntos de datos distintos
+
+Si en el pasado utilizaste **SQL**, **dplyr** hará el trabajo más sencillo.
+
+### Prerequisitos
+
+En esta sección vamos a explorar el data set **nycflights13** utilizando **dplyr** del ecosistema **tidyverse**:
+
+```{r echo=TRUE}
+require(tidyverse)
+#install.packages('nycflights13')
+require(nycflights13)
+```
+
+### nycflights13
+
+**nycflights13** contiene 4 tablas que estan relacionadas con la tabla **flights**:
+
+```{r}
+flights = flights
+```
+
+
+1. `airlines` que contiene el nombre de la aerolinea y su abreviatura:
+
+```{r}
+airlines = airlines
+```
+
+2.`airports`que contiene el nombre del aeroperto y sus siglas conforme a la *faa*
+
+```{r}
+airports = airports
+```
+
+3. `planes`que identifica cada avión de acuerdo al número de embarque
+
+```{r}
+planes = planes
+```
+
+4. `weather`que proporciona el clima por hora en cada aereopuerto de la ciudad de **NY**
+
+```{r}
+weather = weather
+```
+
+Una forma de visualiar las relaciones enre las tablas es con el siguiente diagrama:
+
+![*Fig.5 - Relaciones entre tablas para nycfligts13*](RelationalData.png)
+
+### Keys o campos llave
+
+A las **variables** utilizadas para conectar dos o mas tablas se les llama **keys** o **campos llave**. Un **campo llave** es una variable que identifica de manera **unica** una observación dentro de una tabla (ejemplo: el **CURP**). En el caso de **nycflights13**, la tabla **planes** identifica cada avión con su *número de matricula*. Existen 2 tipos de **llaves**:
+
+1. **Primary Key**: identifica de manera única cada observación. Por ejemplo `planes$tailnum`
+
+2. **Foreign Key**: utilizada para identificar una observación en otra tabla. Por ejemplo `flights$tailnum`
+
+Una vez que se ha identificado el **campo llave**, una buena práctica es verificar que se **unica** para cada observación. Esto podemos hacerlos mediante el comando `count()` y mirar las entradas en donde `n > 1`:
+
+
+```{r echo=TRUE}
+planes %>%
+  count(tailnum)
+
+#Ahora filtramos n > 1
+
+planes %>% 
+  count(tailnum) %>% 
+  filter(n > 1)
+
+```
+Nuestro **campo llave** es **unico**.
+
+cuál es el **campo llave** e la tabla `flights`?
+
+```{r echo=TRUE}
+flights %>%
+count(year, month, day, flight) %>%
+filter(n > 1)
+```
+
+### Mutating Joins
+
+**Mutating Joins** permite combinar variables de dos tablas. Primero hace un match entre sus dos **campos llaves** y posteriormente hace una relación 1 a 1.
+
+De la tabla `flights` vamos a utilizar un conjunto de variables:
+
+```{r echo=TRUE}
+flights2 <- flights %>%
+  select(year:day, hour, origin, dest, tailnum, carrier)
+flights2
+```
+
+Imagine que queremos agregar el nombre completo de la *aerolinea* a la nueva tabla **flights2**. Podemos utilizar un `left_join()`
+
+```{r echo=TRUE}
+flights2 %>%
+  select(-origin, -dest) %>%
+  left_join(airlines, by = "carrier")
+```
+
+### Entendiendo el operador Join
+
+Para entender mejor, vamos a simplificar utilizando 2 tablas:
+
+```{r}
+x <- tribble( ~key, ~val_x,
+              1, "x1", 
+              2, "x2",
+              3, "x3")
+
+y <- tribble( ~key, ~val_y,
+              1, "y1",
+              2, "y2",
+              4, "y3")
+```
+
+![*Fig.6 - X,Y*](XYtibble.png)
+
+Un **join** es una forma de conectar cada **renglon** en `x` con ninguno, uno o mas rengones en `y`
+
+![*Fig.7 - Representación de un Join*](Join1.png)
+
+### Inner Join
+
+Un **inner join** hace el match de todos los renglones en donde los campos llave son iguales. La salida de un *inner join* es un dataframe que contiene el **campo llave**, los valores de `x` y los valores de `y`:
+
+```{r echo=TRUE}
+x %>% 
+  inner_join(y, by = "key")
+```
+
+La propiedad más importante de un *inner join* es que todas las observaciones que no hacen *match* se pierden y no foarman parte del resultado. Esta propiedad hace que un *inner join* no sea apropiado para analisis ya que existe la posibilidad de perder información.
+
+### Outer Joins
+
+En escencia un *inner join* conserva las observaciones en `x` y en `y`. Un *outer join* conserva las **todas** las observaciones de almenos una de las tablas. Existen 3 tipos de *outer join*:
+
+1. `left_join`: conserva todas las observaciones en `x`
+2. `right_join`: conserva todas las observaciones en `y`
+3. `full_join`: conserva todas las observaciones en `x` y en `y`
+
+![*Fig.8 - left, right & full join*](Join2.png)
+
+Otra forma de representar un *join* es con un diagrama de **Venn**
+
+![*Fig.9 - Diagrama de Venn: tipos de join*](Join3.png)
+
+La nomenclatura en **R** para cada tipo de *join* es:
+
+`left_join(x, y, by = key)`
+
+`right_join(x, y, by = key)`
+
+`full_join(x, y, by = key)`
+
+`inner_join(x, y, by = key)`
+
+por default el argumento `by = NULL`lo que quiere decir que el *join* va a tomar como campos clave todos los campos en `x` y en `y`. Por ejemplo:
+
+```{r echo=TRUE}
+flights2 %>% 
+  left_join(weather)
+```
+
+## Operaciones con dplyr
+
+Todo el proceso para juntar las diferentes bases de datos se ve así:
+
+```{r}
+flights_db = left_join(flights, planes) %>%
+  left_join(weather) %>%
+  left_join(airlines) %>%
+  left_join(airports)
+  
+flights_db
+```
+
+
+![*Fig.5 - Relaciones entre tablas para nycfligts13*](RelationalData.png)
+
+
+
+Existen varias operaciones básicas que nos ayudan a tratar los datos de manera eficiente:
+
+1. `group_by`: agrupa un dataframe por una o varias variables. Util cuando queremos estratificar la información agrupada por algún criterio.
+2. `filter`: obtiene un sub conjunto del dataframe con base a un criterio
+3. `mutate`: se utiliza para crear nuevas variables o columnas utilizando operaciones lógicas o ariméticas
+4. `summarise`: resume un conjunto de variables utilizando *estadísticos* como la media, mediana, suma, etc
+
+
+### Agregar y agrupar con `group_by` & `summarise`
+
+Ya que tenemos nuestra base de datos, ahora podemos trabajar para computar, por ejemplo, el promedio y la desviación estándar de la combinación `origin`, `dest`. Para esto usaremos la función `group_by()` y `summarise()`. La variables de interes es el tiempo de vuelo `airtime`.
+
+```{r}
+flights_db %>%
+  group_by(origin, dest) %>%
+  summarise(mean_time = mean(air_time, na.rm = T),
+            sd_time = sd(air_time, na.rm = T))
+```
+
+Si quisieramos hacer una comparación por aerolinea, simplemente agregamos la variable `carrier` dentro de `group_by`
+
+```{r}
+flights_db %>%
+  group_by(carrier, origin, dest) %>%
+  summarise(mean_time = mean(air_time, na.rm = T),
+            sd_time = sd(air_time, na.rm = T))
+```
+
+También podemos agregar más computos dentro de `summarise` con otras variables, por ejemplo, la velocidad del viento `wind_speed`:
+
+```{r}
+flights_db %>%
+  group_by(carrier, origin, dest) %>%
+  summarise(mean_time = mean(air_time, na.rm = T),
+            sd_time = sd(air_time, na.rm = T),
+            mean_wind = mean(wind_speed, na.rm = T),
+            max_wind = max(wind_speed))
+```
+
+### Campos calculados con `mutate`
+
+Si quisieramos calcular la velocidad promedio tendríamos que calcular `distance / air_distance`. Hay varias formas de hacerlo y podemos empezar utilizando **baseR** con **dplyr**:
+
+```{r message=FALSE, warning=FALSE}
+velocity = flights_db %>%
+  group_by(origin, dest) %>%
+  summarise(mean_time = mean(air_time, na.rm = T),
+            mean_distance = mean(distance, na.rm = T))
+
+#ahora computamos la velocidad promedio
+velocity$speed = velocity$mean_distance / velocity$mean_time
+
+#Hagamos ahora un hitograma
+ggplot(velocity, aes(x = speed)) +
+  geom_histogram(col = 'white') +
+  labs(title = 'Histogram of Speed')
+
+```
+
+El siguente **pipeline** es equivalente:
+
+```{r}
+flights_db %>%
+  group_by(origin, dest) %>%
+  summarise(mean_time = mean(air_time, na.rm = T),
+            mean_distance = mean(distance, na.rm = T)) %>%
+  mutate(speed = mean_distance / mean_time) %>%
+  ggplot(aes(x = speed)) +
+  geom_histogram(col = 'white') +
+  labs(title = 'Histogram of Speed')
+  
+```
+
+### Filtrar la base de datos con `filter`
+
+Supongamos que nos interesa sólo el orign `ATL` podemos filter utilizando conicionantes o con **dplyr**:
+
+Utilizando condicionantes:
+
+```{r}
+flights_db[flights_db$dest == 'ATL', ]
+```
+
+Podemos hacer lo mismo con **dplyr**:
+
+```{r}
+flights %>% filter(dest == 'ATL')
+```
+
+La diferencia es que utilizando pipelines `%>%` podemos hacer secuencias de pasos. Suponga que queremos computar la velocidad promedio para el destino de `ATL`:
+
+```{r}
+flights_db %>%
+  filter(dest == 'ATL') %>%
+  group_by(origin, dest) %>%
+  summarise(mean_time = mean(air_time, na.rm = T),
+            mean_distance = mean(distance, na.rm = T)) %>%
+  mutate(speed = mean_distance / mean_time)
+  
+```
+
+Suponga que ahora queremos un grupo de destinos: `ATL`, `DTW`, `AUS`. Existen 2 formas de hacerlo:
+
+1. Utilizando una cadena de `filters`
+
+2. Utilizando el operador `%in%`
+
+```{r}
+flights_db %>%
+  filter(dest == 'ATL' | dest == 'DTW' | dest == 'AUS') %>%
+  group_by(origin, dest) %>%
+  summarise(mean_time = mean(air_time, na.rm = T),
+            mean_distance = mean(distance, na.rm = T)) %>%
+  mutate(speed = mean_distance / mean_time)
+```
+
+
+Con `%in%` el código es más compacto y leíble:
+
+```{r}
+#creamos una lista con los criterios de filtrado
+destinos = c('ATL', 'DTW', 'AUS')
+
+flights_db %>%
+  filter(dest %in% destinos) %>%
+  group_by(origin, dest) %>%
+  summarise(mean_time = mean(air_time, na.rm = T),
+            mean_distance = mean(distance, na.rm = T)) %>%
+  mutate(speed = mean_distance / mean_time)
+```
+
+
+Podemos hacer filtros más complejos. Suponga ahora que queremos todos los vuelos que fueron a `ATL`, `DTW`, `AUS` y que tuvieron una velocidad de viento `wind_speed` mayor a $20$
+
+```{r}
+#creamos una lista con los criterios de filtrado
+destinos = c('ATL', 'DTW', 'AUS')
+
+flights_db %>%
+  filter(dest %in% destinos & wind_speed > 20) %>%
+  select(origin, dest, wind_speed, air_time, distance)
+```
+
+Con la función `select()` nos quedamos **únicamente con las columnas que nos interesan**.
+
+
+Finalmente, podemos guardar en una base de datos nuestro trabajo:
+
+```{r}
+destinos = c('ATL', 'DTW', 'AUS')
+
+flights_db %>%
+  filter(dest %in% destinos & wind_speed > 20) %>%
+  select(origin, dest, wind_speed, air_time, distance) %>%
+  write.csv('flights_destiny_wind.csv', row.names = FALSE)
+```
+
+La función `write.csv()` escribe todo el pipeline en un archivo de texto plano para poder enviarlo o verlo después en **excel**.
+
+
+## Pipelines y visualizaciones con `ggplot2`
+
+Dado que `dplyr` y `ggplot2` forman parte del ecosistema `tidyverse`, es fácil integrarlos:
+
+```{r}
+flights_db %>%
+  group_by(origin, dest, carrier) %>%
+  summarise(time = mean(air_time, na.rm = T)) %>%
+  ggplot(aes(x = carrier, y = time, fill = origin)) +
+  geom_boxplot() +
+  facet_wrap(~origin, scales = 'free', nrow = 1)
+```
+
+La primera parte del pipeline agrupa por `origin`, `dest` y `carrier` y computa el promedio del tiempo de vuelo en la variable `time`.
+
+La segunda parte utliza `ggplot` poniendo en el eje horizontal el `carrier` y en el eje vertical `time`. Finalmente hacemos el boxplot y separamos por `origin`.
+
+En el paper <https://rpubs.com/blad0914/746366> hay una introducción más profunda a `ggplot2`. En el libro de **Hadley Wickham** y **Garret Grolemund** *R for Data Science: Import, Tidy, Transform, Visualize, and Model Data* hay un detalle más preciso de `tidyverse` y`ggplot2`.
+
+
