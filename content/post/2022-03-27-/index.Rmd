@@ -1,0 +1,1034 @@
+---
+title: Covariance Matrix and GARCH Models
+author: Eduardo Villarreal
+date: '2022-03-27'
+slug: ''
+categories:
+  - Finance
+  - Tidyverse
+tags:
+  - Finance
+  - Optimization
+  - R
+  - Time Series
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Data for this section
+
+```{r message=FALSE, warning=FALSE}
+
+library(tidyverse)
+library(broom)
+library(tidyquant)
+library(timetk)
+library(quantmod)
+require(moments)
+require(PerformanceAnalytics)
+
+theme_set(theme_bw())
+```
+
+```{r message=FALSE, warning=FALSE}
+ticks <- c('AMZN', 'AAPL', 'NFLX', 'XOM', 'IBM', 'GOOG', 'MSFT', 'TM', 'AA','SPYG', 'SPYV', 'SPY', 'FMAGX', 'MMM', 'PG' , 'NVDA', 'BAC', 'PFE', 'CRM', 'NKE')
+
+#Get the Data
+stocks = tq_get(ticks,
+                from = '2010-01-01',
+                to = '2021-12-31',
+                get = 'stock.prices',
+                complete_cases = T)
+
+#Compute Returns
+stocks_ret = stocks %>%
+  group_by(symbol) %>%
+  tq_transmute(select = adjusted,
+    mutate_fun = periodReturn,
+    period = 'daily') %>%
+  spread(symbol, daily.returns)
+```
+
+# The curse of Dimensionality
+
+When is Data High Dimensional and Why Might That Be a Problem? The Curse of Dimensionality sounds like something straight out of a pirate movie but what it really refers to is when your data has too many features. The phrase, attributed to Richard Bellman, was coined to express the difficulty of using brute force (a.k.a. grid search) to optimize a function with too many input variables. Imagine running an Excel Solver optimization where there are 100,000 possible input variables, or in other words, 100,000 potential levers to pull.
+
+In today's big data world it can also refer to several other potential issues that arise when your data has a huge number of dimensions:
+
+1.  If we have more features than observations than we run the risk of massively overfitting our model --- this would generally result in terrible out of sample performance.
+
+2.  When we have too many features, observations become harder to cluster --- believe it or not, too many dimensions causes every observation in your dataset to appear equidistant from all the others. And because clustering uses a distance measure such as Euclidean distance to quantify the similarity between observations, this is a big problem. If the distances are all approximately equal, then all the observations appear equally alike (as well as equally different), and no meaningful clusters can be formed.
+
+[Source: Medium](https://towardsdatascience.com/the-curse-of-dimensionality-50dc6e49aa1e)
+
+Markowitz's paper was highly influential and much work has followed. It is now part of the standard textbook literature on these issues $$Ruppert (2006), Campbell, Lo and MacKinlay (1996)$$. Let us recall the setup of the Markowitz problem.
+
+-   We have the opportunity to invest in $p$ assets, $A_1, . . . , A_p$.
+
+-   In the ideal situation, the mean returns are known and represented by a p-dimensional vector, $µ$.
+
+-   Also, the covariance between the returns is known; we denote it by $Σ$.
+
+-   We want to create a portfolio, with guaranteed mean return $µP$ , and minimize its risk, as measured by variance.
+
+-   The question is how should items be weighted in portfolio? What are weights $w$?
+
+We wish to find the weights $w$ that solve the following problem:
+
+$$
+\text{min} x = \frac{1}{2}\mathbf{x'Dx}-\mathbf{d' x} = \mathbf{w'\Sigma w} \\
+\text{s.t: } \\
+\mathbf{w' \mu} = \mu_{obj} \\
+\mathbf{1' w} = 1 \\
+$$
+
+An aspect of the problem that is of particular interest to us is the study of large-dimensional portfolios (or quadratic programs with linear constraints). To make matters clear, we focus on a portfolio with p = 100 assets. If we use a year of daily data to estimate $Σ$, the covariance between the daily returns of the assets, we have $n ≃ 250$ observations at our disposal. In modern statistical parlance, we are therefore in a **"large n, large p"** setting, and we know from random matrix theory that $\hat{Σ}$ the sample covariance matrix is a poor estimator of $Σ$.
+
+## Constant Correlation Model
+
+The constant correlation model is a mean-variance portfolio selection model where, for a given set of risky securities, the correlation of returns between any pair of different securities is considered to be the same. Support for the model is from previous empirical evidence that sample averages of correlations outperform various more sophisticated models in forecasting the correlation matrix, an important input component for portfolio analysis.
+
+The earliest works on forecasting correlation coefficients are Elton and Gruber (1973) and Elton, Gruber and Ulrich (1978). The authors showed that assuming all pair-wise correlation coefficients were equal to the mean correlation coefficient (the constant correlation model) produced better forecasts than those produced from assuming either a single index model or multi-index models and considerably better than using pair-wise historical correlation.
+
+The Constant Correlation Model assumes $\sigma_{ij} = \rho \sigma_i \sigma_j$ that is, it assumes a constant correlation among securities. This leads to a parsimonious model where parameters need to be estimated.e a function for Minimun-Variance Portfolios
+
+> Create a Function for Minimun Portfolios
+
+```{r}
+markowitz_GMV = function(returns_df, tgt_ret, CvarMethod, manual_entry = NA){
+  require(RiskPortfolios)
+  require(nlshrink)
+  require(cvCovEst)
+  r = returns_df
+
+  #returns_df : data frame of stock returns
+  n = ncol(r)
+  k = n - 1
+  #compute the Annualized Variance-Covariance Matrix
+  
+  if (CvarMethod == 'full'){
+    cov_mat = cov(r[, 2 : n])
+  }else if (CvarMethod == 'const'){
+    rmat = as.matrix(r[, 2 : n])
+    cov_mat = covEstimation(rmat, control = list(type = 'const'))
+  }else if (CvarMethod == 'ff'){
+    cov_mat = manual_entry
+  }else if(CvarMethod == 'LW'){
+    rmat = as.matrix(r[, 2 : n])
+    cov_mat = linearShrinkLWEst(rmat)
+  }
+  
+  cov_mat = cov_mat * 252 #Annualize CovMatrix
+  
+  #Compute Annualized Returns for assets
+  mean_ret = r %>%
+    gather(symbol, daily.returns, 2 : ncol(.)) %>%
+    dplyr::group_by(symbol) %>%
+    dplyr::summarise(Ret = mean(daily.returns)) %>%
+    mutate(Ret_yr = (1 + Ret)^252 - 1)
+  
+  library(quadprog)
+  
+  #Set Names od decision variables
+  w_names = names(r[, 2 : n])
+  
+  #Matrix on the Quadratic form Dmat
+  Dmat = cov_mat
+  
+  # Vector appearing in the quadratic function - Zero vector
+  dvec <- rep(0, k)
+  dvec = t(dvec)
+  
+  ## Matrix defining the constraints Amat ------->
+  constr_1 = mean_ret$Ret_yr #Expected Return
+  constr_2 = rep(1, k) #Sum of weights is 1
+  constr_3 = diag(k) #Identity matrix for Waeights Identification
+  Amat = rbind(constr_1, constr_2, constr_3)
+  #colnames(Amat) = w_names
+  
+  # Vector holding the value of b0 for the Amat constrint
+  bvec <- c(tgt_ret, 1, rep(0, k))
+  
+  #Solving the QP problem ------>
+  # meq indicates how many constraints are equality 
+  # Only the second constraint is equality so meq = 2
+  qp <- solve.QP(Dmat = Dmat, dvec = dvec, Amat = t(Amat), bvec = bvec, meq = 2)
+  w = qp$solution
+  
+  #Create a Data Frame
+  w = data.frame(symbol = w_names,
+                 w = w,
+                 CvarMethod = CvarMethod)
+  
+  return(w)
+}
+```
+
+> Compute Benchmark Portfolio
+
+```{r}
+#Global Monimun Variance POrtfolio
+w_gmv = markowitz_GMV(stocks_ret[stocks_ret$date < '2018-01-01', ], tgt_ret = 0.12, CvarMethod = 'full')
+#Plot weights
+w_gmv %>%
+  ggplot(aes(x = symbol, y = w, fill = symbol)) +
+  geom_bar(stat = 'identity') +
+  theme(legend.position = 'none') +
+  labs(title = 'GMV Portfolio CvarMethod = Full') +
+  geom_text(aes(label = round(w * 100, 1)), vjust = 1)
+```
+
+> Compute Portfolio with Constant Correlation
+
+```{r}
+#Global Monimun Variance POrtfolio
+w_const = markowitz_GMV(stocks_ret[stocks_ret$date < '2018-01-01', ], tgt_ret = 0.12, CvarMethod = 'const')
+#Plot weights
+w_const %>%
+  ggplot(aes(x = symbol, y = w, fill = symbol)) +
+  geom_bar(stat = 'identity') +
+  theme(legend.position = 'none') +
+  labs(title = 'GMV Portfolio CvarMethod = Constant rho') +
+  geom_text(aes(label = round(w * 100, 1)), vjust = 1)
+```
+
+## Covariance Matrix from Factor Models
+
+The structured approach aims at reducing the dimensionality of the problem. The number of covariances to estimate within a universe of size $N$ is $N(N + 1)/2$, which is as a quadratic function of $N$. An option to reduce the number of parameters to estimate is to assume a constant correlation across stocks (the "overall mean model" of Elton and Gruber (1973)), so that the only parameters to be estimated are the volatilities. Factor estimators also alleviate the curse of dimensionality. Stock returns are assumed to be generated by a factor model as I wrote in [CAPM and Factor Modeling](https://eduardo0914rtutorials.netlify.app/post/2022/03/12/capm-and-factor-modeling/)
+
+$$
+R_{j}=\beta_{0,j} + \sum_{i=1}^p\beta_{i,j}F_{i.t}+\epsilon_{j,t}
+$$
+
+where $F_{i,t}$ is a vector of K factor values, and the error terms are uncorrelated from the factors and uncorrelated across stocks. The covariance matrix is thus given by:
+
+$$
+\Sigma = \beta' \Sigma_F \beta + \Sigma_\epsilon
+$$
+
+Where $\Sigma_F$ is the Covariance of the Factor Matrix, $\beta$ is a matrix of coeficients and $\Sigma_\epsilon$ is the **variance diagonal matrix of residuals.**
+
+> Get Factors from Famma-French
+
+```{r message=FALSE, warning=FALSE}
+require(FFdownload)
+require(nlshrink)
+#Let´s define the set of data we want. In this case is just 1 database:
+inputlist <- c('F-F_Research_Data_Factors.zip')
+
+#Let´s create a temporal directory to store the data
+tempd <- tempdir()
+
+#Now we can download the data usisn FFdownload. Since we are looking for monthly
+#data, I set exclude_daily = TRUE
+FFdownload(exclude_daily = TRUE, 
+           tempd = tempd,
+           download = TRUE,
+           download_only = TRUE,
+           inputlist = inputlist) #This is the input list of data
+
+#Let´s process de CSV file here
+tempf <- paste0(tempd,"\\FFdata.RData") #Concatenate the temp file name
+
+FFdownload(output_file = tempf, 
+           exclude_daily = TRUE,
+           tempd = tempd,
+           download = FALSE,
+           download_only = FALSE,
+           inputlist = inputlist)
+
+#Let´s load the data file
+load(file = tempf)
+#Get Monthly Data
+FFdata = FFdata$`x_F-F_Research_Data_Factors`$monthly
+FFdata = FFdata$Temp2
+
+#Create Date
+dates = seq(as.Date("1926/7/1"), as.Date("2022/2/1"), "months")
+
+#convert to DF
+FFdata = as.data.frame(FFdata)
+FFdata$date = dates
+
+#Convert Daily to Monthly returns
+stocks_ret_M = stocks %>%
+  group_by(symbol) %>%
+  tq_transmute(select = adjusted,
+    mutate_fun = periodReturn,
+    period = 'monthly') %>%
+  spread(symbol, monthly.returns) %>%
+  mutate(date = round_date(date, unit = 'month'))
+
+#join
+
+CAPM_df = left_join(stocks_ret_M, FFdata)
+CAPM_df$Mkt.RF = CAPM_df$Mkt.RF / 100
+CAPM_df$RF = CAPM_df$RF / 100
+CAPM_df$SMB = CAPM_df$SMB / 100
+CAPM_df$HML = CAPM_df$HML / 100
+
+
+#compute excess returns
+CAPM_df[, 2 : 20] = CAPM_df[, 2 : 20] - CAPM_df$RF
+```
+
+> Compute Regression
+
+```{r}
+#Compute Regression
+library(robust)
+
+m_lm = lm(cbind(AA, AAPL, AMZN, BAC, CRM, FMAGX ,GOOG, IBM ,MMM, MSFT, NFLX, NKE, NVDA, PFE, PG, SPY, SPYG, SPYV, TM, XOM) ~ Mkt.RF + SMB + HML, data = CAPM_df[CAPM_df$date < '2018-01-01', ])
+```
+
+> Compute Covariance
+
+```{r}
+#Compute Covariance of Factors
+Factors = CAPM_df[, 22 : 24]
+CovF = cov(Factors)
+
+#Compute Beta Matrix
+beta = as.matrix(coefficients(m_lm))
+beta = t(beta[-1, ]) #Remove Intercept
+
+#Compute epsilon
+n = dim(CAPM_df)[1]
+sigeps = 1 / (n - 1) * as.matrix((var(as.matrix(m_lm$resid))))
+sigeps = diag(as.matrix(sigeps))
+sigeps = diag(sigeps, nrow = 20)
+
+#compute Covariance Matrix
+covFF = beta %*% CovF %*% t(beta) + sigeps
+```
+
+> Compute Weights
+
+```{r}
+w_ff = markowitz_GMV(stocks_ret[stocks_ret$date < '2018-01-01', ], tgt_ret = 0.12, CvarMethod = 'ff', manual_entry = covFF)
+
+#Plot weights
+w_ff %>%
+  ggplot(aes(x = symbol, y = w, fill = symbol)) +
+  geom_bar(stat = 'identity') +
+  theme(legend.position = 'none') +
+  labs(title = 'GMV Portfolio CvarMethod = Factor Model') +
+  geom_text(aes(label = round(w * 100, 1)), vjust = 1)
+```
+
+[Source for Cov Matrix using Factor models](http://www.gcoqueret.com/files/Estim_cov.pdf)
+
+## Honey I Shrunk the Covariance Matrix
+
+The central message of this paper is that nobody should be using the sample covariance matrix for the purpose of portfolio optimization. It contains estimation error of the kind most likely to perturb a mean-variance optimizer. In its place, we suggest using the matrix obtained from the sample covariance matrix through a transformation called shrinkage [Ledoy & Wolf [2003]](https://www.econ.uzh.ch/dam/jcr:ffffffff-935a-b0d6-ffff-ffffb4762fbf/honey.pdf).
+
+This tends to pull the most extreme coefficients towards more central values, thereby systematically reducing estimation error where it matters most. Statistically, the challenge is to know the optimal shrinkage intensity.
+
+The industry standard are multi-factor models. The idea is to incorporate multiple factors instead of just the single factor of Sharpe (1963). Thereby the models become more flexible and their bias is reduced. But the estimation error increases. Finding the optimal tradeoff by deciding on the nature and the number of the factors included in the model is as much an art as it is a science.
+
+Consider the sample covariance matrix $S$ and a highly structured estimator, denoted by $F$. We find a compromise between the two by computing a convex linear combination $δF +(1−δ)S$, where $δ$ is a number between 0 and 1. The number $δ$ is referred to as the shrinkage constant.
+
+By considering the Frobenius norm of the difference between the shrinkage estimator and the true covariance matrix, we arrive at the following quadratic loss function:
+
+$$
+L(\delta) = ||\delta F + (1 + \delta)S - \Sigma||^2
+$$
+
+The goal is to find the shrinkage constant δ which minimizes the expected value of this loss.
+
+```{r}
+w_lw = markowitz_GMV(stocks_ret[stocks_ret$date < '2018-01-01', ], tgt_ret = 0.12, CvarMethod = 'LW')
+
+#Plot weights
+w_lw %>%
+  ggplot(aes(x = symbol, y = w, fill = symbol)) +
+  geom_bar(stat = 'identity') +
+  theme(legend.position = 'none') +
+  labs(title = 'GMV Portfolio CvarMethod = shrinkage') +
+  geom_text(aes(label = round(w * 100, 1)), vjust = 1)
+```
+
+## Backtesting Covariance Strategy
+
+Now we want to test our strategy by using the different weights we just computed.
+
+```{r}
+PortReturns = function(returns_df, weights){
+  r = returns_df
+  w = as.matrix(weights)
+  
+  r_port = as.matrix(r[, 2 : ncol(r)]) %*% w
+  
+  #Cumm Return over time
+  ret_compound = function(x){
+    #Step 1: compute (1 + r)
+    x = 1 + x
+    #Step 2: compute cumprod
+    x = cumprod(x)
+    #step 3: compute cumprod - 1
+    #x = x - 1
+    return(x)
+  }
+  
+  r_port = ret_compound(r_port)
+  return(r_port)
+}
+
+#Compute Portfolio returns
+stocks_ret2 = stocks_ret[stocks_ret$date >= '2018-01-01', ]
+
+stocks_ret2 %>%
+  mutate(Ret_gmv = PortReturns(stocks_ret2, weights = w_gmv$w),
+         Ret_cons = PortReturns(stocks_ret2, weights = w_const$w),
+         Ret_ff = PortReturns(stocks_ret2, weights = w_ff$w),
+         Ret_lw = PortReturns(stocks_ret2, weights = w_lw$w)) %>%
+  ggplot(aes(x = date, y = Ret_gmv)) +
+  geom_line(col = 'blue', lty = 2, alpha = 0.2, size = 1) +
+  geom_line(aes(y = Ret_cons), col = 'red') +
+  geom_line(aes(y = Ret_ff), col = 'orange') +
+  geom_line(aes(y = Ret_lw), col = 'green4') +
+  labs(title = "Backtesting CovMatrix Protfolios")
+```
+
+> Summary of Portfolios
+
+```{r}
+#annualzed returns
+ret_yr = function(x){
+  x = mean(x)
+  x = (1 + x)^252 - 1
+  return(x)
+}
+
+#annual volatlity
+vol_yr = function(x){
+  x = sd(x)
+  vol = x * sqrt(252)
+  return(vol)
+}
+
+#Drawdown
+drawdown_f = function(x){
+  #Step 1: compute a weatlh index
+  w_index = cumprod((1 + x))
+  
+  #Step 2: Compute de Previuos Peak
+  peaks = cummax(w_index)
+  
+  #Step 3: Compute drawdown
+  drawdown = (w_index - peaks) / peaks
+  
+  return(drawdown)
+}
+
+#Max Drawdown
+max_drawdown = function(x){
+  x = drawdown_f(x)
+  x = min(x)
+  return(x)
+}
+
+#Compute VaR
+VaR_hist = function(x, alpha = 0.05){
+  x = -quantile(x, alpha)
+  return(x)
+}
+
+VaR_gaussian = function(x, alpha = 0.05){
+  x_mean = mean(x)
+  x_sd = sd(x)
+  z = qnorm(alpha)
+  VaR = x_mean + z * x_sd
+  return(-VaR)
+}
+
+VaR_Cornish = function(x, alpha = 0.05){
+    x_mean = mean(x)
+    x_sd = sd(x)
+    k =kurtosis(x) - 3
+    s = skewness(x)
+    z = qnorm(alpha)
+    
+    #Compute modified Z score using the Cornish-Fisher expansion
+    Zc = z + (z^2 - 1) * (s / 6) + (z^3 - 3 * z) * (k / 24) - (2 * z^3 - 5 * z) * (s^2 / 36)
+    
+    #Compute VaR
+    VaR = x_mean + Zc * x_sd
+    return(-VaR)
+}
+
+#Compute CVaR assuming gaussian distribution
+
+CVaR_fun = function(x, alpha = 0.05){
+  
+  sigma = sd(x)
+  ES = -dnorm(qnorm(alpha)) / alpha * sigma
+  return(ES)
+}
+```
+
+> Compute Summary
+
+```{r}
+#Define our dataset
+x = stocks_ret2 %>%
+  mutate(Ret_gmv = PortReturns(stocks_ret2, weights = w_gmv$w),
+         Ret_cons = PortReturns(stocks_ret2, weights = w_const$w),
+         Ret_ff = PortReturns(stocks_ret2, weights = w_ff$w),
+         Ret_lw = PortReturns(stocks_ret2, weights = w_lw$w))
+
+#Create summary data frame
+x = x %>%
+  select(contains('Ret'))
+
+x = sapply(x, Delt) %>%
+  na.omit() %>%
+  as.data.frame()
+
+stock_summary = data.frame(mean = sapply(x, mean),
+                           sd = sapply(x, sd),
+                           skew = sapply(x, skewness),
+                           kurtosis = sapply(x, kurtosis),
+                           Ret_yr = sapply(x, ret_yr),
+                           Volatility = sapply(x, vol_yr),
+                           Var = sapply(x, VaR_hist),
+                           Var_G = sapply(x, VaR_gaussian),
+                           Var_Corn = sapply(x, VaR_Cornish),
+                           CVar = sapply(x, CVaR_fun),
+                           Max_Draw = sapply(x, max_drawdown))
+
+stock_summary$Portfolio = row.names(stock_summary)
+stock_summary
+```
+
+# Modeling Time-Varying Risk
+
+One of the problems we need to addres is that, tipically, **volatility** is not constant over time.
+
+Remember that Volatility is computed as the estandar deviation of returns over a period of time:
+
+$$
+\sigma^2_r = \frac{1}{T}\sum_{i=1}^T(R_i - \bar{R})^2
+$$
+
+An reasonable assumption for $\bar{R}=0$ , then volatility is:
+
+$$
+\sigma_r^2=\frac{1}{T}\sum_{i=1}^T R_i^2
+$$ If we use **Rolling windows** then we can have an estimate of **volatility**
+
+```{r}
+#Let´s use IBM as example to compute volatility
+IBM = stocks_ret %>%
+  select(date, IBM) %>%
+  mutate(IBM_sqr = IBM^2) %>%
+  tq_mutate(select = IBM_sqr,
+            mutate_fun = SMA,
+            n = 60,
+            col_rename = 'Volatility_60d')
+
+#Plot the Data
+IBM %>%
+  ggplot(aes(x = date, y = Volatility_60d)) +
+  geom_line(color = 'orange') +
+  labs(title = '60 days Volatility')
+```
+
+Now we can see that $R_t^2$ is nos constant over time.
+
+## Exponential Weighted Average
+
+Instead of taking an equally weighted average, we can take:
+
+$$
+\sigma_T^2 = \sum_{i=1}^T\alpha_i R_i^2 \\
+\text{Where: } \sum_{i=1}^T\alpha_i=1
+$$ The EWMA may be efficiently computed using the recursion:
+
+$$
+\sigma_T^2 = (1-\lambda)R_i^2 + \lambda \bar{R}_{i-1}^2
+$$ From previous equation, it is clear that the closer $λ$ is to one the more weight is put on the the previous period's estimate relative to the current period's observation.
+
+## ARCH and GARCH
+
+ARMA models are used to model the conditional expectation of a process given the past, but in an ARMA model the conditional variance given the past is constant. What does this mean for, say, modeling stock returns? Suppose we have noticed that recent daily returns have been unusually volatile. We might expect that tomorrow's return is also more variable than usual. However, an ARMA model cannot capture this type of behavior because its conditional variance is constant.
+
+**ARCH** is an acronym meaning **Auto-Regressive Conditional Heteroskedasticity**. In ARCH models the conditional variance has a structure very similar to the structure of the conditional expectation in an AR model. We first study the first order **ARCH(1)** model, which is the simplest GARCH model.
+
+Before looking at GARCH models, we study some general principles about modeling nonconstant conditional variance. Consider regression modeling with a constant conditional variance, $Var(Y_t| X_{1,t},..., X_{p,t}) = σ^2$. Then the general form for the regression of $Y_t$ on $X_{1,t},..., X_{p,t}$ is
+
+$$
+Y_t = f(X_{1,t},...,X_{p,t}) + \epsilon_t,
+$$ The function $f(·)$ is the conditional expectation of $Y_t$ given $X_{1,t},...,X_{p,t}$. Moreover, the conditional variance of $Y_t$ is $σ^2$. Let $σ^2(X_{1,t},...,X_{p,t})$ be the conditional variance of $Y_t$ given $X_{1,t},..., X_{p,t}$:
+
+$$
+Y_t = f(X_{1,t},...,X_{p,t}) + \epsilon_t σ(X_{1,t},...,X_{p,t})
+$$ where $\epsilon_t$ has conditional (given $X_{1,t},...,X_{p,t}$) mean equal to 0 and conditional variance equal to 1, gives the correct conditional mean and variance of $Y_t$. The function $σ(X_{1,t},...,X_{p,t})$ should be nonnegative since it is a standard deviation. If the function $σ(·)$ is linear, then its coefficients must be constrained to ensure nonnegativity.
+
+Suppose for now that $\epsilon_1, \epsilon_2,...$ is Gaussian white noise with unit variance. Then:
+
+$$
+E(\epsilon_t|\epsilon_{t−1},...)=0, \\
+\text{and} \
+Var(\epsilon_t|\epsilon_{t−1},...)=1
+$$
+
+The process $a_t$ is an **ARCH(1)** process under the model:$$
+a_t = \epsilon_t\sqrt{\omega + \alpha a_{t-1}^2}
+$$
+
+We require that $ω > 0$ and $α ≥ 0$ so that $ω + αa^2_{t−1} > 0$ for all t. It is also required that $α < 1$ in order for ${a_t}$ to be stationary with a finite variance. This can be rewriten:
+
+$$
+a_t^2 = \epsilon_t^2(\omega + \alpha a_{t-1}^2)
+$$ Define $σ^2_t = Var(a_t|a_{t−1},...)$ to be the conditional variance of at given past values. Since $\epsilon_t$ is independent of $\alpha_{t-1}$ and $E(\epsilon_t^2) = Var(\epsilon_t)=1$, we have $E(a_t|a_{t-1},…)=0$ and:
+
+$$
+\sigma_t^2=\omega+\alpha a_{t-1}^2
+$$
+
+An **ARCH(p)** model is then defined as:
+
+$$
+\sigma_t^2 = \omega + \alpha_1 a_{t-1}^2 + ... + \alpha_p a_{t-p}^2
+$$
+
+The **Generalized Autoregressive Conditional Heteroscedasticity model of order p and q, GARCH(p,q)**, was proposed by Tim Bollerslev in 1986 to circumvent the estimation of ARCH(p) models for large values of p, which often arise in practice.
+
+Bollerslev's idea was to make the variance also dependent on its q recent past values, hence obtaining the following recursive formula for $\sigma_t^2$
+
+$$
+Y_t = \mu_t + a_t \\
+\sigma_t^2 = \omega + \sum_{i=1}^p\alpha_p a_{t-i}^2 + \sum_{j=1}^q \beta_j \sigma_{t-j}^2
+$$ For the conditional variance in this **GARCH(p,q)** model to be well defined and positive, and the process be weakly stationary, the coefficients must satisfy:
+
+$$
+\omega > 0, α_1 ≥ 0,...,α_p ≥ 0, β_1 ≥ 0,...,β_q ≥ 0 \\
+\text{and } \sum_{i=1}^{\text{max(p,q)}}(\alpha_i + \beta_i) < 1
+$$ Moreover, the **unconditional variance** for the **GARCH(p,q)** model is obtained by taking expectation as:
+
+$$
+\sigma^2 =Var(a_t) = \frac{\omega}{1 - \sum_{k=1}^{\text{max(p,q)}}(\alpha_k + \beta_k) }
+$$ This unconditional variance can be interpreted as a long-run predicted variance. Let´s consider the SP500 returns from 1989 to 2018:
+
+```{r message=FALSE, warning=FALSE}
+#Get the Data
+sp500 = tq_get("^GSPC",
+                from = '1989-01-01',
+                to = '2018-12-31',
+                get = 'stock.prices',
+                complete_cases = T)
+
+#Compute Returns
+sp500_ret = sp500 %>%
+  group_by(symbol) %>%
+  tq_transmute(select = adjusted,
+    mutate_fun = periodReturn,
+    period = 'daily') %>%
+  spread(symbol, daily.returns)
+```
+
+Let´s compute the expected value of returns:
+
+```{r}
+#Convert to xts object
+sp500_xts = xts(sp500_ret$`^GSPC`, sp500_ret$date)
+names(sp500_xts) = 'sp500'
+
+# Compute the mean daily return
+m <- mean(sp500_xts)
+
+# Define the series of prediction errors
+e <- sp500_xts - m
+
+# Plot the absolute value of the prediction errors
+par(mfrow = c(2,1),mar = c(3, 2, 2, 2))
+plot(abs(e), type = 'l', main = 'SP500 mean Model and acf')
+
+# Plot the acf of the absolute prediction errors
+acf(abs(e))
+```
+
+Note the waves in the absolute prediction errors in the top plot. They correspond to the presence of high and low volatility clusters. In the bottom plot, you can see the large positive auto correlations in the absolute prediction errors. Almost all of them are above 0.2.
+
+**The recursive nature of the GARCH variance**
+
+Under the GARCH(1,1) equation the predicted variance is determined by the squared surprise in return and the previous variance prediction:
+
+$$
+\sigma_t^2 = \omega + \alpha(R_{t-1} - \mu_{t-1}) + \beta_{t-1}^2
+$$
+
+You can implement this using a loop
+
+Let's do this for the S&P 500 daily returns. The variables `omega = 1.208585e-05, alpha = 0.1 and beta = 0.8`
+
+```{r}
+# Compute the predicted variances
+predvar = rep(0, nrow(sp500_ret))
+#Initial Value for first observation
+predvar[1] <- var(sp500_xts) 
+
+#Parametrization
+omega = 1.208585e-05
+alpha = 0.1
+beta = 0.8
+
+#Compute e^2
+e2 = e^2
+
+#For Loop to iterate ver the df for GARCH
+for(t in 2 : nrow(sp500_xts)){
+   predvar[t] <- omega + alpha * e2[t-1] + beta * predvar[t-1]
+}
+
+# Create annualized predicted volatility
+ann_predvol <- sqrt(252) * sqrt(predvar)
+
+# Plot the annual predicted volatility in 2008 and 2009
+plot(ann_predvol, main = "Ann. S&P 500 vol", type = 'l')
+```
+
+We can use the `urgarch` package to estimate GARCH(p,q) parameters:
+
+Three steps:
+
+`ugarchspec()`: Specify which GARCH model you want to use (mean $μ$, variance $\sigma^2$, distribution of $e$)
+
+`ugarchfit()`: Estimate the GARCH model on your time series with returns $R_1,...,R_t$.
+
+`ugarchforecast()`: Use the estimated GARCH model to make volatility predictions for $R_{T+1}$
+
+```{r}
+require(rugarch)
+
+
+# Specify a standard GARCH model with constant mean
+garchspec <- ugarchspec(mean.model = list(armaOrder = c(0, 0)),
+                 variance.model = list(garchOrder = c(1, 1)), 
+                 distribution.model = "norm")
+
+# Estimate the model
+garchfit <- ugarchfit(data = sp500_xts, spec = garchspec)
+
+# Use the method sigma to retrieve the estimated volatilities 
+garchvol <- sigma(garchfit)
+
+# Plot the volatility for 2017
+plot(garchvol['2017'])
+
+#Print the Coeficients
+coef(garchfit)
+```
+
+Notice the typical GARCH behavior: after a large unexpected return, volatility spikes upwards and then decays away until there is another shock
+
+```{r}
+# Compute unconditional volatility
+sqrt(uncvariance(garchfit))
+
+# Forecast volatility 5 days ahead and add 
+garchforecast <- ugarchforecast(fitORspec = garchfit, 
+                     n.head = 5)
+
+# Extract the predicted volatility and print them
+print(sigma(garchforecast))
+```
+
+## GARCH Model with non normal Returns
+
+The GARCH model we just reviewed assumes that returns are normally distributed. However, this is not always the case. Lest´s test for Normality on the SP500:
+
+```{r}
+par(mfrow = c (1, 2))
+#Plot an histogram
+hist(sp500_xts, breaks = 30, main = 'Histogram of SP500 ret')
+qqnorm(sp500_xts)
+qqline(sp500_xts, col = 'red')
+```
+
+The Q-Q plot shows a lack of fit vs a Normal distribution on the extreme values. This is call **heavy-tails** distribution.
+
+Another possibility is tu use a **student-t** distribution that has two shape parameters.
+
+Parameters of the skewed student t distribution Compared to the normal distribution, the skewed studen t t distribution has two extra parameters:
+
+> Degrees of freedom parameter ν (in rugarch: shape) : the lower is ν the faer the tails.
+>
+> Skewness parameter ξ (in rugarch: skew): when ξ = 1: symmetry. When ξ\<1: negative skewness. For ξ\>1: positive skewness.
+>
+> Special cases: When ν=∞ and ξ=1: normal distribution. When ξ=1:student t distribution
+
+```{r}
+# Specify a standard GARCH model with constant mean
+garchspec <- ugarchspec(mean.model = list(armaOrder = c(0, 0)),
+                 variance.model = list(garchOrder = c(1, 1)), 
+                 distribution.model = "sstd")
+
+# Estimate the model
+garchfit <- ugarchfit(data = sp500_xts, spec = garchspec)
+
+# Use the method sigma to retrieve the estimated volatilities 
+garchvol <- sigma(garchfit)
+
+# Plot the volatility for 2017
+plot(garchvol['2017'])
+
+#Print the coeficients
+coef(garchfit)
+```
+
+## The Leverage effect
+
+Negative Returns induce higher leverage:
+
+-   $R_t$\<0
+
+-   $↓$ market value
+
+-   $↑$ leverage = debt/market value
+
+-   $↑$ volatility
+
+    To take into account the effect of negative predictive returns, we split the GARCH model in 2 equations:
+
+    $$
+    Y_t = \mu_t + a_t \\
+    \text{Case 1: }e_{t-1} > 0 \rightarrow \sigma_t^2 = \omega + \sum_{i=1}^p\alpha_p a_{t-i}^2 + \sum_{j=1}^q \beta_j \sigma_{t-j}^2 \\
+    \text{Case 2: }e_{t-1} < 0 \rightarrow \sigma_t^2 = \omega + \sum_{i=1}^p(\alpha_p + \gamma_p) a_{t-i}^2 + \sum_{j=1}^q \beta_j \sigma_{t-j}^2
+    $$
+
+    This is call de **GJR** model proposed by Glosten, Jagannathan and Runk.
+
+    ```{r message=FALSE, warning=FALSE}
+    # Specify a standard GARCH model with constant mean
+    garchspec <- ugarchspec(mean.model = list(armaOrder = c(0, 0)),
+                     variance.model = list(model = 'gjrGARCH'), 
+                     distribution.model = "sstd")
+
+    # Estimate the model
+    garchfit <- ugarchfit(data = sp500_xts, spec = garchspec)
+
+    # Use the method sigma to retrieve the estimated volatilities 
+    garchvol <- sigma(garchfit)
+
+    # Plot the volatility for 2017
+    plot(garchvol['2017'])
+
+    #Print the coeficients
+    betas = tidy(coef(garchfit))
+    betas$x = round(betas$x, 4)
+    betas
+    ```
+
+    Let´s visualize the **volatility response**
+
+    ```{r}
+    out = newsimpact(garchfit)
+    plot(out$zx, out$zy, xlab = "prediction error", ylab = "predicted variance")
+    ```
+
+    Notice that when the predicted error is negative, variance increase. The effect of negative returns is $\alpha_1 + \gamma_1 = 0.1281$ witch is 60x higher than positive predicted errors.
+
+## The Mean ($\mu$) model
+
+We can express the return of an asset by:
+
+$$
+ y_t=\mu+\sum_{i=1}^p \rho_i y_{t-i} + \sum_{j=1}^q b_i \epsilon_{t-i} +\epsilon_t \\
+\epsilon_t=\sqrt{\sigma_t}z_t \\
+\sigma_t = \omega + \sum_{i=1}^p\alpha_p a_{t-i}^2 + \sum_{j=1}^q \beta_j \sigma_{t-j}^2 
+$$
+
+This is the **ARMA + GARCH** model for the mean (reward) and volatility (risk).
+
+The GARCH-in-mean uses the nancia ltheory of a risk-reward trade off to build a conditional mean model. Let's now use statistical theory to make a mean model that exploits the correlation between today's return and tomorrow's return.
+
+The most popular model is the AR(1) model: AR(1) stands for autoregressive model of order1. It predicts the next return using the deviation of the return from its long term mean value $μ$
+
+$$
+μ = μ+ρ(R_{t-1}−μ)
+$$\
+If $\rho > 0$ a higher than average return is followed by a higher than average return (possible because markets underreact and hence there is momentum in returns)
+
+If $|\rho| < 1$ there is **Mean Revertion**: the deviations of $R_t$ from $\mu$ are transitory
+
+If $rho < 0$ a higher than average return is followed by a lower than average returns (possible because markets overreact and there is a reversal in returns)
+
+```{r}
+# Specify a standard GARCH model with constant mean
+garchspec <- ugarchspec(mean.model = list(armaOrder = c(1, 0)),
+                 variance.model = list(model = 'gjrGARCH'), 
+                 distribution.model = "sstd")
+
+# Estimate the model
+garchfit <- ugarchfit(data = sp500_xts, spec = garchspec)
+
+# Use the method sigma to retrieve the estimated volatilities 
+garchvol <- sigma(garchfit)
+
+# Plot the volatility for 2017
+plot(garchvol['2017'])
+
+#Print the coeficients
+betas = tidy(coef(garchfit))
+betas$x = round(betas$x, 4)
+betas
+```
+
+In this case $\rho = -0.0285$ and this is $\rho < 0$ there is a reversal on returns. Also $|\rho| < 1$ meaning that the process is mean reverting.
+
+## Estimating VaR using GARCH
+
+Value at Risk (VaR) is a statistical measure of downside risk based on current position. It estimates how much a set of investments might lose given normal market conditions in a set time period. A VaR statistic has three components: a) **time period**, b) **confidence level**, c) **loss ammount (or loss percentage)**. For 95% confidence level, we can say that the worst daily loss will not exceed VaR estimation. If we use historical data, we can estimate VaR by taking the 5% quantile value. For our data this estimation is:
+
+```{r}
+quantile(sp500_xts, 0.05)
+
+#Ploting Results
+sp500_ret %>%
+  mutate(VaR = ifelse(`^GSPC` <= quantile(sp500_xts, 0.05), 'VaR', 'NoVaR')) %>%
+  ggplot(aes(x = `^GSPC`, fill = VaR)) +
+  geom_histogram(bins = 70, color = 'white')
+```
+
+**Delta-normal** approach assumes that all stock returns are normally distributed. This method consists of going back in time and computing the variance of returns. Value at Risk can be defined as:
+
+$$
+VaR(a)=μ+σN^{−1}(\alpha)
+$$
+
+where \$μ\$ is the mean stock return, \$σ\$ is the standard deviation of returns, $\alpha$ is the selected confidence level and $N^{-1}$ is the inverse PDF function, generating the corresponding quantile of a normal distribution given $\alpha$.
+
+The results of such a simple model is often disapointing and are rarely used in practice today. The assumption of normality and constant daily variance is usually wrong and that is the case for our data as well.
+
+Previously we observed that returns exhibit time-varying volatility. Hence for the estimation of VaR we use the conditional variance given by **GARCH(1,1)** model. For the underlined asset's distribution properties we use the student's t-distribution. For this method Value at Risk is expressed as:
+
+$$
+VaR(\alpha)=μ+\hat{σ}_{t|t−1}F^{−1}(\alpha)
+$$
+
+where $\hat{σ}_{t|t−1}$ is the conditional standard deviation given the information at $t-1$ and $F^{-1}$ is the inverse PDF function of t-distribution.
+
+The *ugarchroll* method allows to perform a rolling estimation and forecasting of a model/dataset combination. It returns the distributional forecast parameters necessary to calculate any required measure on the forecasted density. We set the last 500 observations as test set and we perform a rolling moving 1-step ahead forecast of the conditional standard deviation. We re-estimate GARCH parameters every 50 observations:
+
+```{r}
+#Model specification
+garchspec <- ugarchspec(mean.model = list(armaOrder = c(1, 0)),
+                 variance.model = list(model = 'gjrGARCH'), 
+                 distribution.model = "sstd")
+
+#Rolling Window
+model_roll = ugarchroll(spec = garchspec , data = sp500_xts , 
+                        n.start = 2500 , 
+                        refit.every = 100 , 
+                        refit.window = 'moving')
+
+# Test set 500 observations
+garchVaR <- quantile(model_roll, probs = 0.05)
+
+actual <- xts(as.data.frame(model_roll)$Realized, time(garchVaR))
+VaRplot(alpha = 0.05, actual = actual, VaR = garchVaR)
+```
+
+A VaR exceedance occurs when the actual return is less than the predicted value-at-risk $R<VaR$. The frequency of VaR exceedances is called the VaR coverage.
+
+```{r}
+#Calculation of coverage for S&P 500 returns and 5% probability
+mean(actual < garchVaR)
+```
+
+Interpretation of coverage for VaR at loss probability α(e.g.,5%):
+
+-   Valid prediction model has a coverage that is close to the probability level α used
+
+-   If coverage $≫ α$: too many exceedances: the predicted quantile should be more negative Risk of losing money has been under estimated.
+
+-   If coverage $≪ α$ : too few exceedances, the predicted quantile was too negative. Risk of losing money has been overestimated.
+
+## GARCH CoVariance Estimation
+
+We can use GARCH to estimate time-varying CoVarince Matrix of multiple assets:
+
+$$
+\sigma_{12,t} = \rho \sigma_{1,t} \sigma_{2,t}
+$$
+
+Where $\rho$ is the correlation between the 2 assets.
+
+> Get data from Amazon and Nike
+
+```{r}
+ticks <- c('AMZN', 'NKE')
+
+#Get the Data
+stocks = tq_get(ticks,
+                from = '2010-01-01',
+                to = '2021-12-31',
+                get = 'stock.prices',
+                complete_cases = T)
+
+#Compute Returns
+stocks_ret = stocks %>%
+  group_by(symbol) %>%
+  tq_transmute(select = adjusted,
+    mutate_fun = periodReturn,
+    period = 'daily') %>%
+  spread(symbol, daily.returns)
+
+stocks_ret = xts(stocks_ret[, 2 : 3], stocks_ret$date)
+```
+
+> Compute GARCH Model
+
+```{r}
+#Compute GARCH Model
+# Specify a standard GARCH model with constant mean
+garchspec <- ugarchspec(mean.model = list(armaOrder = c(1, 0)),
+                 variance.model = list(model = 'gjrGARCH'), 
+                 distribution.model = "sstd")
+
+# Estimate the model
+garchfit_AMZN <- ugarchfit(data = stocks_ret$AMZN, spec = garchspec)
+garchfit_NKE <- ugarchfit(data = stocks_ret$NKE, spec = garchspec)
+```
+
+> Compute Residuals to estimate standardize returns
+
+```{r}
+res_AMZN <- residuals(garchfit_AMZN, standardize = TRUE)
+res_NKE <- residuals(garchfit_NKE, standardize = TRUE)
+```
+
+> Compute correlation of standardize returns
+
+```{r}
+rho = as.numeric(cor(res_AMZN, res_NKE))
+```
+
+> Compute GARCH Covariance
+
+```{r}
+garch_cov <- rho * sigma(garchfit_AMZN) * sigma(garchfit_NKE)
+plot(garch_cov)
+
+```
+
+> Compute optimal weights for a Portfolio
+
+$$
+w_{1,t} = \frac{\sigma_{2,t}^2 - \sigma_{12,t}}{\sigma_{1,t}^2+\sigma_{2,t}^2-2\sigma_{12,t}} 
+$$
+
+```{r}
+var_AMZ <- sigma(garchfit_AMZN) ^ 2
+var_NKE <- sigma(garchfit_NKE) ^ 2
+
+w1 = (var_AMZ - garch_cov) / (var_AMZ + var_NKE - 2 * garch_cov)
+plot(w1, col = 'steelblue')
+```
+
+Now, we can appreciate that the optimal weights for Amazon change every day based on the time-variying CoVariance Model.
