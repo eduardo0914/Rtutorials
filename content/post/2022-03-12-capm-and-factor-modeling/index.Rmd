@@ -135,7 +135,7 @@ $$
 \mu_R = \mu_f + \frac{\mu_M - \mu_f}{\sigma_M} \sigma_R
 $$
 
-where $R$ is the return on a given efficient portfolio (mixture of the market portfolio \[= tangency portfolio\] and the risk-free asset), $μ_R = E(R)$, $μ_f$ is the risk-free rate, $R_M$ is the return on the market portfolio, $μ_M = E(RM)$, $σ_M$ is the standard deviation of $R_M$, and $σ_R$ is the standard deviation of $R$. The risk premium of $R$ is $\mu_R − \mu_f$ and the risk premium of the market portfolio is $μ_M − μ_f$.
+where $R$ is the return on a given efficient portfolio (mixture of the market portfolio $$= tangency portfolio$$ and the risk-free asset), $μ_R = E(R)$, $μ_f$ is the risk-free rate, $R_M$ is the return on the market portfolio, $μ_M = E(RM)$, $σ_M$ is the standard deviation of $R_M$, and $σ_R$ is the standard deviation of $R$. The risk premium of $R$ is $\mu_R − \mu_f$ and the risk premium of the market portfolio is $μ_M − μ_f$.
 
 The slope of the Capital Market Line is:
 
@@ -395,7 +395,7 @@ The traditional view of asset allocation assumes that an investor allocates asse
 
 As the investment community has expanded beyond security selection to the embrace of asset allocation as the critical driver of performance, additional papers and studies further supported the concept of using RBSA in conjunction with holdings-based analysis. In 1995, the paper 'Determinants of Portfolio Performance' by Gary Brinson, L. Randolph Hood, and Gilbert L. Beebower, demonstrated that asset allocation decisions accounted for greater than 90% of the variability in a portfolio's performance.
 
-RBSA uses the [capital asset pricing model](https://en.wikipedia.org/wiki/Capital_asset_pricing_model "Capital asset pricing model") as its backbone, of which William Sharpe was also a primary contributor.^[\[4\]](https://en.wikipedia.org/wiki/Returns-based_style_analysis#cite_note-sharpeCAPM-4)^ In CAPM, a single index is often used as a proxy to represent the return of the market. The first step is to extend this to allow for multiple market proxy indices, thus:
+RBSA uses the [capital asset pricing model](https://en.wikipedia.org/wiki/Capital_asset_pricing_model "Capital asset pricing model") as its backbone, of which William Sharpe was also a primary contributor.[$$4$$](https://en.wikipedia.org/wiki/Returns-based_style_analysis#cite_note-sharpeCAPM-4) In CAPM, a single index is often used as a proxy to represent the return of the market. The first step is to extend this to allow for multiple market proxy indices, thus:
 
 $$
 R_{j}=\beta_{0,j} + \sum_{i=1}^p\beta_{i,j}F_{i.t}+\epsilon_{j,t}
