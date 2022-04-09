@@ -37,7 +37,7 @@ tags:
 </ul>
 <p>La distribución normal también aparece en muchas áreas de la propia estadística. Por ejemplo, la <strong>distribución muestral de las medias muestrales es aproximadamente normal</strong>, cuando la distribución de la población de la cual se extrae la muestra no es normal. Además, la distribución normal maximiza la entropía entre todas las distribuciones con media y varianza conocidas, lo cual la convierte en la elección natural de la distribución subyacente a una lista de datos resumidos en términos de media muestral y varianza. La distribución normal es la más extendida en estadística y <strong>muchos tests estadísticos están basados en una “normalidad”</strong> más o menos justificada de la variable aleatoria bajo estudio.</p>
 <p>La distribución normal se define como:</p>
-<p><span class="math inline">\(X \sim \mathcal{N}(\mu,\,\sigma^{2})\ = \frac{1}{\sigma \sqrt{2\pi}}e^{\frac{(x-\mu)^2}{2\sigma^2}}\)</span></p>
+<p><span class="math inline">\(X \sim \mathcal{N}(\mu,\,\sigma^{2})\ = \frac{1}{\sigma \sqrt{2\pi}}e^{-\frac{(x-\mu)^2}{2\sigma^2}}\)</span></p>
 <p>a la cantidades <span class="math inline">\(\mu\)</span> y <span class="math inline">\(\sigma^2\)</span> se les conoce como <strong>media</strong> y <strong>varianza</strong> y determinan la <strong>localización</strong> del valor más probable y la <strong>dispersión</strong> de la curva. Entonces, podemos obtener distintas formar si los valores de la estos 2 parámetros son distintos:</p>
 <pre class="r"><code>require(tidyverse)</code></pre>
 <pre class="r"><code>#Simular distintas distribuciones normales
@@ -57,7 +57,7 @@ ggplot(simulacion) +
   labs(title = &#39;Diferentes Distribuciones Normales&#39;)</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
 <p>Muchas veces nos interesa obtener la <strong>función acumulada</strong> para obtener probabilidades. Por ejemplo, supongamos que nos interesa saber la probabilidad de que un avión que viaja de <strong>MX</strong> a <strong>NY</strong> haga menos de 4.5 hrs. Supongamos que en promedio, un avión hace 5 hrs o 300 minutos y que su desviación estándar es de 45 min. Generalmente tendríamos que calcular:</p>
-<p><span class="math inline">\(P[t&lt;= 270] = \int_{t = 0}^{t = 270}\frac{1}{\sigma \sqrt{2\pi}}e^{\frac{(x-\mu)^2}{2\sigma^2}}\)</span></p>
+<p><span class="math inline">\(P[t&lt;= 270] = \int_{t = 0}^{t = 270}\frac{1}{\sigma \sqrt{2\pi}}e^{-\frac{(x-\mu)^2}{2\sigma^2}}\)</span></p>
 <p>lo cual representa conocimientos avanzados de cálculo y un montón de operaciones. En <strong>R</strong> podemos computarlo con la función <code>pnorm(value, mu, sd)</code></p>
 <pre class="r"><code>#La probabilidad de llegar en menos de 4.5 hrs
 pnorm(270, mean = 300, sd = 45)</code></pre>
@@ -82,11 +82,11 @@ p</code></pre>
 <div id="la-distribución-normal-estándar" class="section level3">
 <h3>La Distribución Normal Estándar</h3>
 <p>Hacer cómputos con esta ecuación:</p>
-<p><span class="math inline">\(X \sim \mathcal{N}(\mu,\,\sigma^{2})\ = \frac{1}{\sigma \sqrt{2\pi}}e^{\frac{(x-\mu)^2}{2\sigma^2}}\)</span></p>
+<p><span class="math inline">\(X \sim \mathcal{N}(\mu,\,\sigma^{2})\ = \frac{1}{\sigma \sqrt{2\pi}}e^{-\frac{(x-\mu)^2}{2\sigma^2}}\)</span></p>
 <p>es difícil desde un punto de vista matemático. Pero podemos usar un truco que consiste en hacer que la media de nuestro objeto de estudio sea <span class="math inline">\(0\)</span> y que su dispersión sea siempre <span class="math inline">\(1\)</span>. Esto lo logramos por medio de la estandarización:</p>
 <p><span class="math inline">\(z = \frac{x-\mu}{\sigma}\)</span></p>
 <p>Con esto logramos simplificar un poco la ecuación de la distribución normal:</p>
-<p><span class="math inline">\(Z \sim \mathcal{N}(0,\,1)\ = \frac{1}{ \sqrt{2\pi}}e^{\frac{z^2}{2}}\)</span></p>
+<p><span class="math inline">\(Z \sim \mathcal{N}(0,\,1)\ = \frac{1}{ \sqrt{2\pi}}e^{-\frac{z^2}{2}}\)</span></p>
 <p>y se le conoce como <strong>Distribución Normal Estándar</strong>. Siempre tiene <span class="math inline">\(\mu=0\)</span> y <span class="math inline">\(\sigma=1\)</span>. Ahora vamos a usarla en el ejemplo del avión. Queremos saber la probabilidad de llegar antes de 4.5 hrs:</p>
 <pre class="r"><code>#Estandarizamos las 4.5 hr (270 min)
 z = (270 - 300) / 45
@@ -96,7 +96,7 @@ pnorm(z, mean = 0, sd = 1)</code></pre>
 <pre><code>## [1] 0.2524925</code></pre>
 <p>Y hemos obtenido el mismo resultado que antes.</p>
 <p>Ahora supongmos que queremos obtener el tiempo de viaje que resulta en el 95% delos viajes. A esto se le conoce como <strong>Distribución de probabilidades inversa</strong></p>
-<p><span class="math inline">\(P(Z\leq z) = \int_{Z = -\infty}^z\frac{1}{ \sqrt{2\pi}}e^{\frac{z^2}{2}} = 0.95\)</span></p>
+<p><span class="math inline">\(P(Z\leq z) = \int_{Z = -\infty}^z\frac{1}{ \sqrt{2\pi}}e^{-\frac{z^2}{2}} = 0.95\)</span></p>
 <p>Ahora lo que tendríamos que hacer es integrar y despejar <span class="math inline">\(z\)</span>. Por fortuna, en <strong>R</strong> podemos computar la distribución inversa con la función <code>qnorm(p, mean, sd)</code></p>
 <pre class="r"><code>x = qnorm(0.95, mean = 300, sd = 45)
 x</code></pre>
@@ -238,7 +238,7 @@ c(Lower, mean(resultados$Media) ,Upper)</code></pre>
 <p>A esto se le conoce como <strong>error estándar</strong>. Si computamos ahora el error estándar obtenemos lo siguiente:</p>
 <pre class="r"><code>c(sd(resultados$Media), mean(resultados$DesvEst) / sqrt(30))</code></pre>
 <pre><code>## [1] 1.501359 1.515691</code></pre>
-<p>Que ahora sí nos da valores muy parecidos!!!!Lo que que acabamos de demostrar empíricamente es la estimación de una media poblacional <span class="math inline">\(\mu\)</span> a través de un proceso de muestreo. Más aún, cuando nuestras muestras son mayores de 30 datos la estadística nos asegura una rápida convergencia. Entonces, no necesitamos hacer 2,000 o 200 o 2 muestreos de una población. con <strong>1 muestra que tenga un tamaño suficientemente grande (<span class="math inline">\(n &gt; 30\)</span>) podemos hacer una inferencia</strong>.</p>
+<p>Que ahora sí nos da valores muy parecidos!!!!Lo que que acabamos de demostrar empíricamente es la estimación de una media poblacional <span class="math inline">\(\mu\)</span> a través de un proceso de muestreo. Más aún, cuando nuestras muestras son mayores de 30 datos la estadística nos asegura una rápida convergencia. Entonces, no necesitamos hacer 2,000 o 200 o 2 muestreos de una población. con <strong>1 muestra que tenga un tamaño suficientemente grande (</strong><span class="math inline">\(n &gt; 30\)</span>) podemos hacer una inferencia.</p>
 <p>Con esto, la estimación por intervalo de una media poblacional es:</p>
 <p><span class="math inline">\(\hat{x} - Z_{\alpha/2} \frac{s}{\sqrt(n)} \leq \mu\leq \hat{x} + Z_{\alpha/2} \frac{s}{\sqrt(n)}\)</span></p>
 <p>Vamos a probar nuestro modelo seleccionando 1 muestra aleatoria de tamaño 31 de la población de 10,000 individuos para hacer una estimación de la media poblacional asumiendo un intervalo de confianza del 95% (El valor de <span class="math inline">\(Z_{\alpha/2}\)</span> para un intervalo de confianza del 95% es ~1.96).</p>
