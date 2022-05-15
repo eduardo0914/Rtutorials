@@ -1,0 +1,278 @@
+---
+title: People Analytics - Employee Engagement
+author: Eduardo Villarreal
+date: '2022-05-14'
+slug: people-analytics-employee-engagement
+categories:
+  - Machine Learning
+  - People Analytics
+tags:
+  - Classification
+  - Machine Learning
+  - Employee Engagement
+---
+
+
+
+<div id="what-is-employee-engagement" class="section level1">
+<h1>What is Employee Engagement</h1>
+<p><a href="https://en.wikipedia.org/wiki/Employee_engagement">Wikipwdia-Employee Engagement</a></p>
+<p>Employee engagement is a fundamental concept in the effort to understand and describe, both qualitatively and quantitatively, the nature of the relationship between an organization and its employees. An “engaged employee” is defined as one who is fully absorbed by and enthusiastic about their work and so takes positive action to further the organization’s reputation and interests. An engaged employee has a positive attitude towards the organization and its values. In contrast, a disengaged employee may range from someone doing the bare minimum at work (aka ‘coasting’), up to an employee who is actively damaging the company’s work output and reputation.</p>
+<p>An organization with “high” employee engagement might therefore be expected to outperform those with “low” employee engagement.</p>
+<p>Employee engagement first appeared as a concept in management theory in the 1990s, becoming widespread in management practice in the 2000s, but it remains contested. It stands in an unspecified relationship to earlier constructs such as morale and job satisfaction. Despite academic critiques, employee engagement practices are well established in the management of human resources and of internal communications.</p>
+<p>William Kahn provided the first formal definition of personnel engagement as “the harnessing of organisation members’ selves to their work roles; in engagement, people employ and express themselves physically, cognitively, and emotionally during role performances.</p>
+<p>In 1993, Schmidt et al. proposed a bridge between the pre-existing concept of ‘<a href="https://en.wikipedia.org/wiki/Job_satisfaction" title="Job satisfaction">job satisfaction</a>’ and employee engagement with the definition: “an employee’s involvement with, commitment to, and satisfaction with work. Employee engagement is a part of employee retention.” This definition integrates the classic constructs of job satisfaction (Smith et al., 1969), and organizational commitment (Meyer &amp; Allen, 1991).</p>
+<p>Defining employee engagement remains problematic. In their review of the literature in 2011, Wollard and Shuck identify four main sub-concepts within the term:</p>
+<ol style="list-style-type: decimal">
+<li><p>“Needs satisfying” approach, in which engagement is the expression of one’s preferred self in task behaviours.</p></li>
+<li><p>“Burnout antithesis” approach, in which energy, involvement, efficacy are presented as the opposites of established “burnout” constructs: exhaustion, cynicism and lack of accomplishment.</p></li>
+<li><p>Satisfaction-engagement approach, in which engagement is a more technical version of job satisfaction, evidenced by <a href="https://en.wikipedia.org/wiki/Gallup_(company)" title="Gallup (company)">The Gallup Company’s</a> own Q12 engagement survey which gives an r=.91 correlation with one (job satisfaction) measure.</p></li>
+<li><p>The multidimensional approach, in which a clear distinction is maintained between job and organisational engagement, usually with the primary focus on antecedents and consequents to role performance rather than organisational identification.</p></li>
+</ol>
+<p>Definitions of engagement vary in the weight they give to the individual vs the organisation in creating engagement. Recent practice has situated the drivers of engagement across this spectrum, from within the psyche of the individual employee (for example, promising recruitment services that will filter out ‘disengaged’ job applicants) to focusing mainly on the actions and investments the organisation makes to support engagement.</p>
+<p>These definitional issues are potentially severe for practitioners. With different (and often proprietary) definitions of the object being measured, statistics from different sources are not readily comparable. Engagement work remains open to the challenge that its basic assumptions are, as Tom Keenoy describes them, ‘<a href="https://en.wikipedia.org/wiki/Norm_(philosophy)" title="Norm (philosophy)">normative</a>’ and ‘aspirational’, rather than <a href="https://en.wikipedia.org/wiki/Analytics" title="Analytics">analytic</a> or operational - and so risk being seen by other organizational participants as “motherhood and apple pie” rhetoric.</p>
+</div>
+<div id="description-of-the-data" class="section level1">
+<h1>Description of the Data</h1>
+<p>The data set describes ~2500 Managers rated by their employees. Usually this type of survey data, has a big amount of questions divided in different dimentions such as Rewards, Recognition, Empowerment, Diveristy &amp; Inclussion, etc.</p>
+<p>Companies rely on annual engagement surveys to track and monitor the motivation of employees. Engagement is important because it is shown that it correlates to productivity and company performance. High levels of engagmenet are also related to low turn over rates and a strong Employee Vale Proposition.</p>
+<pre class="r"><code>knitr::opts_chunk$set(echo = TRUE)
+
+#Cargar librerias
+require(tidyverse)
+require(data.table)
+require(tidymodels)
+require(visreg)
+require(arules)
+require(patchwork)
+
+theme_set(theme_bw())
+tidymodels_prefer()</code></pre>
+<pre class="r"><code>engagement = fread(&#39;Engagement.csv&#39;)
+glimpse(engagement)</code></pre>
+<pre><code>## Rows: 197,352
+## Columns: 10
+## $ id       &lt;int&gt; 94100812, 94253692, 97920505, 32067026, 32174057, 32167306, 8…
+## $ Year     &lt;int&gt; 2021, 2021, 2021, 2021, 2021, 2021, 2021, 2021, 2021, 2021, 2…
+## $ clasif   &lt;chr&gt; &quot;Annual&quot;, &quot;Annual&quot;, &quot;Annual&quot;, &quot;Annual&quot;, &quot;Annual&quot;, &quot;Annual&quot;, &quot;…
+## $ engTotal &lt;dbl&gt; 60.29310, 86.13793, 44.86207, 87.96552, 63.62069, 95.68966, 5…
+## $ equipo   &lt;int&gt; 6, 10, 6, 18, 7, 19, 21, 22, 5, 10, 13, 42, 6, 27, 7, 6, 8, 7…
+## $ IdCode   &lt;chr&gt; &quot;G1&quot;, &quot;G1&quot;, &quot;G1&quot;, &quot;G1&quot;, &quot;G1&quot;, &quot;G1&quot;, &quot;G1&quot;, &quot;G1&quot;, &quot;G1&quot;, &quot;G1&quot;, &quot;…
+## $ Value    &lt;int&gt; 83, 98, 38, 94, 64, 99, 76, 97, 75, 100, 96, 88, 96, 92, 100,…
+## $ Gender   &lt;chr&gt; &quot;Male&quot;, &quot;Female&quot;, &quot;Female&quot;, &quot;Male&quot;, &quot;Male&quot;, &quot;Male&quot;, &quot;Male&quot;, &quot;…
+## $ Age      &lt;int&gt; 65, 27, 42, 42, 33, 26, 41, 25, 34, 37, 59, 37, 39, 48, 52, 3…
+## $ Grade    &lt;chr&gt; &quot;VIII&quot;, &quot;VIII&quot;, &quot;VIII&quot;, &quot;VII&quot;, &quot;VI&quot;, &quot;VII&quot;, &quot;VII&quot;, &quot;VIII&quot;, &quot;V…</code></pre>
+<p>The column <code>id</code> relates each employee with an unique identifier, <code>IdCode</code> stores each question on the survey s well as the result for each dimention. In this case <code>G1</code> relates to the engagement index.</p>
+<p>Prior building an algorithm, we need to reshape the data so we can manipulate it in an efficient way.</p>
+<div id="reshaping-the-data" class="section level2">
+<h2>Reshaping the Data</h2>
+<p>I´m going to split the data in 2 big dataframes:</p>
+<ol style="list-style-type: decimal">
+<li><p>Containing the set of questions</p></li>
+<li><p>A second one with the demographic data available on the data set</p></li>
+</ol>
+<p>Then, I´m hing to merge both data sets to have the final data frame.</p>
+<pre class="r"><code>engagement_surv = engagement %&gt;%
+  select(id, IdCode, Value) %&gt;%
+  spread(IdCode, Value, fill = NA)
+
+engagement_emp = engagement %&gt;%
+  select(id,equipo, Gender, Age, Grade) %&gt;%
+  unique() #Remove duplicated rows
+
+message(&#39;Merging Data setd===============================================&#39;)</code></pre>
+<pre><code>## Merging Data setd===============================================</code></pre>
+<pre class="r"><code>engagement_df = left_join(engagement_surv, engagement_emp)</code></pre>
+<pre><code>## Joining, by = &quot;id&quot;</code></pre>
+<pre class="r"><code>head(engagement_df)</code></pre>
+<pre><code>##          id G1 G10 G11 G12 G13 G14  G2  G3  G4  G5 G6  G7 G8 G9  P1 P10 P11 P12
+## 1: 10171514 96  96  92 100 100  83 100  87  89  67 92  83 87 93 100  83  83  67
+## 2: 10714418 96  98  83 100  71  71  74  89 100  86 82  94 74 94 100 100  71  71
+## 3: 10714429 75  75  65  92  50  58  73  85  88  81 73  85 62 90  83  75  75  83
+## 4: 12025062 94  92  96 100  78  67  91  96  84  89 94  98 80 98 100 100  89  89
+## 5: 29002499 95  90  87 100 100  80  96 100  92  87 95 100 80 96 100 100 100 100
+## 6: 29005261 75  78  80 100 100  80  96 100  88 100 80  80 72 96 100 100 100 100
+##    P13 P14 P15 P16 P17 P18 P19  P2 P20 P21 P22 P23 P24 P25 P26 P27 P28 P29  P3
+## 1: 100 100 100 100  80  83  80  83  67  67  67  83 100 100  83 100  50  83 100
+## 2: 100 100 100 100 100 100 100 100  86  86  86  57  86 100  86 100  71 100  86
+## 3: 100  92  92  83  83  92  92  58  75  92  75  50  83  83  75 100  83  83  92
+## 4: 100 100 100  78  78  78  89  89  89  89  89 100  89 100  89 100 100  89  89
+## 5: 100 100 100 100  80 100  80  80  80 100  80  80 100 100 100 100 100 100 100
+## 6: 100 100 100  80  80 100  80  60 100 100 100  80  60 100  80  80  80  60  80
+##    P30 P31 P32 P33 P34 P35 P36 P37 P38 P39  P4 P40 P41 P42 P43 P44 P45 P46 P47
+## 1: 100  83 100  83  67  83 100 100 100 100 100 100  67  83 100 100 100 100 100
+## 2: 100 100  71 100  57  86  57 100 100  86 100  86 100 100  86 100 100 100 100
+## 3:  92  67  58  67  58  67  58 100  92  83  67  92  83  92  50  83  75  67  92
+## 4: 100 100  67  89  78  89  78 100 100 100 100  89 100  89  89  89 100  78 100
+## 5: 100 100  80  80  60 100  80 100 100 100 100 100  80  80  80 100  80 100 100
+## 6:  80 100  80  80  60  60  80 100 100  80  60 100 100  60  60 100  60 100 100
+##    P48 P49  P5 P50 P51 P52 P53 P54 P55 P56 P57 P58  P6  P7  P8  P9 equipo
+## 1: 100  83 100 100 100  67 100  83 100 100 100  83 100 100 100 100      6
+## 2: 100 100  71  71  83  57 100  86 100 100  71  71  71  71  86  71      7
+## 3:  75  67  75  75  67  42  58  67  83  92  50  58  58  75  75  83     12
+## 4: 100  89 100 100  89 100 100  89 100 100  78  67  67 100  89 100      9
+## 5:  80 100 100 100  60  60 100 100 100 100 100  80  80 100 100 100      5
+## 6:  80  60 100 100  60  80  80  60 100 100 100  80  80 100 100 100      5
+##    Gender Age                Grade
+## 1:   Male  53 00 Senior Management
+## 2:   Male  40 00 Senior Management
+## 3:   Male  61 00 Senior Management
+## 4:   Male  46 00 Senior Management
+## 5:   Male  48 00 Senior Management
+## 6:   Male  45 00 Senior Management</code></pre>
+</div>
+<div id="pre-process-the-data" class="section level2">
+<h2>Pre-process the Data</h2>
+<pre class="r"><code>engagement_df = engagement_df %&gt;%
+  mutate(Age_d = arules::discretize(Age)) %&gt;%
+  filter(Grade != &#39;EBM&#39;) %&gt;%
+  na.omit()</code></pre>
+</div>
+<div id="exploratory-data-analysis" class="section level2">
+<h2>Exploratory Data Analysis</h2>
+<p>Let´s figure out about the Data! The Output Variable is the <strong>General Engagement Index</strong> sotred in column <code>G1</code></p>
+<pre class="r"><code>#Create a histogram
+p1 = engagement_df %&gt;%
+  ggplot(aes(x = G1)) +
+  geom_histogram(color = &#39;white&#39;, fill = &#39;orange&#39;) +
+  labs(title = &#39;Engagement Distribution&#39;)
+
+p2 = engagement_df %&gt;%
+  ggplot(aes(x = Gender, y =G1, fill = Gender)) +
+  geom_boxplot() +
+  labs(title = &#39;Boxplot by Gender&#39;) +
+  theme(legend.position = &#39;none&#39;)
+
+p3 = engagement_df %&gt;%
+  ggplot(aes(x = Age_d, y = G1, fill = Age_d)) +
+  geom_boxplot() +
+  labs(title = &#39;Boxplot by Age&#39;) +
+  theme(legend.position = &#39;none&#39;)
+
+p4 = engagement_df %&gt;%
+  ggplot(aes(x = Grade, y = G1, fill = Grade)) +
+  geom_boxplot() +
+  theme(legend.position = &#39;none&#39;)
+
+(p1 | p2) / (p3 | p4)</code></pre>
+<pre><code>## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<p>Now, lets figure out the correlation with the 11 Dimentions of engagement:</p>
+<pre class="r"><code>engagement_df %&gt;%
+  select(id, starts_with(&#39;G&#39;), -Grade, - Gender) %&gt;%
+  gather(Variable, Value, 3 : ncol(.)) %&gt;%
+  ggplot(aes(x = Value, y = G1, color = Variable)) +
+  geom_point(alpha = 0.2) +
+  facet_wrap(~Variable, scale = &#39;free&#39;) +
+  theme(legend.position = &#39;none&#39;) +
+  geom_smooth(color = &#39;grey40&#39;, se = F, lty = 2)</code></pre>
+<pre><code>## `geom_smooth()` using method = &#39;gam&#39; and formula &#39;y ~ s(x, bs = &quot;cs&quot;)&#39;</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<pre class="r"><code>message(&#39;Correlation plot ===============================================&#39;)</code></pre>
+<pre><code>## Correlation plot ===============================================</code></pre>
+<pre class="r"><code>library(corrplot)</code></pre>
+<pre><code>## corrplot 0.92 loaded</code></pre>
+<pre class="r"><code>#Create correlation Matrix
+corr_mat = engagement_df %&gt;%
+  select(is.numeric, -id) %&gt;%
+  as.matrix() %&gt;%
+  cor()</code></pre>
+<pre><code>## Warning: Predicate functions must be wrapped in `where()`.
+## 
+##   # Bad
+##   data %&gt;% select(is.numeric)
+## 
+##   # Good
+##   data %&gt;% select(where(is.numeric))
+## 
+## ℹ Please update your code.
+## This message is displayed once per session.</code></pre>
+<pre class="r"><code>corrplot(corr_mat, method = &#39;color&#39;, order = &#39;hclust&#39;, tl.cex = 0.4)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-6-2.png" width="672" /></p>
+<p>Before continue, you can check the <a href="https://eduardo0914rtutorials.netlify.app/post/2022/05/08/introduction-to-statistical-learning-regression-and-regularization/">Introduction to Statistical Learning Tutorial</a>.</p>
+</div>
+</div>
+<div id="logistic-regression-and-classification" class="section level1">
+<h1>Logistic Regression and Classification</h1>
+<p>The Engagement Score is a number between <span class="math inline">\([0,100]\)</span> very similar to a <strong>probability score</strong>. How ever, we need to define what is good engagement. It is someone with a 51% engagement? maybe 80%?. Let´s tdefine a treshold on our Average Engagement Score:</p>
+<pre class="r"><code>engagement_df %&gt;%
+  summarise(mean = mean(G1))</code></pre>
+<pre><code>##       mean
+## 1 89.55309</code></pre>
+<p>This trashold makes sence form the business perspective. If our goal is to sustain or improve our score, we wold like to invstigate people over the average to lear what they are doing that other aren´t.</p>
+<pre class="r"><code>engagement_df = engagement_df %&gt;%
+  mutate(ENG = ifelse(G1 &gt;= 89, 1, 0))
+
+require(ggmosaic)</code></pre>
+<pre><code>## Loading required package: ggmosaic</code></pre>
+<pre class="r"><code>#Plot ENG
+engagement_df %&gt;%
+  ggplot() +
+  geom_mosaic(aes(x = product(Grade, ENG), fill = Grade)) +
+  theme(legend.position = &#39;none&#39;) +
+  labs(title = &#39;Mosaic plot of ENG by Grade&#39;)</code></pre>
+<pre><code>## Warning: `unite_()` was deprecated in tidyr 1.2.0.
+## Please use `unite()` instead.
+## This warning is displayed once every 8 hours.
+## Call `lifecycle::last_lifecycle_warnings()` to see where this warning was generated.</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+<div id="generalized-linear-models" class="section level2">
+<h2>Generalized Linear Models</h2>
+<p>A model is just a simple abstraction of reality in that it provides an approximation of some relatively more complex phenomenon. Models may be broadly classified as deterministic or probabilistic.</p>
+<p>There is certainly no more important class of probabilistic model than the probabilistic linear model:</p>
+<p><span class="math display">\[y_i = \beta_0 + \sum_{i = 1} ^ p \beta_i x_i + \epsilon\]</span></p>
+<p>is called a linear model because the mean response is a linear function of the unknown parameters. More even, the <strong>Derivative</strong> respect to the <strong>Parameters</strong> is linear.</p>
+<p><span class="math display">\[\frac{\partial y_i}{\partial \beta_i} = \beta_i\]</span></p>
+<p>A second-order polinomial is also linear:</p>
+<p><span class="math display">\[y_i = \beta_0 + \sum_{i = 1} ^ p \beta_i x_i + \sum_{i = 1} ^ p \beta_{ii}x_i ^2\]</span></p>
+<p><span class="math display">\[\frac{\partial y_i}{\partial \beta_i} = \beta_i + 2 \beta_{ii}x_i\]</span></p>
+<p>or even a model with transcendental terms such as:</p>
+<p><span class="math display">\[y_i = \beta_0 + \beta_1 \sin(x_1) + \beta_2 \cos{x_2}\]</span></p>
+<p>When the model is <strong>Linear</strong> the method of <strong>least square</strong>s is a parameter estimation technique that dates from the early part of the nineteenth century. There is a really nice, elegant, and well-developed statistical theory for the linear model. If we assume that the errors <span class="math inline">\(\epsilon\)</span> in the linear model are normally and independently distributed with constant variance, then statistical tests on the model parameters, confidence intervals on the parameters, and confidence and prediction intervals for the mean response can easily be obtained.</p>
+<p>However, there are situations where the phenomenon is well understood and can be described by a mathematical relationship. For example, consider <strong>Newton’s law of cooling</strong>, which states that the rate of change of temperature of an object is proportional to the difference between the object’s current temperature and the temperature of the surrounding environment:</p>
+<p><span class="math display">\[\frac{\partial f}{\partial t} = -\beta (f - T_A)\]</span> Solving the diferential equation we have the actual temperatur at time <em>t</em>:</p>
+<p><span class="math display">\[f(t, \beta) = T_A + (T_I - T_A) e ^ {\beta t}\]</span></p>
+<p>This equation is an example of a <strong>nonlinear model</strong>, because the response is not a linear function of the unknown parameter.</p>
+<p>Suppose that the response variable is adiscrete variable, such as a <strong>count</strong>. We often encounter counts of defects or other rare events, such as injuries, patients with particular diseases, and even the occurrence of natural phenomena including earthquakes and Atlantic hurricanes.</p>
+<p>Another possibility is a <strong>binary</strong> response variable. Situations where the response variable is either success or failure (i.e., 0 or 1 ) are fairly common in nearly all areas of science and engineering.</p>
+<p>There are also situations where the response variable is continuous, but the assumption of normality is not reasonable. Examples include the distribution of stresses in mechanical components and the failure times of systems or components. These types of responses are nonnegative and typically have a highly right-skewed behavior.</p>
+<p>The <strong>generalized linear model or (GLM)</strong> allows us to fit regression models for univariate response data that follow a very general distribution called the <strong>exponential</strong> family. The exponential family includes the normal, binomial, Poisson, geometric, negative binomial, exponential, gamma, and inverse normal distributions:</p>
+<p><span class="math display">\[g(\mu_i) = g[E(y_i)] = X^T \beta\]</span></p>
+<p>Every generalized linear model has three components: a <strong>response variable distribution</strong> (sometimes called the error structure), a <strong>linear predictor</strong> that involves the regressor variables or covariates, and a <strong>link function</strong> <span class="math inline">\(g\)</span> that connects the linear predictor to the natural mean of the response variable.</p>
+<p>For example, consider the linear regression model in Equation. The response distribution is normal, the linear predictor is:</p>
+<p><span class="math display">\[X^T\beta = \beta_0 + \sum_{i = 1} ^p \beta_i x_1\]</span></p>
+<p>and the link function is an identity link, <span class="math inline">\(g(a) = a\)</span>, or</p>
+<p><span class="math display">\[E[y] = u = \beta_0 + \sum_{i = 1} ^p \beta_i x_1\]</span></p>
+<p>Thus the standard linear regression model is a <strong>GLM</strong>. Depending on the choice of the link function <span class="math inline">\(g\)</span>, a GLM can include a nonlinear model. For example, if we use a <strong>log link</strong>, <span class="math inline">\(g(a) = ln(a)\)</span>, then</p>
+<p><span class="math display">\[E[y] = u = exp\left(\beta_0 + \sum_{i = 1} ^p \beta_i x_1 \right)\]</span></p>
+<p>For the case of a <strong>binomial</strong> distribution, a fairly standard choice of link function is the <strong>logit link</strong></p>
+<p><span class="math display">\[E[y] = \frac{exp(\beta_0 + \beta_1 x_1)}{1 + exp(\beta_0 + \beta_1 x_1)}\]</span></p>
+</div>
+<div id="binary-response-model-logistic-regression" class="section level2">
+<h2>Binary Response Model (Logistic Regression)</h2>
+<p>Consider the case in witch the response variable can take only 2 posibles outcomes (0, 1). It is reasonable to assume that <span class="math inline">\(y_i\)</span> is a <em>Bernulli</em> random variable:</p>
+<p><span class="math display">\[E[y_i] = \pi_i = \pi(x_i)\]</span></p>
+<p>and</p>
+<p><span class="math display">\[Var[y_i] = \pi_i(1 - \pi_i)\]</span></p>
+<p>Supposed that the model has the form:</p>
+<p><span class="math display">\[y_i = x \beta + \epsilon\]</span></p>
+<p>We assume that the response variable <span class="math inline">\(y\)</span>; is a Bernoulli random variable with probability distribution as follows:</p>
+<p><span class="math display">\[P(y_i = 1) = \pi_i \rightarrow y_i = 1\]</span></p>
+<p><span class="math display">\[P(y_i = 0) = 1 - \pi_i \rightarrow y_i = 0\]</span></p>
+<p>Thus <span class="math inline">\(E[y_i] = x \beta = \pi_i\)</span> were $0 \pi_i $. This restriction on the <strong>response</strong> implies that the random terms <span class="math inline">\(\epsilon_i\)</span> arean´t normaly distributed.</p>
+<p>Generally, when the response is <strong>Binary</strong> the equation is on the form:</p>
+<p><span class="math display">\[E[y] = \frac{e^{x \beta}}{1 - e^{x \beta}}\]</span></p>
+<p>However, the response can be linnearized as well. Let:</p>
+<p><span class="math display">\[\eta = x \beta\]</span></p>
+<p>be the linear predictor <span class="math inline">\(\eta\)</span> define as:</p>
+<p><span class="math display">\[\eta = ln \frac{\pi}{1 - \pi}\]</span></p>
+<p>This is called the <strong>logit</strong> transformation of the probabiity <span class="math inline">\(\pi\)</span>. This follows a <em>Bernulli</em> process:</p>
+<p><span class="math display">\[E[y_i] = \pi_i^{y_i} (1 - \pi_i)^{1 - y_i}\]</span></p>
+<p>Then, is easy to applied <strong>Maximunlikelihood</strong> theroy to stimate the model parameters:</p>
+<p><span class="math display">\[\mathscr{L}(\beta, y_i) = \prod_{i=1}^nf(y_i) = \prod_{i=1}^n\pi_i^{y_i} (1 - \pi_i)^{1 - y_i}\]</span></p>
+<p>witch is more convenient to work in Logarithms:</p>
+<p><span class="math display">\[ln \mathscr{L}(\beta, y_i) = \sum_{i=1}^n y_i \big[ ln \frac{\pi_i}{1 - \pi_i} \big ] +
+\sum_{i=1}^n ln [1-\pi_i]\]</span></p>
+<p>Non linnear optimizatoin routines are neeed in order to find the optimal parameters.</p>
+</div>
+</div>

@@ -1,0 +1,562 @@
+---
+title: People Analytics - Employee Engagement
+author: Eduardo Villarreal
+date: '2022-05-14'
+slug: people-analytics-employee-engagement
+categories:
+  - Machine Learning
+  - People Analytics
+tags:
+  - Classification
+  - Machine Learning
+  - Employee Engagement
+---
+
+# What is Employee Engagement
+
+[Wikipwdia-Employee Engagement](https://en.wikipedia.org/wiki/Employee_engagement)
+
+Employee engagement is a fundamental concept in the effort to understand and describe, both qualitatively and quantitatively, the nature of the relationship between an organization and its employees. An "engaged employee" is defined as one who is fully absorbed by and enthusiastic about their work and so takes positive action to further the organization's reputation and interests. An engaged employee has a positive attitude towards the organization and its values. In contrast, a disengaged employee may range from someone doing the bare minimum at work (aka 'coasting'), up to an employee who is actively damaging the company's work output and reputation.
+
+An organization with "high" employee engagement might therefore be expected to outperform those with "low" employee engagement.
+
+Employee engagement first appeared as a concept in management theory in the 1990s, becoming widespread in management practice in the 2000s, but it remains contested. It stands in an unspecified relationship to earlier constructs such as morale and job satisfaction. Despite academic critiques, employee engagement practices are well established in the management of human resources and of internal communications.
+
+William Kahn provided the first formal definition of personnel engagement as "the harnessing of organisation members' selves to their work roles; in engagement, people employ and express themselves physically, cognitively, and emotionally during role performances.
+
+In 1993, Schmidt et al. proposed a bridge between the pre-existing concept of '[job satisfaction](https://en.wikipedia.org/wiki/Job_satisfaction "Job satisfaction")' and employee engagement with the definition: "an employee's involvement with, commitment to, and satisfaction with work. Employee engagement is a part of employee retention." This definition integrates the classic constructs of job satisfaction (Smith et al., 1969), and organizational commitment (Meyer & Allen, 1991).
+
+Defining employee engagement remains problematic. In their review of the literature in 2011, Wollard and Shuck identify four main sub-concepts within the term:
+
+1.  "Needs satisfying" approach, in which engagement is the expression of one's preferred self in task behaviours.
+
+2.  "Burnout antithesis" approach, in which energy, involvement, efficacy are presented as the opposites of established "burnout" constructs: exhaustion, cynicism and lack of accomplishment.
+
+3.  Satisfaction-engagement approach, in which engagement is a more technical version of job satisfaction, evidenced by [The Gallup Company's](https://en.wikipedia.org/wiki/Gallup_(company) "Gallup (company)") own Q12 engagement survey which gives an r=.91 correlation with one (job satisfaction) measure.
+
+4.  The multidimensional approach, in which a clear distinction is maintained between job and organisational engagement, usually with the primary focus on antecedents and consequents to role performance rather than organisational identification.
+
+Definitions of engagement vary in the weight they give to the individual vs the organisation in creating engagement. Recent practice has situated the drivers of engagement across this spectrum, from within the psyche of the individual employee (for example, promising recruitment services that will filter out 'disengaged' job applicants) to focusing mainly on the actions and investments the organisation makes to support engagement.
+
+These definitional issues are potentially severe for practitioners. With different (and often proprietary) definitions of the object being measured, statistics from different sources are not readily comparable. Engagement work remains open to the challenge that its basic assumptions are, as Tom Keenoy describes them, '[normative](https://en.wikipedia.org/wiki/Norm_(philosophy) "Norm (philosophy)")' and 'aspirational', rather than [analytic](https://en.wikipedia.org/wiki/Analytics "Analytics") or operational - and so risk being seen by other organizational participants as "motherhood and apple pie" rhetoric.
+
+# Description of the Data
+
+The data set describes \~2500 Managers rated by their employees. Usually this type of survey data, has a big amount of questions divided in different dimentions such as Rewards, Recognition, Empowerment, Diveristy & Inclussion, etc.
+
+Companies rely on annual engagement surveys to track and monitor the motivation of employees. Engagement is important because it is shown that it correlates to productivity and company performance. High levels of engagmenet are also related to low turn over rates and a strong Employee Vale Proposition.
+
+```{r message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#Cargar librerias
+require(tidyverse)
+require(data.table)
+require(tidymodels)
+require(visreg)
+require(arules)
+require(patchwork)
+
+theme_set(theme_bw())
+tidymodels_prefer()
+```
+
+```{r}
+engagement = fread('Engagement.csv')
+glimpse(engagement)
+```
+
+The column `id` relates each employee with an unique identifier, `IdCode` stores each question on the survey s well as the result for each dimention. In this case `G1` relates to the engagement index.
+
+Prior building an algorithm, we need to reshape the data so we can manipulate it in an efficient way.
+
+## Reshaping the Data
+
+I´m going to split the data in 2 big dataframes:
+
+1.  Containing the set of questions
+
+2.  A second one with the demographic data available on the data set
+
+Then, I´m hing to merge both data sets to have the final data frame.
+
+```{r}
+engagement_surv = engagement %>%
+  select(id, IdCode, Value) %>%
+  spread(IdCode, Value, fill = NA)
+
+engagement_emp = engagement %>%
+  select(id,equipo, Gender, Age, Grade) %>%
+  unique() #Remove duplicated rows
+
+message('Merging Data setd===============================================')
+engagement_df = left_join(engagement_surv, engagement_emp)
+head(engagement_df)
+```
+
+## Pre-process the Data
+
+```{r}
+engagement_df = engagement_df %>%
+  mutate(Age_d = arules::discretize(Age)) %>%
+  filter(Grade != 'EBM') %>%
+  na.omit()
+```
+
+## Exploratory Data Analysis
+
+Let´s figure out about the Data! The Output Variable is the **General Engagement Index** sotred in column `G1`
+
+```{r}
+#Create a histogram
+p1 = engagement_df %>%
+  ggplot(aes(x = G1)) +
+  geom_histogram(color = 'white', fill = 'orange') +
+  labs(title = 'Engagement Distribution')
+
+p2 = engagement_df %>%
+  ggplot(aes(x = Gender, y =G1, fill = Gender)) +
+  geom_boxplot() +
+  labs(title = 'Boxplot by Gender') +
+  theme(legend.position = 'none')
+
+p3 = engagement_df %>%
+  ggplot(aes(x = Age_d, y = G1, fill = Age_d)) +
+  geom_boxplot() +
+  labs(title = 'Boxplot by Age') +
+  theme(legend.position = 'none')
+
+p4 = engagement_df %>%
+  ggplot(aes(x = Grade, y = G1, fill = Grade)) +
+  geom_boxplot() +
+  theme(legend.position = 'none')
+
+(p1 | p2) / (p3 | p4)
+```
+
+Now, lets figure out the correlation with the 11 Dimentions of engagement:
+
+```{r}
+engagement_df %>%
+  select(id, starts_with('G'), -Grade, - Gender) %>%
+  gather(Variable, Value, 3 : ncol(.)) %>%
+  ggplot(aes(x = Value, y = G1, color = Variable)) +
+  geom_point(alpha = 0.2) +
+  facet_wrap(~Variable, scale = 'free') +
+  theme(legend.position = 'none') +
+  geom_smooth(color = 'grey40', se = F, lty = 2)
+
+message('Correlation plot ===============================================')
+library(corrplot)
+
+#Create correlation Matrix
+corr_mat = engagement_df %>%
+  select(is.numeric, -id) %>%
+  as.matrix() %>%
+  cor()
+
+corrplot(corr_mat, method = 'color', order = 'hclust', tl.cex = 0.4)
+```
+
+Before continue, you can check the [Introduction to Statistical Learning Tutorial](https://eduardo0914rtutorials.netlify.app/post/2022/05/08/introduction-to-statistical-learning-regression-and-regularization/).
+
+# Logistic Regression and Classification
+
+The Engagement Score is a number between $[0,100]$ very similar to a **probability score**. How ever, we need to define what is good engagement. It is someone with a 51% engagement? maybe 80%?. Let´s tdefine a treshold on our Average Engagement Score:
+
+```{r}
+engagement_df %>%
+  summarise(mean = mean(G1))
+```
+
+This trashold makes sence form the business perspective. If our goal is to sustain or improve our score, we wold like to invstigate people over the average to lear what they are doing that other aren´t.
+
+```{r}
+engagement_df = engagement_df %>%
+  mutate(ENG = ifelse(G1 >= 89, 1, 0))
+
+require(ggmosaic)
+#Plot ENG
+engagement_df %>%
+  ggplot() +
+  geom_mosaic(aes(x = product(Grade, ENG), fill = Grade)) +
+  theme(legend.position = 'none') +
+  labs(title = 'Mosaic plot of ENG by Grade')
+```
+
+## Generalized Linear Models
+
+A model is just a simple abstraction of reality in that it provides an approximation of some relatively more complex phenomenon. Models may be broadly classified as deterministic or probabilistic.
+
+There is certainly no more important class of probabilistic model than the probabilistic linear model:
+
+$$y_i = \beta_0 + \sum_{i = 1} ^ p \beta_i x_i + \epsilon$$
+
+is called a linear model because the mean response is a linear function of the unknown parameters. More even, the **Derivative** respect to the **Parameters** is linear.
+
+$$\frac{\partial y_i}{\partial \beta_i} = \beta_i$$
+
+A second-order polinomial is also linear:
+
+$$y_i = \beta_0 + \sum_{i = 1} ^ p \beta_i x_i + \sum_{i = 1} ^ p \beta_{ii}x_i ^2$$
+
+$$\frac{\partial y_i}{\partial \beta_i} = \beta_i + 2 \beta_{ii}x_i$$
+
+or even a model with transcendental terms such as:
+
+$$y_i = \beta_0 + \beta_1 \sin(x_1) + \beta_2 \cos{x_2}$$
+
+When the model is **Linear** the method of **least square**s is a parameter estimation technique that dates from the early part of the nineteenth century. There is a really nice, elegant, and well-developed statistical theory for the linear model. If we assume that the errors $\epsilon$ in the linear model are normally and independently distributed with constant variance, then statistical tests on the model parameters, confidence intervals on the parameters, and confidence and prediction intervals for the mean response can easily be obtained.
+
+However, there are situations where the phenomenon is well understood and can be described by a mathematical relationship. For example, consider **Newton's law of cooling**, which states that the rate of change of temperature of an object is proportional to the difference between the object's current temperature and the temperature of the surrounding environment:
+
+$$\frac{\partial f}{\partial t} = -\beta (f - T_A)$$ Solving the diferential equation we have the actual temperatur at time *t*:
+
+$$f(t, \beta) = T_A + (T_I - T_A) e ^ {\beta t}$$
+
+This equation is an example of a **nonlinear model**, because the response is not a linear function of the unknown parameter.
+
+Suppose that the response variable is adiscrete variable, such as a **count**. We often encounter counts of defects or other rare events, such as injuries, patients with particular diseases, and even the occurrence of natural phenomena including earthquakes and Atlantic hurricanes.
+
+Another possibility is a **binary** response variable. Situations where the response variable is either success or failure (i.e., 0 or 1 ) are fairly common in nearly all areas of science and engineering.
+
+There are also situations where the response variable is continuous, but the assumption of normality is not reasonable. Examples include the distribution of stresses in mechanical components and the failure times of systems or components. These types of responses are nonnegative and typically have a highly right-skewed behavior.
+
+The **generalized linear model or (GLM)** allows us to fit regression models for univariate response data that follow a very general distribution called the **exponential** family. The exponential family includes the normal, binomial, Poisson, geometric, negative binomial, exponential, gamma, and inverse normal distributions:
+
+$$g(\mu_i) = g[E(y_i)] = X^T \beta$$
+
+Every generalized linear model has three components: a **response variable distribution** (sometimes called the error structure), a **linear predictor** that involves the regressor variables or covariates, and a **link function** $g$ that connects the linear predictor to the natural mean of the response variable.
+
+For example, consider the linear regression model in Equation. The response distribution is normal, the linear predictor is:
+
+$$X^T\beta = \beta_0 + \sum_{i = 1} ^p \beta_i x_1$$
+
+and the link function is an identity link, $g(a) = a$, or
+
+$$E[y] = u = \beta_0 + \sum_{i = 1} ^p \beta_i x_1$$
+
+Thus the standard linear regression model is a **GLM**. Depending on the choice of the link function $g$, a GLM can include a nonlinear model. For example, if we use a **log link**, $g(a) = ln(a)$, then
+
+$$E[y] = u = exp\left(\beta_0 + \sum_{i = 1} ^p \beta_i x_1 \right)$$
+
+For the case of a **binomial** distribution, a fairly standard choice of link function is the **logit link**
+
+$$E[y] = \frac{exp(\beta_0 + \beta_1 x_1)}{1 + exp(\beta_0 + \beta_1 x_1)}$$
+
+## Binary Response Model (Logistic Regression)
+
+Consider the case in witch the response variable can take only 2 posibles outcomes (0, 1). It is reasonable to assume that $y_i$ is a *Bernulli* random variable:
+
+$$E[y_i] = \pi_i = \pi(x_i)$$
+
+and
+
+$$Var[y_i] = \pi_i(1 - \pi_i)$$
+
+Supposed that the model has the form:
+
+$$y_i = x \beta + \epsilon$$
+
+We assume that the response variable $y$; is a Bernoulli random variable with probability distribution as follows:
+
+$$P(y_i = 1) = \pi_i \rightarrow y_i = 1$$
+
+$$P(y_i = 0) = 1 - \pi_i \rightarrow y_i = 0$$
+
+Thus $E[y_i] = x \beta = \pi_i$ were \$0 \le \\pi_i \le 1 \$. This restriction on the **response** implies that the random terms $\epsilon_i$ arean´t normaly distributed.
+
+Generally, when the response is **Binary** the equation is on the form:
+
+$$E[y] = \frac{e^{x \beta}}{1 - e^{x \beta}}$$
+
+However, the response can be linnearized as well. Let:
+
+$$\eta = x \beta$$
+
+be the linear predictor $\eta$ define as:
+
+$$\eta = ln \frac{\pi}{1 - \pi}$$
+
+This is called the **logit** transformation of the probabiity $\pi$. This follows a *Bernulli* process:
+
+$$E[y_i] = \pi_i^{y_i} (1 - \pi_i)^{1 - y_i}$$
+
+Then, is easy to applied **Maximunlikelihood** theroy to stimate the model parameters:
+
+$$\mathscr{L}(\beta, y_i) = \prod_{i=1}^nf(y_i) = \prod_{i=1}^n\pi_i^{y_i} (1 - \pi_i)^{1 - y_i}$$
+
+witch is more convenient to work in Logarithms:
+
+$$ln \mathscr{L}(\beta, y_i) = \sum_{i=1}^n y_i \big[ ln \frac{\pi_i}{1 - \pi_i} \big ] + 
+\sum_{i=1}^n ln [1-\pi_i]$$
+
+Non linnear optimizatoin routines are neeed in order to find the optimal parameters.
+
+Now we are ready to estimate our model:
+
+```{r}
+#Split data for training and test
+eng_split = initial_split(engagement_df)
+eng_train = training(eng_split)
+eng_test = testing(eng_split)
+
+message('using glm to with family = binomial ===========================')
+eng_glm = glm(ENG ~ G2 + G3 + G4 + G5 + G6 + G7 + G8 +
+                G9 + G10 + G11 + Age_d + Gender ,
+              data = eng_train, family = 'binomial')
+
+
+tidy(eng_glm)
+```
+
+A more clear interpretation is on terms of the **odds ratio** defined as:
+
+$$\text{odds}_i = e ^ {\beta_i}$$
+
+```{r}
+tidy(eng_glm, exponentiate = T)
+```
+
+Let´s do a plot to figure out what is going on:
+
+```{r}
+tidy(eng_glm, exponentiate = T) %>%
+  ggplot(aes(x = term, y = estimate)) +
+  geom_col(fill = 'steelblue') +
+  coord_cartesian(ylim = c(0.8, 1.3)) +
+  geom_text(aes(label = round(estimate, 2)), color = 'white', vjust = 1.5) +
+  labs(title = 'Odds Ratio of Engagement') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+The direct interpretation for Odds ratio is:
+
+1.  Male Leaders has 1.15 more engagement than Female Leads
+2.  Leaders between 34 and 42 years has 0.94 more engagement
+3.  Some who scores high on Dimention G4 has 1.17 more engagement
+
+Usually, odds ratio less than 1 are non statistically significant.
+
+For Classification models, understanding **accuracy** is important.
+
+## Model Accuracy
+
+A Classification report (includes: **precision-specificity, recall-sensitivity and F1 score**) is often used to measure the quality of predictions from a classification algorithm. How many predictions are true and how many are false. The classification report uses **True Positive**, **True Negative**, **False Positive** and **False Negative** in classification report generation.
+
+-   TP / True Positive: when an actual observation was positive and the model prediction is also positive
+-   TN / True Negative: when an actual observation was negative and the model prediction is also negative
+-   FP / False Positive: when an actual observation was negative but the model prediction is positive
+-   FN / False Negative: when an actual observation was positive but the model prediction is negative
+
+We have already calculated the classification accuracy then the obvious question would be, what is the need for precision, recall and F1-score? The answer is **accuracy is not a good measure when a class imbalance exists in the data set**. A data set is said to be **balanced** if the dependent variable includes an approximately equal proportion of both classes (in binary classification case). For example, if the diabetes dataset includes 50% samples with diabetic and 50% non-diabetic patience, then the data set is said to be balanced and in such case, we can use accuracy as an evaluation metric. But in real-world it is often not the actual case.
+
+Sometimes researchers also opt for **AUC-ROC** for model performance evaluation. AUC-ROC curve is a performance measurement for the classification problem at various thresholds settings. ROC tells how much model is capable of distinguishing between classes. Higher the AUC, better the model is at distinguishing between patients with diabetes and no diabetes.
+
+An **Confusion Matrix** can be computed by using the `caret` package:
+
+```{r}
+message('Compute Confusion Matrix====================================')
+#Predict Values:
+y_hat = predict(eng_glm, eng_train, type = 'response')
+y_hat = ifelse(y_hat >= 0.5, 1, 0)
+y_hat = factor(y_hat)
+
+y_act = factor(eng_train$ENG)
+
+#Compute Confusion Matrix
+caret::confusionMatrix(y_hat, y_act, positive = '1')
+```
+
+The model accuracy, the rate to correctly calssified posive and negative engagement, is around 85%. However, we have interest on the Leaders that have high engagement scores. Thus, we should use **Sensitivity or Recall**. This rate is \~91% meaning that the model has the hability to detect a Leader with positive engagemen 91% of the time.
+
+Now, let´s compute confusion matrix on the test set:
+
+```{r}
+message('Compute Confusion Matrix====================================')
+#Predict Values:
+y_hat = predict(eng_glm, eng_test, type = 'response')
+y_hat = ifelse(y_hat >= 0.5, 1, 0)
+y_hat = factor(y_hat)
+
+y_act = factor(eng_test$ENG)
+
+#Compute Confusion Matrix
+caret::confusionMatrix(y_hat, y_act, positive = '1')
+```
+
+## A More Complex Model
+
+From the **strategic** point of view, focusing on Engagement Dimentions such as Recognition, Porpuse, Empowerment, Leadership is usefull. But, we usually do some actions based on the most important and relevant Question.
+
+Now, let´s add questions to our analysis:
+
+```{r}
+
+message('Define the Model===============================================')
+
+model_Q = ENG ~ P5 + P6 + P7 + P8 + P9 + P10 + P11 + P12 + P13 + P14 + P15 + P16 + P17 + P18 + P19 + P20 + P21 + P22 + P23 + P24 + P25 + P26 + P27 + P28 + P29 + P30 + P31 + P32 + P33 + P34 + P35 + P36 + P37 + P38 + P39 + P40 + P41 + P42 + P43 + P44 + P45 + P46 + P47 + P48 + P49 + P50 + P51 + P52 + P53 + P54 + P55 + Age_d + Gender
+
+#Estimate the Model
+eng_glm_Q = glm(model_Q, data = eng_train, family = 'binomial')
+
+#Plot the Odds Ratio
+tidy(eng_glm_Q, exponentiate = T) %>%
+  ggplot(aes(x = term, y = estimate)) +
+  geom_col(fill = 'steelblue') +
+  coord_cartesian(ylim = c(0.8, 1.3)) +
+  geom_text(aes(label = round(estimate, 2)), color = 'white', 
+            vjust = 1.5, size = 2) +
+  labs(title = 'Odds Ratio of Engagement') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+
+
+```
+
+What we have on this chart isn´t helpful. This is a very complex model with a lot of questions. More even, the maximun-likelihood algorithms did not succed to converge on values for some questions (i.e P32 and P50). This issue is related to the **multicolinearity** issue. Take a look on the correlation matrix we did and it is clear that several questions correlate with others. Making the maximun likelihood to fail.
+
+# Machine Learning and Regularization
+
+Regularization is a technique that helps with multicollinearity. In particular, we are going to use an algorithm call **LASSO Regression.** Before continue, you can check the [Introduction to Statistical Learning Tutorial](https://eduardo0914rtutorials.netlify.app/post/2022/05/08/introduction-to-statistical-learning-regression-and-regularization/) in spanish or [Julia´s Silge Blog](https://juliasilge.com/blog/lasso-the-office/).
+
+The objective function for logistic regression is the penalized negative binomial log-likelihood, and is
+
+$$
+\min_{(\beta_0, \beta) \in \mathbb{R}^{p+1}} -\left[\frac{1}{N} \sum_{i=1}^N y_i \cdot (\beta_0 + x_i^T \beta) - \log (1+e^{(\beta_0+x_i^T \beta)})\right] + \lambda \big[ (1-\alpha)\|\beta\|_2^2/2 + \alpha\|\beta\|_1\big].
+$$
+
+Logistic regression is often plagued with degeneracies when $p > N$ and exhibits wild behavior even when $N$ is close to $p$; the elastic net penalty alleviates these issues, and regularizes and selects variables as well. In this case, we will set up the elastic penalty $\alpha = 1$
+
+First, we will split the data on train and test. For classification models the output variable must be a factor:
+
+```{r}
+#Convert ENG to a factor:
+engagement_df$ENG = factor(engagement_df$ENG)
+
+#Split data for training and test
+eng_split = initial_split(engagement_df)
+eng_train = training(eng_split)
+eng_test = testing(eng_split)
+```
+
+The Second step is to reate a recipe and a model:
+
+```{r}
+
+message('Create a Model================================================')
+set.seed(1234)
+
+#Set up Engine
+logistic_model <- logistic_reg(penalty = tune(), mixture = 1) %>% 
+  set_engine("glmnet")
+
+model_Q = ENG ~ P5 + P6 + P7 + P8 + P9 + P10 + P11 + P12 + P13 + P14 + P15 + P16 + P17 + P18 + P19 + P20 + P21 + P22 + P23 + P24 + P25 + P26 + P27 + P28 + P29 + P30 + P31 + P32 + P33 + P34 + P35 + P36 + P37 + P38 + P39 + P40 + P41 + P42 + P43 + P44 + P45 + P46 + P47 + P48 + P49 + P50 + P51 + P52 + P53 + P54 + P55
+
+#Create folds
+eng_cv = vfold_cv(eng_train, v = 10)
+
+
+message('Create a Recipe================================================')
+
+eng_recipe = recipe(model_Q,
+                    data = eng_train,
+                    step_dummy(all_nominal_predictors()),
+                    step_center(all_numeric()),
+                    step_scale(all_numeric()))
+
+#setup Workflow
+eng_wflow = workflow() %>%
+  add_model(logistic_model) %>%
+  add_recipe(eng_recipe)
+```
+
+Now we are ready to fit the model:
+
+```{r}
+#Create a grid of potential values for lambda:
+lambda_grid <- grid_regular(penalty(), levels = 50)
+
+message('Activate Parallel Processing====================================')
+doParallel::registerDoParallel()
+
+set.seed(1234)
+lasso_fit <- tune_grid(eng_wflow,
+                        resamples = eng_cv,
+                        grid = lambda_grid,
+                       control = control_grid(save_pred = TRUE),
+                       metrics = metric_set(roc_auc))
+
+message('Model Performance')
+autoplot(lasso_fit) +
+  scale_x_log10(labels = scales::label_number()) +
+  scale_y_log10(labels = scales::label_number())
+```
+
+Now we can use `select_best` to choose the optimal value of $\lambda$:
+
+```{r}
+max_accuracy = lasso_fit %>%
+  select_best('roc_auc')
+
+eng_lasso_final = finalize_workflow(eng_wflow, max_accuracy)
+
+
+message('Get LASSO Coefficients===========================================')
+
+lasso_params = eng_lasso_final %>%
+  fit(eng_train) %>%
+  extract_fit_parsnip()
+
+tidy(lasso_params) %>%
+  filter(estimate != 0 & term != '(Intercept)') %>%
+  mutate(estimate = exp(estimate)) %>%
+  ggplot(aes(x = term, y = estimate)) +
+  geom_col(fill = 'steelblue') +
+  coord_cartesian(ylim = c(0.8, 1.1)) +
+  geom_text(aes(label = round(estimate, 2)), color = 'white', 
+            vjust = 1.5, size = 2) +
+  labs(title = 'Odds Ratio of Engagement') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+  
+message('plot variable importance=========================================')
+library(vip)
+
+eng_lasso_final %>%
+  fit(eng_train) %>%
+  pull_workflow_fit() %>%
+  vip::vi(lambda = max_accuracy$penalty) %>%
+  mutate(Importance = abs(Importance),
+         Variable = fct_reorder(Variable, Importance)) %>%
+  filter(Importance > 0) %>%
+  ggplot(aes(x = Importance, y = Variable, fill = Sign)) +
+  geom_col() +
+  scale_x_continuous(expand = c(0, 0)) +
+  labs(y = NULL)
+```
+
+Now, instead of having 50 questions, we have around 19 questions to predict Engagement. Based on the **Variable Importance Plot** we figure of that P15, P48 and P117 are the top 3 Questions to focus.
+
+Let´s compute accuracy and recall:
+
+```{r}
+
+#The last model
+lambda = max_accuracy$penalty
+eng_last_model = logistic_reg(penalty = 0.009102982, 
+                              mixture = 1) %>%
+  set_engine('glmnet')
+
+#The Last Workflow
+eng_last_wf = eng_wflow %>%
+  update_model(eng_last_model)
+
+#The Last Fit
+eng_last_fit = eng_last_wf %>%
+  last_fit(eng_split)
+
+fitdata = eng_last_fit[[5]][[1]]
+
+caret::confusionMatrix(fitdata$.pred_class, fitdata$ENG, positive = '1')
+```
+
+Now it´s time for an action plan!!
