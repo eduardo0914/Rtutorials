@@ -291,40 +291,40 @@ tidy(eng_glm)</code></pre>
 <pre><code>## # A tibble: 14 × 5
 ##    term          estimate std.error statistic  p.value
 ##    &lt;chr&gt;            &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;
-##  1 (Intercept)  -26.2       1.30      -20.2   1.49e-90
-##  2 G2             0.00632   0.00998     0.633 5.27e- 1
-##  3 G3            -0.0105    0.0165     -0.639 5.23e- 1
-##  4 G4             0.188     0.0145     12.9   2.43e-38
-##  5 G5            -0.0177    0.00992    -1.79  7.41e- 2
-##  6 G6            -0.0171    0.0130     -1.32  1.87e- 1
-##  7 G7             0.00890   0.0125      0.714 4.75e- 1
-##  8 G8             0.0206    0.00940     2.20  2.81e- 2
-##  9 G9            -0.0373    0.0125     -2.99  2.82e- 3
-## 10 G10            0.0861    0.0178      4.83  1.34e- 6
-## 11 G11            0.0785    0.0126      6.24  4.36e-10
-## 12 Age_d[34,42)  -0.119     0.181      -0.659 5.10e- 1
-## 13 Age_d[42,71]  -0.0934    0.181      -0.516 6.06e- 1
-## 14 GenderMale     0.146     0.190       0.769 4.42e- 1</code></pre>
+##  1 (Intercept)  -26.2       1.29      -20.4   1.56e-92
+##  2 G2            -0.00871   0.00978    -0.891 3.73e- 1
+##  3 G3            -0.00877   0.0165     -0.533 5.94e- 1
+##  4 G4             0.180     0.0140     12.9   5.51e-38
+##  5 G5            -0.0168    0.00987    -1.70  8.87e- 2
+##  6 G6            -0.0329    0.0129     -2.55  1.08e- 2
+##  7 G7             0.0146    0.0123      1.19  2.35e- 1
+##  8 G8             0.0156    0.00932     1.67  9.40e- 2
+##  9 G9            -0.0206    0.0123     -1.67  9.44e- 2
+## 10 G10            0.0968    0.0178      5.44  5.39e- 8
+## 11 G11            0.0874    0.0129      6.80  1.04e-11
+## 12 Age_d[34,42)  -0.0701    0.180      -0.388 6.98e- 1
+## 13 Age_d[42,71]  -0.0790    0.181      -0.436 6.63e- 1
+## 14 GenderMale    -0.0844    0.191      -0.442 6.59e- 1</code></pre>
 <p>A more clear interpretation is on terms of the <strong>odds ratio</strong> defined as:</p>
 <p><span class="math display">\[\text{odds}_i = e ^ {\beta_i}\]</span></p>
 <pre class="r"><code>tidy(eng_glm, exponentiate = T)</code></pre>
 <pre><code>## # A tibble: 14 × 5
 ##    term         estimate std.error statistic  p.value
 ##    &lt;chr&gt;           &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;
-##  1 (Intercept)  4.01e-12   1.30      -20.2   1.49e-90
-##  2 G2           1.01e+ 0   0.00998     0.633 5.27e- 1
-##  3 G3           9.90e- 1   0.0165     -0.639 5.23e- 1
-##  4 G4           1.21e+ 0   0.0145     12.9   2.43e-38
-##  5 G5           9.82e- 1   0.00992    -1.79  7.41e- 2
-##  6 G6           9.83e- 1   0.0130     -1.32  1.87e- 1
-##  7 G7           1.01e+ 0   0.0125      0.714 4.75e- 1
-##  8 G8           1.02e+ 0   0.00940     2.20  2.81e- 2
-##  9 G9           9.63e- 1   0.0125     -2.99  2.82e- 3
-## 10 G10          1.09e+ 0   0.0178      4.83  1.34e- 6
-## 11 G11          1.08e+ 0   0.0126      6.24  4.36e-10
-## 12 Age_d[34,42) 8.88e- 1   0.181      -0.659 5.10e- 1
-## 13 Age_d[42,71] 9.11e- 1   0.181      -0.516 6.06e- 1
-## 14 GenderMale   1.16e+ 0   0.190       0.769 4.42e- 1</code></pre>
+##  1 (Intercept)  4.03e-12   1.29      -20.4   1.56e-92
+##  2 G2           9.91e- 1   0.00978    -0.891 3.73e- 1
+##  3 G3           9.91e- 1   0.0165     -0.533 5.94e- 1
+##  4 G4           1.20e+ 0   0.0140     12.9   5.51e-38
+##  5 G5           9.83e- 1   0.00987    -1.70  8.87e- 2
+##  6 G6           9.68e- 1   0.0129     -2.55  1.08e- 2
+##  7 G7           1.01e+ 0   0.0123      1.19  2.35e- 1
+##  8 G8           1.02e+ 0   0.00932     1.67  9.40e- 2
+##  9 G9           9.80e- 1   0.0123     -1.67  9.44e- 2
+## 10 G10          1.10e+ 0   0.0178      5.44  5.39e- 8
+## 11 G11          1.09e+ 0   0.0129      6.80  1.04e-11
+## 12 Age_d[34,42) 9.32e- 1   0.180      -0.388 6.98e- 1
+## 13 Age_d[42,71] 9.24e- 1   0.181      -0.436 6.63e- 1
+## 14 GenderMale   9.19e- 1   0.191      -0.442 6.59e- 1</code></pre>
 <p>Let´s do a plot to figure out what is going on:</p>
 <pre class="r"><code>tidy(eng_glm, exponentiate = T) %&gt;%
   ggplot(aes(x = term, y = estimate)) +
@@ -370,26 +370,26 @@ caret::confusionMatrix(y_hat, y_act, positive = &#39;1&#39;)</code></pre>
 ## 
 ##           Reference
 ## Prediction    0    1
-##          0  532  100
-##          1  172 1124
+##          0  545   97
+##          1  171 1115
 ##                                           
-##                Accuracy : 0.8589          
-##                  95% CI : (0.8426, 0.8742)
-##     No Information Rate : 0.6349          
+##                Accuracy : 0.861           
+##                  95% CI : (0.8447, 0.8761)
+##     No Information Rate : 0.6286          
 ##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
 ##                                           
-##                   Kappa : 0.6889          
+##                   Kappa : 0.6959          
 ##                                           
-##  Mcnemar&#39;s Test P-Value : 1.67e-05        
+##  Mcnemar&#39;s Test P-Value : 8.227e-06       
 ##                                           
-##             Sensitivity : 0.9183          
-##             Specificity : 0.7557          
-##          Pos Pred Value : 0.8673          
-##          Neg Pred Value : 0.8418          
-##              Prevalence : 0.6349          
-##          Detection Rate : 0.5830          
-##    Detection Prevalence : 0.6722          
-##       Balanced Accuracy : 0.8370          
+##             Sensitivity : 0.9200          
+##             Specificity : 0.7612          
+##          Pos Pred Value : 0.8670          
+##          Neg Pred Value : 0.8489          
+##              Prevalence : 0.6286          
+##          Detection Rate : 0.5783          
+##    Detection Prevalence : 0.6670          
+##       Balanced Accuracy : 0.8406          
 ##                                           
 ##        &#39;Positive&#39; Class : 1               
 ## </code></pre>
@@ -410,26 +410,26 @@ caret::confusionMatrix(y_hat, y_act, positive = &#39;1&#39;)</code></pre>
 ## 
 ##           Reference
 ## Prediction   0   1
-##          0 188  35
-##          1  49 371
+##          0 173  38
+##          1  52 380
 ##                                           
-##                Accuracy : 0.8694          
-##                  95% CI : (0.8408, 0.8944)
-##     No Information Rate : 0.6314          
+##                Accuracy : 0.86            
+##                  95% CI : (0.8308, 0.8859)
+##     No Information Rate : 0.6501          
 ##     P-Value [Acc &gt; NIR] : &lt;2e-16          
 ##                                           
-##                   Kappa : 0.7158          
+##                   Kappa : 0.6879          
 ##                                           
-##  Mcnemar&#39;s Test P-Value : 0.1561          
+##  Mcnemar&#39;s Test P-Value : 0.1706          
 ##                                           
-##             Sensitivity : 0.9138          
-##             Specificity : 0.7932          
-##          Pos Pred Value : 0.8833          
-##          Neg Pred Value : 0.8430          
-##              Prevalence : 0.6314          
-##          Detection Rate : 0.5770          
-##    Detection Prevalence : 0.6532          
-##       Balanced Accuracy : 0.8535          
+##             Sensitivity : 0.9091          
+##             Specificity : 0.7689          
+##          Pos Pred Value : 0.8796          
+##          Neg Pred Value : 0.8199          
+##              Prevalence : 0.6501          
+##          Detection Rate : 0.5910          
+##    Detection Prevalence : 0.6719          
+##       Balanced Accuracy : 0.8390          
 ##                                           
 ##        &#39;Positive&#39; Class : 1               
 ## </code></pre>
@@ -592,26 +592,26 @@ caret::confusionMatrix(fitdata$.pred_class, fitdata$ENG, positive = &#39;1&#39;)
 ## 
 ##           Reference
 ## Prediction   0   1
-##          0 180  36
-##          1  57 370
+##          0 179  35
+##          1  47 382
 ##                                           
-##                Accuracy : 0.8554          
-##                  95% CI : (0.8258, 0.8816)
-##     No Information Rate : 0.6314          
-##     P-Value [Acc &gt; NIR] : &lt; 2e-16         
+##                Accuracy : 0.8725          
+##                  95% CI : (0.8442, 0.8973)
+##     No Information Rate : 0.6485          
+##     P-Value [Acc &gt; NIR] : &lt;2e-16          
 ##                                           
-##                   Kappa : 0.6834          
+##                   Kappa : 0.7168          
 ##                                           
-##  Mcnemar&#39;s Test P-Value : 0.03809         
+##  Mcnemar&#39;s Test P-Value : 0.2245          
 ##                                           
-##             Sensitivity : 0.9113          
-##             Specificity : 0.7595          
-##          Pos Pred Value : 0.8665          
-##          Neg Pred Value : 0.8333          
-##              Prevalence : 0.6314          
-##          Detection Rate : 0.5754          
-##    Detection Prevalence : 0.6641          
-##       Balanced Accuracy : 0.8354          
+##             Sensitivity : 0.9161          
+##             Specificity : 0.7920          
+##          Pos Pred Value : 0.8904          
+##          Neg Pred Value : 0.8364          
+##              Prevalence : 0.6485          
+##          Detection Rate : 0.5941          
+##    Detection Prevalence : 0.6672          
+##       Balanced Accuracy : 0.8541          
 ##                                           
 ##        &#39;Positive&#39; Class : 1               
 ## </code></pre>
