@@ -228,18 +228,18 @@ summary(m.teorico)</code></pre>
 ## 
 ## Residuals:
 ##     Min      1Q  Median      3Q     Max 
-## -5362.3 -1030.0    -6.8  1070.9  7239.5 
+## -5801.7 -1004.7   -32.6  1014.2  6398.2 
 ## 
 ## Coefficients:
 ##             Estimate Std. Error t value Pr(&gt;|t|)    
-## (Intercept) -2291.78      42.11  -54.42   &lt;2e-16 ***
-## carat        7842.45      45.66  171.76   &lt;2e-16 ***
+## (Intercept) -2244.00      41.92  -53.53   &lt;2e-16 ***
+## carat        7745.87      45.17  171.48   &lt;2e-16 ***
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
-## Residual standard error: 1544 on 4998 degrees of freedom
-## Multiple R-squared:  0.8551, Adjusted R-squared:  0.8551 
-## F-statistic: 2.95e+04 on 1 and 4998 DF,  p-value: &lt; 2.2e-16</code></pre>
+## Residual standard error: 1551 on 4998 degrees of freedom
+## Multiple R-squared:  0.8547, Adjusted R-squared:  0.8547 
+## F-statistic: 2.941e+04 on 1 and 4998 DF,  p-value: &lt; 2.2e-16</code></pre>
 <p>Revisemos ahora los supuestos:</p>
 <ol style="list-style-type: decimal">
 <li>Los residuales deben ser <strong>normales</strong> o <strong>gausianos</strong> con media <span class="math inline">\(0\)</span></li>
@@ -255,7 +255,7 @@ polygon(density(m.teorico$residuals), col=&quot;red&quot;)
 abline(v = mean_error, col = &#39;blue&#39;)</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
 <pre class="r"><code>print(paste(&#39;La media de los errores es: &#39;, mean_error, sep = &#39; &#39;))</code></pre>
-<pre><code>## [1] &quot;La media de los errores es:  5.21509502249273e-15&quot;</code></pre>
+<pre><code>## [1] &quot;La media de los errores es:  1.95488070175998e-15&quot;</code></pre>
 <p>Se puede constatar que el error medio es muy cercano a <span class="math inline">\(0\)</span> y que la forma de la distribución es <strong>gausiana</strong> o que tiene forma de <strong>campana</strong>. Generalmente se utiliza una gráfica de cuantiles o <strong>qq-plot</strong>. Si en esta gráfica los residuales se pegan a una línea recta, entonces, los dato provienen de una distribución normal.</p>
 <pre class="r"><code>qqnorm(m.teorico$residuals)
 qqline(m.teorico$residuals, col = &#39;red&#39;)</code></pre>
@@ -272,7 +272,7 @@ df = length(y) - k - 1
 var_epsilon = sum(m.teorico$residuals^2) / df
 sd_epsilon = sqrt(var_epsilon)
 sd_epsilon</code></pre>
-<pre><code>## [1] 1544.212</code></pre>
+<pre><code>## [1] 1550.739</code></pre>
 <p>La desviación estándar del error es <span class="math inline">\(1,543\)</span>. Para revisar que la varianza es constante, graficamos los residuales a lo largo del tiempo y estos <strong>no deben mostrar ningún patrón: relaciones lineales o no lineales, embudos o conos.</strong></p>
 <pre class="r"><code>plot(m.teorico$residuals, type = &#39;l&#39;)</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-16-1.png" width="672" /></p>
@@ -563,16 +563,16 @@ summary(m.lineal)</code></pre>
 x_nueva = diamonds[diamantes, -7]
 x_nueva</code></pre>
 <pre><code>## # A tibble: 2 × 9
-##   carat cut   color clarity depth table     x     y     z
-##   &lt;dbl&gt; &lt;ord&gt; &lt;ord&gt; &lt;ord&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
-## 1  0.92 Good  D     SI2      57.8  63    6.36  6.4   3.69
-## 2  0.8  Good  G     VS1      63.2  60.1  5.77  5.85  3.67</code></pre>
+##   carat cut     color clarity depth table     x     y     z
+##   &lt;dbl&gt; &lt;ord&gt;   &lt;ord&gt; &lt;ord&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1   1.2 Premium F     SI1      62.4    58  6.81  6.75  4.23
+## 2   0.9 Fair    G     SI1      64.5    57  6.07  6.03  3.9</code></pre>
 <p>Cuál debería ser el precio de ambos diamantes? Con el comando <code>predict(model, xnew)</code> podemos computar los valores para la predicción:</p>
 <pre class="r"><code>y_nueva = predict(m.lineal, x_nueva, interval = &quot;confidence&quot;)
 y_nueva</code></pre>
-<pre><code>##        fit      lwr      upr
-## 1 3931.393 3875.235 3987.551
-## 2 4297.142 4251.795 4342.488</code></pre>
+<pre><code>##        fit     lwr      upr
+## 1 7317.215 7282.04 7352.390
+## 2 3617.008 3554.02 3679.995</code></pre>
 <p>Acá hemos computado los <strong>intervalos de confianza</strong> para los valores predichos. Estos nos dan un valor de referencia sobre entre qué valores podría encontrarse nuestra predicción. Para el primer diamante, el precio predicho es de <span class="math inline">\(4,046\)</span> pero podría estar entre <span class="math inline">\([3997, 4094]\)</span>.</p>
 </div>
 </div>
