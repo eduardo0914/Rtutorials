@@ -1,0 +1,867 @@
+---
+title: Introduction to Linear Regression
+author: Eduardo Villarreal
+date: '2022-05-15'
+slug: introduction-to-linear-regression
+categories:
+  - Basic Statisitcs
+tags:
+  - Inference and Regression
+---
+
+
+
+<div id="introducción-a-la-regresión-lineal" class="section level1">
+<h1>Introducción a la Regresión Lineal</h1>
+<p><a href="https://daviddalpiaz.github.io/appliedstats/" class="uri">https://daviddalpiaz.github.io/appliedstats/</a></p>
+<div id="regresión-lineal-simple" class="section level2">
+<h2>Regresión Lineal Simple</h2>
+<p>Cuando estamos interesados en entender la posible relación entre una variable explicativa o <strong>independiente</strong> y una variable de respuesta o <strong>dependiente</strong> podemos hacer uso de la <strong>regresión</strong>.</p>
+<p>Una forma de visualizar una posible relación entre 2 variables es con un diagrama de dispersión. Retomando el dataset <code>diamonds</code>queremos ver si existe alguna relación entre la variable <code>price</code> y la variable <code>carat</code></p>
+<pre class="r"><code>require(tidyverse)</code></pre>
+<pre><code>## Loading required package: tidyverse</code></pre>
+<pre><code>## ── Attaching packages ─────────────────────────────────────── tidyverse 1.3.1 ──</code></pre>
+<pre><code>## ✔ ggplot2 3.3.6     ✔ purrr   0.3.4
+## ✔ tibble  3.1.7     ✔ dplyr   1.0.9
+## ✔ tidyr   1.2.0     ✔ stringr 1.4.0
+## ✔ readr   2.1.2     ✔ forcats 0.5.1</code></pre>
+<pre><code>## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+## ✖ dplyr::filter() masks stats::filter()
+## ✖ dplyr::lag()    masks stats::lag()</code></pre>
+<pre class="r"><code>ggplot(diamonds, aes(x = carat, y = price)) +
+  geom_point() +
+  labs(title = &#39;Relacion entre carat y price&#39;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-1-1.png" width="672" /></p>
+<p>Lo que podemos empezar a observar es que a medida que la variable <code>carat</code> incrementa su valor, el precio <code>price</code> también va incrementando su valor. A este tipo de relación se le conoce como <strong>positiva</strong>. Existe una forma de mediar la magnitud de esta relación y se logra calculando el <strong>coeficiente de correlación</strong>:</p>
+<p><span class="math inline">\(\rho = \frac{\text{Cov}(x,y)}{\sigma_x \sigma_y}\)</span></p>
+<pre class="r"><code>covarianza = cov(diamonds$carat, diamonds$price)
+sigma_x = sd(diamonds$carat)
+sigma_y = sd(diamonds$price)
+rho = covarianza / (sigma_x * sigma_y)
+rho</code></pre>
+<pre><code>## [1] 0.9215913</code></pre>
+<p>El indice de correlaciones siempre estará entre <span class="math inline">\(-1\leq \rho \leq 1\)</span></p>
+<blockquote>
+<p>Si <span class="math inline">\(\rho &lt; 0\)</span> se dice que la correlación es <strong>negativa o inversa</strong> y a medida que la variable <span class="math inline">\(x\)</span> se incrementa de valor la variable <span class="math inline">\(y\)</span> disminuye</p>
+</blockquote>
+<blockquote>
+<p>Si <span class="math inline">\(\rho &gt; 0\)</span> se dice que la correlación es <strong>positiva o directa</strong> y a medida que la variable <span class="math inline">\(x\)</span> se incrementa de valor la variable <span class="math inline">\(y\)</span> tambien se incrementa</p>
+</blockquote>
+<blockquote>
+<p>Si <span class="math inline">\(\rho = 0\)</span> entonces no hay una relación entre ambas variables <span class="math inline">\(x\)</span> y <span class="math inline">\(y\)</span></p>
+</blockquote>
+<blockquote>
+<p>Si <span class="math inline">\(|\rho| \rightarrow 1\)</span> enonces la relación es fuerte</p>
+</blockquote>
+<p>En <strong>R</strong> existe la función <code>cor()</code> que tiene como argumento <code>x</code> y <code>y</code> con la cual podemos computar el índice d correlación entre 2 variables:</p>
+<pre class="r"><code>cor(diamonds$carat, diamonds$price)</code></pre>
+<pre><code>## [1] 0.9215913</code></pre>
+<p>El índice de correlación solo nos dice la dirección y la magnitud de la relación entre 2 variables pero no nos ayuda a estimar un <strong>modelo</strong> para explicar o predecir qué pasaría con <code>price</code> si la variable <code>carat</code> cambia de valor.</p>
+<div id="ecuación-de-regresión" class="section level3">
+<h3>Ecuación de Regresión</h3>
+<p>Un <strong>modelo</strong> es una representación de la realidad. En el caso de las 2 variables de interés <code>price</code>y <code>carat</code>, nos interesa estimar una forma funcional <span class="math inline">\(f(x)\)</span> de tal manera que podamos estimar qué le pasará al <code>precio</code> si <code>carat</code> sube o baja.</p>
+<p>La forma más simple de estimar este <strong>modelo</strong> es por medio de una línea recta:</p>
+<p><span class="math inline">\(\hat{y_i} = \beta_0 + \beta_1 x_i\)</span></p>
+<p>En donde <span class="math inline">\(\hat{y_i}\)</span> es la <strong>estimación</strong> de <span class="math inline">\(y\)</span>, <span class="math inline">\(\beta_0 , \beta_1\)</span> se conocen como parámetros. En el ámbito de modelación, podemos ver un parámetro como una botón que controla la forma en la cual se comporta el modelo. Por ejemplo, si <span class="math inline">\(\beta_0 = 3\)</span> y <span class="math inline">\(\beta_1 =2.4\)</span>:</p>
+<pre class="r"><code>x = seq(-10, 10, by = 0.01)
+y = 3 + 2.4 * x
+plot(x, y, type = &#39;l&#39;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+<p>Si ahora, <span class="math inline">\(\beta_1 = 3.5\)</span></p>
+<pre class="r"><code>y2 = 3 + 3.5 * x
+plot(x, y, type = &#39;l&#39;)
+lines(x, y2, col = &#39;red&#39;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<p>Si movemos los parámetros, digamos <span class="math inline">\(\beta_0 = [1, 4]\)</span> y <span class="math inline">\(beta_1 = [1, 5]\)</span> obtendríamos un montónn de modelos distintos:</p>
+<pre class="r"><code>beta0 = seq(0, 1, length.out = 20)
+beta1 = seq(1, 5, length.out = 20)
+
+#sacar ek numero de modelos n
+n = length(beta0)
+plot(x, y, type = &#39;l&#39;, col = &#39;red&#39;)
+
+#Computar y graficar los modelos
+for (i in 1 : n){
+  beta0_temp = beta0[i]
+  beta1_temp = beta1[i]
+  
+  ytemp = beta0_temp + beta1_temp * x
+  lines(x, ytemp, col = &#39;blue&#39;)
+  
+}</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-6-1.png" width="672" /></p>
+<p>Cada línea azul representa una combinación de valores para los parámetros.</p>
+<p>Si aplicamos este mismo principio a nuestro data set <code>diamods</code> para estudiar la relación entre <code>price</code> y <code>carat</code>, obtendríamos lo siguiente:</p>
+<pre class="r"><code>beta0 = seq(-1000, -2270, length.out = 20)
+beta1 = seq(4000, 8000, length.out = 20)
+
+#sacar ek numero de modelos n
+n = length(beta0)
+plot(diamonds$carat, diamonds$price, col = &#39;red&#39;)
+
+#Computar y graficar los modelos
+for (i in 1 : n){
+  beta0_temp = beta0[i]
+  beta1_temp = beta1[i]
+  
+  ytemp = beta0_temp + beta1_temp * x
+  lines(x, ytemp, col = &#39;blue&#39;)
+  
+}</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-7-1.png" width="672" /></p>
+<p><strong>Si bien, podemos poner muchos valores en los parámetros, cómo elegimos el mejor?</strong></p>
+</div>
+<div id="el-componente-del-error" class="section level3">
+<h3>El Componente del error</h3>
+<blockquote>
+<p>Todos los modelos están mal, pero algunos funcionan</p>
+</blockquote>
+<p>Esta célebre frase de <strong>Sir George Box</strong> hace alusión al concepto de <strong>error</strong>. El error puede definirse como <span class="math inline">\(\epsilon_i = y_i - \hat{y_i}\)</span> es decir que el error es la <strong>distancia entre el dato real</strong> <span class="math inline">\(y\)</span> y el dato estimado con el modelo <span class="math inline">\(\hat{y}\)</span>. Si computamos la <strong>varianza</strong> de <span class="math inline">\(\epsilon_i\)</span> tenemos:</p>
+<p><span class="math inline">\(\sigma_{\epsilon}^2 = \frac{1}{n-1}\sum_{i=1}^n(y_i-\hat{y})^2\)</span></p>
+<p>Si <span class="math inline">\(\hat{y_i} = \beta_0 + \beta_1 x_i\)</span> entonces:</p>
+<p><span class="math inline">\(\sigma_{\epsilon}^2 = \frac{1}{n-1}\sum_{i=1}^n(y_i-(\beta_0 + \beta_1 x_i))^2\)</span></p>
+<p>Ahora solo tenemos que buscar los parámetros <span class="math inline">\(\beta_0\)</span> y <span class="math inline">\(\beta_1\)</span> que minimizan la varianza del error. A este método se le denomina <strong>mínimos cuadrados</strong></p>
+<p>Supongamos que el valor de <span class="math inline">\(\beta_0 = -2256\)</span>, si generamos una malla o <strong>grid</strong> de posibles valores para <span class="math inline">\(\beta_1 = [4000, 8000]\)</span> y computamos la varianza del error, tenemos la siguiente gráfica:</p>
+<pre class="r"><code>beta0 = -2256
+beta1 = seq(4000, 12000, by = 10)
+
+yreal = diamonds$price
+x = diamonds$carat
+
+#Estimamos yhat
+var_error = NULL
+for (i in 1 : length(beta1)){
+  yhat = beta0 + beta1[i] * x
+  error = yreal - yhat
+  varianza = var(error)
+  var_error = rbind(var_error, varianza)
+}
+
+plot(x = beta1, y = var_error, type = &#39;l&#39;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+<p>Lo que observamos es un <strong>valor mínimo en la curva de varianza del error ~ 7,500</strong>. Este algoritmo converge a un valor <strong>exacto</strong> que se puede computar de la siguiente forma:</p>
+<p><span class="math inline">\(\beta_1 = \frac{\text{Cov}(x,y)}{\sigma_x^2}\)</span></p>
+<p><span class="math inline">\(\beta_0 = \bar{y} - \beta_1 \bar{x}\)</span></p>
+<pre class="r"><code>yreal = diamonds$price
+x = diamonds$carat
+
+#computo de beta1
+beta1 = cov(x, yreal) / var(x)
+beta0 = mean(yreal) - beta1 * mean(x)
+
+c(beta0, beta1)</code></pre>
+<pre><code>## [1] -2256.361  7756.426</code></pre>
+<p>La ecuación de la recta que minimiza la varianza es:</p>
+<p><span class="math inline">\(\hat{y} = -2256.36 + 7756.42 x\)</span></p>
+<p>La función <code>lm(formula, data)</code> computa los coeficientes de la recta que minimiza la varianza del error. El parámetro <code>formula</code> es una formula que describe el modelo y el parámetro <code>data</code> es el dataset.</p>
+<p>En este caso, la formula del modelo es:</p>
+<p><code>price ~ carat</code> que se lee como: la variable <code>price</code> es una función de la variable <code>carat</code>:</p>
+<pre class="r"><code>m.price = lm(price ~ carat, data = diamonds)
+summary(m.price)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = price ~ carat, data = diamonds)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -18585.3   -804.8    -18.9    537.4  12731.7 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept) -2256.36      13.06  -172.8   &lt;2e-16 ***
+## carat        7756.43      14.07   551.4   &lt;2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 1549 on 53938 degrees of freedom
+## Multiple R-squared:  0.8493, Adjusted R-squared:  0.8493 
+## F-statistic: 3.041e+05 on 1 and 53938 DF,  p-value: &lt; 2.2e-16</code></pre>
+<p>El objeto <code>m.price</code> es un objeto de tipo <code>list</code> que tiene varios componentes:</p>
+<ul>
+<li><p><strong>coeficientes</strong> del modelo: guarda los valores de los parámetros. Se accede a el con <code>m.price$coefficient</code> o con la función <code>coef(m.price)</code></p></li>
+<li><p><strong>Valores estimados</strong> para <span class="math inline">\(y\)</span>: guarda los valores de <span class="math inline">\(\hat{y}\)</span>. Se accede con <code>m.price$fitted.values</code> o con la función <code>fitted(m.price)</code></p></li>
+<li><p><strong>Errores</strong> del modelo: estos se computan con a diferencia <span class="math inline">\(y - \hat{y}\)</span>. Se accede con <code>m.price$residuals</code></p></li>
+</ul>
+</div>
+<div id="propiedades-de-los-residuales-epsilon_i-sim-nid0-sigma2" class="section level3">
+<h3>Propiedades de los residuales: <span class="math inline">\(\epsilon_i \sim NID(0, \sigma^2)\)</span></h3>
+<p>Existen varias propiedades deseables en los errores para asegurar la validación de un modelo de regresión:</p>
+<ol style="list-style-type: decimal">
+<li><p>Los residuales deben ser <strong>normales</strong> o <strong>gausianos</strong> con media <span class="math inline">\(0\)</span></p></li>
+<li><p>La <strong>varianza</strong> de los errores debe ser <strong>constante</strong> con valor <span class="math inline">\(\sigma_\epsilon^2\)</span></p></li>
+<li><p>Los residuales deben ser <strong>independientes</strong> entre sí. Es decir, no deben estar <strong>autocorrelacionados</strong></p></li>
+</ol>
+<p>Para ejemplificar estas propiedades vamos a utilizar un <strong>modelo simulado teórico</strong> utilizando los resultados de la relación que encontramos entre <code>price</code> y <code>carat</code>:</p>
+<pre class="r"><code>#Generar beta0 y beta1
+beta0 = coef(m.price)[1] #coeficiente beta0 encontrado en m.price
+beta0_error = 13.06
+beta1 = coef(m.price)[2] #coeficinete beta1 encntrado en m.price
+beta1_error = 14.07
+
+#Asumiendo que los parámetros siguen una distribución normal, generamos 5000 observaciones ficticias de los parámetros:
+beta0_sim = rnorm(mean = beta0,sd = beta0_error, n = 5000)
+beta1_sim = rnorm(mean = beta1, sd = beta1_error, n = 5000)
+
+#Simulamos el error del modelo
+epsilon_sim = rnorm(0, 1549, n = 5000)
+
+#Simulamos los valores potenciales de la variable carat
+x_mean = mean(diamonds$carat)
+x_std = sd(diamonds$carat)
+x = rnorm(mean = x_mean, sd = x_std, n = 5000)
+
+#Simulamos el precio
+y = beta0_sim + beta1_sim * x + epsilon_sim
+
+#Dataframe
+price_sim = data.frame(carat = x, price = y)
+
+#Graficamos
+plot(x , y, col = &#39;red&#39;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
+<p>Hemos creado un modelo de <code>price ~ carat</code>simulado con 5000 observaciones. Supongamos que ahora queremos estimar la ecuación de la recta con mínimos cuadrados:</p>
+<pre class="r"><code>m.teorico = lm(price ~ carat, data = price_sim)
+summary(m.teorico)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = price ~ carat, data = price_sim)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -5362.3 -1030.0    -6.8  1070.9  7239.5 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept) -2291.78      42.11  -54.42   &lt;2e-16 ***
+## carat        7842.45      45.66  171.76   &lt;2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 1544 on 4998 degrees of freedom
+## Multiple R-squared:  0.8551, Adjusted R-squared:  0.8551 
+## F-statistic: 2.95e+04 on 1 and 4998 DF,  p-value: &lt; 2.2e-16</code></pre>
+<p>Revisemos ahora los supuestos:</p>
+<ol style="list-style-type: decimal">
+<li>Los residuales deben ser <strong>normales</strong> o <strong>gausianos</strong> con media <span class="math inline">\(0\)</span></li>
+</ol>
+<pre class="r"><code>#Grafica de los residuales
+mean_error = mean(m.teorico$residuals)
+par(mfrow = c(1,2)) #multiples graficas
+hist(m.teorico$residuals, main = &#39;Histograma de residuales&#39;)
+abline(v = mean_error, col = &#39;blue&#39;)
+
+plot(density(m.teorico$residuals), col = &#39;red&#39;, main = &#39;Desityplot de residuales&#39;)  # density plot for &#39;speed&#39;
+polygon(density(m.teorico$residuals), col=&quot;red&quot;)
+abline(v = mean_error, col = &#39;blue&#39;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-13-1.png" width="672" /></p>
+<pre class="r"><code>print(paste(&#39;La media de los errores es: &#39;, mean_error, sep = &#39; &#39;))</code></pre>
+<pre><code>## [1] &quot;La media de los errores es:  5.21509502249273e-15&quot;</code></pre>
+<p>Se puede constatar que el error medio es muy cercano a <span class="math inline">\(0\)</span> y que la forma de la distribución es <strong>gausiana</strong> o que tiene forma de <strong>campana</strong>. Generalmente se utiliza una gráfica de cuantiles o <strong>qq-plot</strong>. Si en esta gráfica los residuales se pegan a una línea recta, entonces, los dato provienen de una distribución normal.</p>
+<pre class="r"><code>qqnorm(m.teorico$residuals)
+qqline(m.teorico$residuals, col = &#39;red&#39;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-14-1.png" width="672" /></p>
+<ol start="2" style="list-style-type: decimal">
+<li>La varianza de los errores debe ser constante con valor <span class="math inline">\(\sigma_\epsilon^2\)</span></li>
+</ol>
+<p>La varianza y la desviación estándar de los errores se puede computar de la siguiente forma:</p>
+<p><span class="math inline">\(Var_\epsilon = \frac{\sum_{i=1}^n(y_i-\hat{y_i})^2}{n-k-1}\)</span></p>
+<p><span class="math inline">\(sd_\epsilon = \sqrt(var_\epsilon)\)</span></p>
+<p>en donde <span class="math inline">\(k\)</span> es el número de parámetros y <span class="math inline">\(n\)</span> el número de datos</p>
+<pre class="r"><code>k = 2 #beta0 y beta1
+df = length(y) - k - 1
+var_epsilon = sum(m.teorico$residuals^2) / df
+sd_epsilon = sqrt(var_epsilon)
+sd_epsilon</code></pre>
+<pre><code>## [1] 1544.212</code></pre>
+<p>La desviación estándar del error es <span class="math inline">\(1,543\)</span>. Para revisar que la varianza es constante, graficamos los residuales a lo largo del tiempo y estos <strong>no deben mostrar ningún patrón: relaciones lineales o no lineales, embudos o conos.</strong></p>
+<pre class="r"><code>plot(m.teorico$residuals, type = &#39;l&#39;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-16-1.png" width="672" /></p>
+<p>En este caso, podemos constatar que la distribución de los errores es constante.</p>
+<ol start="3" style="list-style-type: decimal">
+<li>Los residuales deben ser <strong>independientes</strong> entre sí. Es decir, no deben estar <strong>autocorelacionados</strong></li>
+</ol>
+<p>Para esto usaremos una herramienta denominada <strong>función de autocorrelación</strong> o <strong>ACF</strong>:</p>
+<pre class="r"><code>acf(m.teorico$residuals)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-17-1.png" width="672" /></p>
+<p>Entraremos más a detalle cuando revisemos series de tiempo pero lo importante de esta gráfica es que <strong>solamente la primer barra debería estar por encima del intervalo de confianza en líneas azules</strong>. como en este caso, se cumple el supuesto, podemos decir que los residuales son independientes.</p>
+<blockquote>
+<p>Dado que los residuales son <span class="math inline">\(NID(0, \sigma_\epsilon^2)\)</span> el modelo de regresión es válido.</p>
+</blockquote>
+<p>Ahora vamos a probar los supuestos con los datos reales:</p>
+<pre class="r"><code>m.price = lm(price ~ carat, data = diamonds)
+summary(m.price)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = price ~ carat, data = diamonds)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -18585.3   -804.8    -18.9    537.4  12731.7 
+## 
+## Coefficients:
+##             Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept) -2256.36      13.06  -172.8   &lt;2e-16 ***
+## carat        7756.43      14.07   551.4   &lt;2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 1549 on 53938 degrees of freedom
+## Multiple R-squared:  0.8493, Adjusted R-squared:  0.8493 
+## F-statistic: 3.041e+05 on 1 and 53938 DF,  p-value: &lt; 2.2e-16</code></pre>
+<pre class="r"><code>#Análisis de residuales
+par(mfrow = c(2,2))
+
+#Normalidad
+plot(density(m.price$residuals), col = &#39;red&#39;, main = &#39;Desityplot de residuales&#39;)  # density plot for &#39;speed&#39;
+polygon(density(m.price$residuals), col=&quot;red&quot;)
+abline(v = mean_error, col = &#39;blue&#39;)
+
+qqnorm(m.price$residuals)
+qqline(m.price$residuals, col = &#39;red&#39;)
+
+#Varianza Constante
+plot(m.price$residuals, main = &#39;Constant Variance&#39;)
+
+#Residuales independientes
+acf(m.price$residuals)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-18-1.png" width="672" /></p>
+<p><strong>En este caso, los supuestos de normalidad, varianza constante y autocorrelación o independencia, no se cumplen para el modelo de regresión.</strong></p>
+</div>
+</div>
+<div id="regresión-lineal-múltiple" class="section level2">
+<h2>Regresión Lineal Múltiple</h2>
+<p>Cuando la variable <strong>dependiente</strong> o de <strong>respuesta</strong> <span class="math inline">\(y\)</span> puede ser expresada como una función <span class="math inline">\(f(x_1, x_2,...,x_n)\)</span> de muchas variables <strong>independientes</strong> <span class="math inline">\(x\)</span>, se conoce como <strong>Regresión Lineal Múltiple</strong></p>
+<p>En este caso, la solución de mínimos cuadrados está dada por:</p>
+<p>Sea <span class="math inline">\(y_i = \beta_0 + \beta_1 x_{i,1} + \beta_2 x_{i,2} +...+\beta_m x_{i,m} + \epsilon_i\)</span>. En forma matricial:</p>
+<p><span class="math inline">\(\mathbf{y} = \mathbf{x}\beta + \mathbf{\epsilon}\)</span></p>
+<p>En donde <span class="math inline">\(\mathbf{y}\)</span> es el ventor de observaciones de <span class="math inline">\(n \times 1\)</span>, <span class="math inline">\(\mathbf{x}\)</span> es una matriz de <span class="math inline">\(n \times (m+1)\)</span> y <span class="math inline">\(\beta\)</span> es un vector de parámetros de <span class="math inline">\((m+1)\times 1\)</span> y <span class="math inline">\(\mathbf{\epsilon}\)</span> de <span class="math inline">\(n \times 1\)</span>.</p>
+<p>La solución para el vector <span class="math inline">\(\beta\)</span> es:</p>
+<p><span class="math inline">\(\beta =(\mathbf{x}^t \mathbf{x})^{-1} \mathbf{x}^t\mathbf{y}\)</span></p>
+<div id="caso-1-todas-las-variables-x_i-son-continuas" class="section level3">
+<h3>Caso 1: Todas las variables <span class="math inline">\(x_i\)</span> son continuas:</h3>
+<p>Supongamos que queremos explicar la variable <code>price ~ carat + depth + table + x + y + z</code> que son todas variables continuas. Entonces, la matriz de diseño <span class="math inline">\(\mathbf{x}\)</span> es:</p>
+<pre class="r"><code>x = diamonds[, c(1, 5 : ncol(diamonds))]
+head(x)</code></pre>
+<pre><code>## # A tibble: 6 × 7
+##   carat depth table price     x     y     z
+##   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1  0.23  61.5    55   326  3.95  3.98  2.43
+## 2  0.21  59.8    61   326  3.89  3.84  2.31
+## 3  0.23  56.9    65   327  4.05  4.07  2.31
+## 4  0.29  62.4    58   334  4.2   4.23  2.63
+## 5  0.31  63.3    58   335  4.34  4.35  2.75
+## 6  0.24  62.8    57   336  3.94  3.96  2.48</code></pre>
+<p>Recordemos que ahora estamos trabajando con <strong>matrices</strong>. En <strong>R</strong> podemos hacer operaciones con matrices y para multiplicar 2 matrices usamos el operador <code>%*%</code>. Para más información sobre cómo trabaja la multiplicación de matrices, la transpuesta y la inversa puedes revisar:</p>
+<p><a href="https://en.wikipedia.org/wiki/Matrix_multiplication" class="uri">https://en.wikipedia.org/wiki/Matrix_multiplication</a></p>
+<p><a href="https://en.wikipedia.org/wiki/Transpose" class="uri">https://en.wikipedia.org/wiki/Transpose</a></p>
+<p><a href="https://en.wikipedia.org/wiki/Invertible_matrix" class="uri">https://en.wikipedia.org/wiki/Invertible_matrix</a></p>
+<p>Nuestra matriz de diseño debe tener una columna adicional con elementos todos iguales a <span class="math inline">\(1\)</span>, esto para poder computar el parámetro <span class="math inline">\(\beta_0\)</span> el cuál no está asociado a ninguna variable del data set. Esto es equivalente a crear una <strong>variable artifical</strong> en la matriz de diseño.</p>
+<p>Podemos crear una matriz de diseño con la función <code>model.matrix(formula, data)</code> la cual por definición ya agrega la columna de 1´s</p>
+<pre class="r"><code>x = model.matrix(price ~ carat + depth + table + x + y + z, data = diamonds)
+x[1:10, ]</code></pre>
+<pre><code>##    (Intercept) carat depth table    x    y    z
+## 1            1  0.23  61.5    55 3.95 3.98 2.43
+## 2            1  0.21  59.8    61 3.89 3.84 2.31
+## 3            1  0.23  56.9    65 4.05 4.07 2.31
+## 4            1  0.29  62.4    58 4.20 4.23 2.63
+## 5            1  0.31  63.3    58 4.34 4.35 2.75
+## 6            1  0.24  62.8    57 3.94 3.96 2.48
+## 7            1  0.24  62.3    57 3.95 3.98 2.47
+## 8            1  0.26  61.9    55 4.07 4.11 2.53
+## 9            1  0.22  65.1    61 3.87 3.78 2.49
+## 10           1  0.23  59.4    61 4.00 4.05 2.39</code></pre>
+<pre class="r"><code>y = diamonds$price</code></pre>
+<p>Vamos a aplicar el algoritmo de mínimos cuadrados en su forma matricial para obtener <code>betas</code></p>
+<pre class="r"><code>betas = solve(t(x) %*% x) %*% t(x) %*% y
+betas</code></pre>
+<pre><code>##                   [,1]
+## (Intercept) 20849.3164
+## carat       10686.3091
+## depth        -203.1541
+## table        -102.4457
+## x           -1315.6678
+## y              66.3216
+## z              41.6277</code></pre>
+<p>Ya que encontramos los parámetros óptimos, podemos estimar los valores de precio y hacer el análisis de residuales de la sección anterior:</p>
+<pre class="r"><code>yhat = x %*% betas
+residuals = y - yhat
+
+#Análisis de residuales
+par(mfrow = c(2,2))
+
+#Normalidad
+plot(density(residuals), col = &#39;red&#39;, main = &#39;Desityplot de residuales&#39;)  # density plot for &#39;speed&#39;
+polygon(density(residuals), col=&quot;red&quot;)
+
+qqnorm(residuals)
+qqline(residuals, col = &#39;red&#39;)
+
+#Varianza Constante
+plot(residuals, main = &#39;Constant Variance&#39;)
+
+#Residuales independientes
+acf(residuals)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-22-1.png" width="672" /></p>
+</div>
+<div id="caso-2-todas-las-variables-x_i-son-discretas" class="section level3">
+<h3>Caso 2: Todas las variables <span class="math inline">\(x_i\)</span> son discretas:</h3>
+<p>Qué pasa si las variables son discretas? En este escenario, creamos una variable artificial o <strong>dummy</strong>. Supongamos que tenemos una variable independiente <code>x = color del un carro</code> y que esta variable puede tomar 2 posibles valores. Definimos la variable <span class="math inline">\(x\)</span> como:</p>
+<p><span class="math inline">\(x = 1\)</span> si el carro es <strong>rojo</strong>; <span class="math inline">\(x=0\)</span> en cualquier otro caso.</p>
+<p>De esta manera, pasamos una variable categórica a una variable numérica con la cual podemos hacer operaciones.</p>
+<p>Regresando al caso del precio, ahora nuestro modelo es <code>price ~ cut + color + clarity</code>y las 3 son variables categóricas. Utilizando <code>model.matrix</code> podemos hacer la codificación de categórica a numérica con estas variables <strong>dummy</strong>:</p>
+<pre class="r"><code>x = model.matrix(price ~ cut + color + clarity, data = diamonds)
+y = diamonds$price
+as.data.frame(x[1:3, ])</code></pre>
+<pre><code>##   (Intercept)      cut.L      cut.Q      cut.C      cut^4    color.L
+## 1           1  0.6324555  0.5345225  0.3162278  0.1195229 -0.3779645
+## 2           1  0.3162278 -0.2672612 -0.6324555 -0.4780914 -0.3779645
+## 3           1 -0.3162278 -0.2672612  0.6324555 -0.4780914 -0.3779645
+##        color.Q   color.C    color^4   color^5    color^6   clarity.L
+## 1 9.690821e-17 0.4082483 -0.5640761 0.4364358 -0.1973855 -0.38575837
+## 2 9.690821e-17 0.4082483 -0.5640761 0.4364358 -0.1973855 -0.23145502
+## 3 9.690821e-17 0.4082483 -0.5640761 0.4364358 -0.1973855  0.07715167
+##     clarity.Q  clarity.C  clarity^4  clarity^5  clarity^6  clarity^7
+## 1  0.07715167  0.3077287 -0.5237849  0.4921546 -0.3077287  0.1194880
+## 2 -0.23145502  0.4308202 -0.1208734 -0.3637664  0.5539117 -0.3584641
+## 3 -0.38575837 -0.1846372  0.3626203  0.3209704 -0.3077287 -0.5974401</code></pre>
+<p>Ahora nuestra matriz de diseño tiene 18 columnas o variables artificiales. <strong>R</strong> crea una columna con cada uno de los niveles de cada factor.</p>
+<pre class="r"><code>betas = solve(t(x) %*% x) %*% t(x) %*% y
+
+yhat = x %*% betas
+residuals = y - yhat
+
+#Análisis de residuales
+par(mfrow = c(2,2))
+
+#Normalidad
+plot(density(residuals), col = &#39;red&#39;, main = &#39;Desityplot de residuales&#39;)  # density plot for &#39;speed&#39;
+polygon(density(residuals), col=&quot;red&quot;)
+
+qqnorm(residuals)
+qqline(residuals, col = &#39;red&#39;)
+
+#Varianza Constante
+plot(residuals, main = &#39;Constant Variance&#39;)
+
+#Residuales independientes
+acf(residuals)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-24-1.png" width="672" /></p>
+</div>
+<div id="caso-3-todas-las-variables-x_i-en-el-modelo" class="section level3">
+<h3>Caso 3: Todas las variables <span class="math inline">\(x_i\)</span> en el modelo</h3>
+<p>Ahora vamos a aprovechar el poder de la regresión lineal múltiple estimando todos los coeficientes de regresión con el algoritmo:</p>
+<pre class="r"><code>x = model.matrix(price ~., data = diamonds) #y~. quiere decir: y es una función de Todas las variables
+
+betas = solve(t(x) %*% x) %*% t(x) %*% y
+
+yhat = x %*% betas
+residuals = y - yhat
+
+#Análisis de residuales
+par(mfrow = c(2,2))
+
+#Normalidad
+plot(density(residuals), col = &#39;red&#39;, main = &#39;Desityplot de residuales&#39;)  # density plot for &#39;speed&#39;
+polygon(density(residuals), col=&quot;red&quot;)
+
+qqnorm(residuals)
+qqline(residuals, col = &#39;red&#39;)
+
+#Varianza Constante
+plot(residuals, main = &#39;Constant Variance&#39;)
+
+#Residuales independientes
+acf(residuals)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-25-1.png" width="672" /></p>
+</div>
+<div id="usando-lm" class="section level3">
+<h3>Usando <code>lm()</code></h3>
+<p>Por fortuna, no tenemos que programar matrices. La función <code>lm</code> que revisamos en regresión lineal hace el trabajo y no necesitamos diseñar una matriz con `model.matrix() cada vez que queremos hacer una regresión:</p>
+<pre class="r"><code>m.lineal = lm(price ~., data = diamonds)
+summary(m.lineal)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = price ~ ., data = diamonds)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -21376.0   -592.4   -183.5    376.4  10694.2 
+## 
+## Coefficients:
+##              Estimate Std. Error  t value Pr(&gt;|t|)    
+## (Intercept)  5753.762    396.630   14.507  &lt; 2e-16 ***
+## carat       11256.978     48.628  231.494  &lt; 2e-16 ***
+## cut.L         584.457     22.478   26.001  &lt; 2e-16 ***
+## cut.Q        -301.908     17.994  -16.778  &lt; 2e-16 ***
+## cut.C         148.035     15.483    9.561  &lt; 2e-16 ***
+## cut^4         -20.794     12.377   -1.680  0.09294 .  
+## color.L     -1952.160     17.342 -112.570  &lt; 2e-16 ***
+## color.Q      -672.054     15.777  -42.597  &lt; 2e-16 ***
+## color.C      -165.283     14.725  -11.225  &lt; 2e-16 ***
+## color^4        38.195     13.527    2.824  0.00475 ** 
+## color^5       -95.793     12.776   -7.498 6.59e-14 ***
+## color^6       -48.466     11.614   -4.173 3.01e-05 ***
+## clarity.L    4097.431     30.259  135.414  &lt; 2e-16 ***
+## clarity.Q   -1925.004     28.227  -68.197  &lt; 2e-16 ***
+## clarity.C     982.205     24.152   40.668  &lt; 2e-16 ***
+## clarity^4    -364.918     19.285  -18.922  &lt; 2e-16 ***
+## clarity^5     233.563     15.752   14.828  &lt; 2e-16 ***
+## clarity^6       6.883     13.715    0.502  0.61575    
+## clarity^7      90.640     12.103    7.489 7.06e-14 ***
+## depth         -63.806      4.535  -14.071  &lt; 2e-16 ***
+## table         -26.474      2.912   -9.092  &lt; 2e-16 ***
+## x           -1008.261     32.898  -30.648  &lt; 2e-16 ***
+## y               9.609     19.333    0.497  0.61918    
+## z             -50.119     33.486   -1.497  0.13448    
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 1130 on 53916 degrees of freedom
+## Multiple R-squared:  0.9198, Adjusted R-squared:  0.9198 
+## F-statistic: 2.688e+04 on 23 and 53916 DF,  p-value: &lt; 2.2e-16</code></pre>
+<p>Si comparamos el resultado de <code>lm()</code> con las operaciones con matrices que hemos revisado, veremos que los resultados son similares. Finalmente, vamos a interpretar la tabla:</p>
+<ol style="list-style-type: decimal">
+<li>Los <strong>coeficientes</strong> de la regresión o parámetros:</li>
+</ol>
+<blockquote>
+<p>Por ejemplo, para la variable <code>carat</code>, por cada unidad de incremento en <code>carat</code>, el precio incrementa 11,256 unidades. Además el signo es positivo. Esto está relacionado con el coeficiente de correlación. En ese caso, quiere decir que a medida que <code>carat</code> se incrementa, <code>price</code>también se incrementa</p>
+</blockquote>
+<ol start="2" style="list-style-type: decimal">
+<li>El <strong>Error Estándar</strong> de los parámetros:</li>
+</ol>
+<blockquote>
+<p>Esto no deja de ser una estimación, por lo que invariablemente tendremos un error. En el caso de <code>carat</code> el error estándar o desviación estándar del parámetro es de 48.62 unidades</p>
+</blockquote>
+<ol start="3" style="list-style-type: decimal">
+<li>El estadístico de prueba <strong>t</strong> o <strong>signal to noise ratio</strong></li>
+</ol>
+<blockquote>
+<p>Generalemne si <span class="math inline">\(|t| &gt; 2.5\)</span> el <span class="math inline">\(p_{val} &lt; 0.05\)</span>. Entonces, la variable afecta de forma sinificativa la <span class="math inline">\(y\)</span>. Es decir; existe una relación funcional <span class="math inline">\(y=f(x)\)</span>. Para <code>carat</code> el valor de <span class="math inline">\(t=231\)</span> y su valor <span class="math inline">\(p&lt;0.05\)</span> por lo tanto, es una variable estadísticamnete significativa.</p>
+</blockquote>
+<blockquote>
+<p>Otra cosa importante es que al valor <span class="math inline">\(t\)</span> se le conoce como <strong>signal to noise ratio</strong> y mientras más grande, quiere decir más <strong>señal</strong>. Pensemos en en esto como un televisor 4k vs un televisor blanco y negro. En general, la variable <span class="math inline">\(x_i\)</span> con el <span class="math inline">\(\text{max}(|t|)\)</span> es la que más señal proporciona. Es decir, es la más importante. En este caso es la variable <code>carat</code></p>
+</blockquote>
+<ol start="4" style="list-style-type: decimal">
+<li>Ajuste del modelo <span class="math inline">\(R^2\)</span> y <span class="math inline">\(R_{adj}^2\)</span></li>
+</ol>
+<blockquote>
+<p>La <span class="math inline">\(R^2\)</span> se computa con <strong>sumas de cuadrados</strong> <span class="math inline">\(R^2 = \frac{SSR}{SST}\)</span> de la tabla <strong>ANOVA</strong>. Es decir, es la razón o ratio entre la Varianza que absorbe el modelo de regresión respecto a la varianza total. Una forma equivalente de computarlo es <span class="math inline">\(R^2=\text{cor}(y, \hat{y})^2\)</span>. Sin embargo, la <span class="math inline">\(R^2\)</span> tiende a incrementar a medida que agregamos más y más variables.</p>
+</blockquote>
+<blockquote>
+<p>La <span class="math inline">\(R_{adj}^2\)</span> cuida que el modelo explique de manera correcta. Entoces, penaliza que pongamos variables que no nos dicen nada:</p>
+</blockquote>
+<p><span class="math inline">\(R_{adj}^2 = 1 - \frac{1-R^2}{n-k-1}(n-1)\)</span> en donde <span class="math inline">\(k\)</span> es el número de parámetros del modelo</p>
+<blockquote>
+<p>En este caso, la <span class="math inline">\(R^2 = 91.98%\)</span> y <span class="math inline">\(R_{adj}^2 = 91.98%\)</span> Esto quiere decir que el modelo explica el 91.98% de la variación. Podemos pensar en este indicador de tal forma que las variables que elejimos tienen una representatividad del 91.98% en el precio. Solo tenemos ~8% que no logramos explicar.</p>
+</blockquote>
+<p><strong>Importante:</strong> Sería expectacular tener un modelo que explique el 100% de la variación, que su <span class="math inline">\(R_{adj}^2=100%\)</span> pero esto representa un problema: <strong>Overfitting</strong>. cuando tenemos overfiting, estamos sobre estimando el modelo y por lo general, las predicciones no son del todo buenas.</p>
+</div>
+<div id="hacer-predicciones-con-el-modelo" class="section level3">
+<h3>Hacer predicciones con el modelo</h3>
+<p>Supongamos que tenemos un diamante con las siguientes características:</p>
+<pre class="r"><code>diamantes = sample(diamonds$price, 2)
+x_nueva = diamonds[diamantes, -7]
+x_nueva</code></pre>
+<pre><code>## # A tibble: 2 × 9
+##   carat cut   color clarity depth table     x     y     z
+##   &lt;dbl&gt; &lt;ord&gt; &lt;ord&gt; &lt;ord&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1  0.92 Good  D     SI2      57.8  63    6.36  6.4   3.69
+## 2  0.8  Good  G     VS1      63.2  60.1  5.77  5.85  3.67</code></pre>
+<p>Cuál debería ser el precio de ambos diamantes? Con el comando <code>predict(model, xnew)</code> podemos computar los valores para la predicción:</p>
+<pre class="r"><code>y_nueva = predict(m.lineal, x_nueva, interval = &quot;confidence&quot;)
+y_nueva</code></pre>
+<pre><code>##        fit      lwr      upr
+## 1 3931.393 3875.235 3987.551
+## 2 4297.142 4251.795 4342.488</code></pre>
+<p>Acá hemos computado los <strong>intervalos de confianza</strong> para los valores predichos. Estos nos dan un valor de referencia sobre entre qué valores podría encontrarse nuestra predicción. Para el primer diamante, el precio predicho es de <span class="math inline">\(4,046\)</span> pero podría estar entre <span class="math inline">\([3997, 4094]\)</span>.</p>
+</div>
+</div>
+<div id="medidas-remediales" class="section level2">
+<h2>Medidas remediales</h2>
+<p>Si bien con este modelo podemos empezar a hacer algunas predicciones, según el análisis de residuales, el modelo tiene algunos problemas para cumplir con los supuestos:</p>
+<pre class="r"><code>residuals = m.lineal$residuals
+
+#Análisis de residuales
+par(mfrow = c(2,2))
+
+#Normalidad
+plot(density(residuals), col = &#39;red&#39;, main = &#39;Desityplot de residuales&#39;)  # density plot for &#39;speed&#39;
+polygon(density(residuals), col=&quot;red&quot;)
+
+qqnorm(residuals)
+qqline(residuals, col = &#39;red&#39;)
+
+#Varianza Constante
+plot(residuals, main = &#39;Constant Variance&#39;)
+
+#Residuales independientes
+acf(residuals)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-29-1.png" width="672" /></p>
+<div id="transformación-de-las-variables-y-y-x" class="section level3">
+<h3>Transformación de las variables <span class="math inline">\(y\)</span> y <span class="math inline">\(x\)</span></h3>
+<p>Dentro de las transformaciones de variables podemos englobar 2 grandes grupos:</p>
+<ol style="list-style-type: decimal">
+<li><p>Transformaciones para <strong>reducir la varianza</strong> de las variables</p></li>
+<li><p>Transformaciones para introducir términos de <strong>polinomios</strong> en algunas de las variables</p></li>
+</ol>
+<p>El primer indicio que confirma la necesidad de <strong>reducir la varianza</strong> de los datos es el diagrama de dispersión que hicimos inicialmente en este capítulo:</p>
+<pre class="r"><code>ggplot(diamonds, aes(x = carat, y = price)) +
+  geom_point(aes(color = clarity)) +
+  theme(legend.position = &#39;none&#39;) +
+  labs(title = &#39;Price vs Carat&#39;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-30-1.png" width="672" /></p>
+<p>claramente este no es un comportamiento <strong>lineal</strong> y el precio parece crecer en forma exponencial.</p>
+<p>Otro indicio es la forma en la distribución de la variable <code>price</code>. Los modelos de regresión lineal funcionan mejor cuando la distribución de las variables es <strong>normal</strong>:</p>
+<pre class="r"><code>ggplot(diamonds, aes(x = price)) +
+  geom_density(fill = &#39;red&#39;) +
+  labs(title = &#39;Density plot of price&#39;)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-31-1.png" width="672" /></p>
+<p>Para resolver este problema en la variable <code>price</code> podemos hacer uso de una herramienta conocida como <strong>transformación de Box-Cox</strong>. Esto consiste en elevar la variable a un <strong>exponente</strong> tal que la varianza de los datos sea reducida:</p>
+<p><span class="math inline">\(y_i ^{(\lambda)} = \frac{y_i^\lambda - 1}{\lambda}\)</span> si <span class="math inline">\(\lambda \neq 0\)</span></p>
+<p><span class="math inline">\(y_i ^{(\lambda)} = ln(y_i)\)</span> si <span class="math inline">\(\lambda = 0\)</span></p>
+<div id="transformación-log" class="section level4">
+<h4>Transformación <code>log()</code></h4>
+<p>Como <strong>primera opción</strong> recomiendo utilizar la transformación <strong>logaritmo natural</strong>. Generalmente es efectiva y no perdemos <strong>interpretabilidad</strong>. Generalmente funciona bien cuando <span class="math inline">\(y &gt; 0\)</span>.</p>
+<p>Si <span class="math inline">\(y = x\)</span> entonces <span class="math inline">\(ln(y) = ln(x)\)</span> y <span class="math inline">\(e^{ln(y)} = y\)</span></p>
+<p>En donde <span class="math inline">\(e\)</span> es el número <span class="math inline">\(e \approx 2.71\)</span></p>
+<p>De esta forma, podemos convertir entre las unidades originales y las unidades en logaritmos.</p>
+<p>Para ver el efecto de esta transformación, vamos a hacer el histograma de los datos transformados:</p>
+<pre class="r"><code>ggplot(diamonds, aes(x = log(price))) +
+  geom_histogram(fill = &#39;red&#39;, color = &#39;white&#39;) +
+  labs(title = &#39;Density plot of price&#39;)</code></pre>
+<pre><code>## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-32-1.png" width="672" /></p>
+<p>Otra recomendación es que si vamos a aplicar <span class="math inline">\(ln(y)\)</span> también apliquemos <span class="math inline">\(ln(x)\)</span> :</p>
+<pre class="r"><code>ggplot(diamonds, aes(x = log(carat), y = log(price))) +
+  geom_point(aes(color = clarity)) +
+  theme(legend.position = &#39;none&#39;) +
+  geom_smooth(method = &#39;lm&#39;) +
+  labs(title = &#39;Price vs Carat&#39;)</code></pre>
+<pre><code>## `geom_smooth()` using formula &#39;y ~ x&#39;</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-33-1.png" width="672" /></p>
+<p>Lo que sucede es que al aplicar logaritmos <strong>linealizamos</strong> un poco la relación <code>price ~ carat</code>. Ahora aplicamos esta transformación a los datos en la ecuación de regresión <strong>solamente en las variables continuas</strong></p>
+<pre class="r"><code>m.logreg = lm(log(price) ~ log(carat) + log(depth) + log(table) + cut + color + clarity,
+              data = diamonds)
+
+#Analyis de residuales
+par(mfrow = c(2,2))
+residuals = m.logreg$residuals
+
+#Normalidad
+plot(density(residuals), col = &#39;red&#39;, main = &#39;Desityplot de residuales&#39;)  # density plot for &#39;speed&#39;
+polygon(density(residuals), col=&quot;red&quot;)
+
+qqnorm(residuals)
+qqline(residuals, col = &#39;red&#39;)
+
+#Varianza Constante
+plot(residuals, main = &#39;Constant Variance&#39;, type = &#39;l&#39;)
+
+#Residuales independientes
+acf(residuals)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-34-1.png" width="672" /></p>
+<p>Logramos corregir el supuesto de <strong>varianza constante</strong> y la gráfica <strong>Q-Q plot</strong> se corrige en gran medida pero no en los extremos. Esto no ayuda mucho con el efecto de <strong>autocorrelación</strong></p>
+<p>Hacemos el summary para ver los coeficientes y la <span class="math inline">\(R_{adj}^2\)</span></p>
+<pre class="r"><code>summary(m.logreg)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = log(price) ~ log(carat) + log(depth) + log(table) + 
+##     cut + color + clarity, data = diamonds)
+## 
+## Residuals:
+##      Min       1Q   Median       3Q      Max 
+## -1.01116 -0.08640 -0.00030  0.08347  1.94208 
+## 
+## Coefficients:
+##              Estimate Std. Error  t value Pr(&gt;|t|)    
+## (Intercept)  8.693378   0.169073   51.418  &lt; 2e-16 ***
+## log(carat)   1.883759   0.001135 1659.779  &lt; 2e-16 ***
+## log(depth)  -0.045311   0.028795   -1.574   0.1156    
+## log(table)  -0.012113   0.020068   -0.604   0.5461    
+## cut.L        0.119115   0.002629   45.302  &lt; 2e-16 ***
+## cut.Q       -0.034540   0.002124  -16.260  &lt; 2e-16 ***
+## cut.C        0.013284   0.001829    7.262 3.86e-13 ***
+## cut^4       -0.001543   0.001464   -1.053   0.2921    
+## color.L     -0.439437   0.002029 -216.539  &lt; 2e-16 ***
+## color.Q     -0.095608   0.001863  -51.321  &lt; 2e-16 ***
+## color.C     -0.014821   0.001743   -8.502  &lt; 2e-16 ***
+## color^4      0.011858   0.001601    7.406 1.32e-13 ***
+## color^5     -0.002182   0.001513   -1.443   0.1491    
+## color^6      0.002381   0.001375    1.731   0.0834 .  
+## clarity.L    0.916507   0.003584  255.755  &lt; 2e-16 ***
+## clarity.Q   -0.242977   0.003330  -72.958  &lt; 2e-16 ***
+## clarity.C    0.132282   0.002855   46.330  &lt; 2e-16 ***
+## clarity^4   -0.066061   0.002283  -28.934  &lt; 2e-16 ***
+## clarity^5    0.027321   0.001865   14.651  &lt; 2e-16 ***
+## clarity^6   -0.001772   0.001624   -1.092   0.2750    
+## clarity^7    0.033527   0.001432   23.410  &lt; 2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.1338 on 53919 degrees of freedom
+## Multiple R-squared:  0.9826, Adjusted R-squared:  0.9826 
+## F-statistic: 1.524e+05 on 20 and 53919 DF,  p-value: &lt; 2.2e-16</code></pre>
+<p>Ahora, los coeficiente son distintos al ejercicio previo. Esto es porque transformamos la variable. En este caso, cuando hacemos una transformación <strong>logaritmica en ambos lados de la ecuación</strong> todavía podemos interpretar el resultado. Para la variable <code>carat</code> el coeficiente es <span class="math inline">\(1.88\)</span> y esto quiere decir que <strong>1%</strong> de incremento en <code>carat</code> trae consigo un incremento de <strong>1.88</strong> en el precio.</p>
+<p>Ahora vemos un incremento significativo en la <span class="math inline">\(R_{adj}^2\)</span> de 91% a 98%.</p>
+</div>
+<div id="box-cox-transformation" class="section level4">
+<h4>Box-Cox Transformation</h4>
+<p>Con <strong>R</strong> podemos estimar el valor <span class="math inline">\(\lambda\)</span> con la libreria <code>MASS</code> con la función <code>boxcox(model, plotit = TRUE)</code></p>
+<pre class="r"><code>library(MASS)</code></pre>
+<pre><code>## 
+## Attaching package: &#39;MASS&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:dplyr&#39;:
+## 
+##     select</code></pre>
+<pre class="r"><code>transformation = boxcox(m.lineal, plotit = TRUE)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-36-1.png" width="672" /></p>
+<pre class="r"><code>lambda = transformation$x #valores de lambda
+logfun = transformation$y #log likelihood values
+
+#Creamos un data frame con los valores de lambda y loglikelihod
+bc = cbind(lambda, logfun)
+sorted_bc &lt;- bc[order(-logfun),] #ordenamos de mayor a menor loglikelihod
+lambda_opt = sorted_bc[1] #Obtenemos el mejor valor de labda que maximiza el loglikelihod
+lambda_opt</code></pre>
+<pre><code>## [1] 0.1010101</code></pre>
+<p>Ahora que encontramos <span class="math inline">\(\lambda = 0.10\)</span> aplicamos la transformación <strong>Box-Cox</strong></p>
+<pre class="r"><code>l = 0.10
+diamonds$y_bc = (diamonds$price^l - 1) / l
+#Graficamos
+ggplot(diamonds, aes(x = y_bc)) +
+  geom_histogram(fill = &#39;red&#39;, color = &#39;white&#39;)</code></pre>
+<pre><code>## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-37-1.png" width="672" /></p>
+<p>Ahora corremos la regresión y analisamos los residuales:</p>
+<pre class="r"><code>m.logreg = lm(y_bc ~ log(carat) + log(depth) + log(table) + cut + color + clarity,
+              data = diamonds)
+
+#Analyis de residuales
+par(mfrow = c(2,2))
+residuals = m.logreg$residuals
+
+#Normalidad
+plot(density(residuals), col = &#39;red&#39;, main = &#39;Desityplot de residuales&#39;)  # density plot for &#39;speed&#39;
+polygon(density(residuals), col=&quot;red&quot;)
+
+qqnorm(residuals)
+qqline(residuals, col = &#39;red&#39;)
+
+#Varianza Constante
+plot(residuals, main = &#39;Constant Variance&#39;, type = &#39;l&#39;)
+
+#Residuales independientes
+acf(residuals)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-38-1.png" width="672" /></p>
+<p><strong>Al parecer no logramos algo mucho mejor que con la transformación `log()</strong> pero <strong>si perdemos interpretabilidad</strong> porque ahora los coeficientes no tienen un contexto en el problema original. Este es el precio que tenemos que pagar por incremetnar la <strong>complejidad</strong> de los modelos.</p>
+</div>
+<div id="incluir-polinomios-en-la-ecuación" class="section level4">
+<h4>Incluir polinomios en la ecuación</h4>
+<p>Supongamos que ahora la relación con la variable <code>carat</code> es un polinomio de orden 3:</p>
+<p><span class="math inline">\(\hat{y} = \beta_0 + \beta_1 x_1 + \beta_{12} x_{12}^2 + \beta_{13} x^3\)</span></p>
+<p>Para ver cómo opera matemáticamente, vamos a construir con <code>model.matrix</code>:</p>
+<pre class="r"><code>x_cubica = model.matrix(price ~ poly(carat, 3), data = diamonds)
+x_cubica[1 : 10, ]</code></pre>
+<pre><code>##    (Intercept) poly(carat, 3)1 poly(carat, 3)2 poly(carat, 3)3
+## 1            1    -0.005158960     0.005386699    -0.005005065
+## 2            1    -0.005340633     0.005842311    -0.005682080
+## 3            1    -0.005158960     0.005386699    -0.005005065
+## 4            1    -0.004613942     0.004084753    -0.003163993
+## 5            1    -0.004432269     0.003672400    -0.002611721
+## 6            1    -0.005068124     0.005162949    -0.004678610
+## 7            1    -0.005068124     0.005162949    -0.004678610
+## 8            1    -0.004886451     0.004723560    -0.004049445
+## 9            1    -0.005249797     0.005613153    -0.005339531
+## 10           1    -0.005158960     0.005386699    -0.005005065</code></pre>
+<p>Automáticamente <strong>R</strong> agrega 3 columnas: <code>poly(carat, 3)1</code>, <code>poly(carat, 3)2</code> y <code>poly(carat, 3)3</code> cada una representando 1 grado de polinomio de orden 3.</p>
+<p>Ahora podemos usar nuestro conocimiento matemático para encontrar el valor de los coeficientes:</p>
+<pre class="r"><code>y = diamonds$price
+betas = solve(t(x_cubica) %*% x_cubica) %*% t(x_cubica) %*% y
+betas</code></pre>
+<pre><code>##                       [,1]
+## (Intercept)        3932.80
+## poly(carat, 3)1  853889.59
+## poly(carat, 3)2   37572.21
+## poly(carat, 3)3 -109908.54</code></pre>
+<p>Acá puedes consultar más detalles de la función <code>poly()</code> <a href="https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/poly" class="uri">https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/poly</a></p>
+<p>Un indicio de que necesitamos incluir algún término de polinomio en las variables independientes es la gráfica de <span class="math inline">\(\hat{y}\)</span> vs <span class="math inline">\(\epsilon\)</span></p>
+<p>Vamos a utilizar el modelo <strong>logarítmico</strong> como base porque ya vimos que aplicar esta técnica ayuda a mejorar los supuestos de varianza constante y normalidad.</p>
+<pre class="r"><code>plot(y = m.logreg$residuals, x = m.logreg$fitted.values)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-41-1.png" width="672" /></p>
+<p>Acá podemos percibir un comportamiento de <strong>cuchara</strong> que sugiere que alguna variable podría estar generando un comportamiento no lineal. Vamos a agregar un término <strong>cúbico</strong> para cada variable continua.</p>
+<pre class="r"><code>m.logreg = lm(y_bc ~ poly(log(carat), 3) + poly(log(depth), 3) + poly(log(table), 3) + cut + color + clarity +
+                carat : depth + carat : depth + depth : table,
+              data = diamonds)
+
+#Analyis de residuales
+par(mfrow = c(3,2))
+residuals = m.logreg$residuals
+
+#Normalidad
+plot(density(residuals), col = &#39;red&#39;, main = &#39;Desityplot de residuales&#39;)  # density plot for &#39;speed&#39;
+polygon(density(residuals), col=&quot;red&quot;)
+
+qqnorm(residuals)
+qqline(residuals, col = &#39;red&#39;)
+
+#Varianza Constante
+plot(residuals, main = &#39;Constant Variance&#39;, type = &#39;l&#39;)
+
+#Residuales independientes
+acf(residuals)
+
+plot(y = m.logreg$residuals, x = m.logreg$fitted.values)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-42-1.png" width="672" /></p>
+<pre class="r"><code>summary(m.logreg)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = y_bc ~ poly(log(carat), 3) + poly(log(depth), 3) + 
+##     poly(log(table), 3) + cut + color + clarity + carat:depth + 
+##     carat:depth + depth:table, data = diamonds)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -1.9144 -0.1822 -0.0133  0.1782  4.2405 
+## 
+## Coefficients:
+##                        Estimate Std. Error  t value Pr(&gt;|t|)    
+## (Intercept)           6.485e+00  1.118e+00    5.798 6.73e-09 ***
+## poly(log(carat), 3)1  6.748e+02  9.821e+00   68.714  &lt; 2e-16 ***
+## poly(log(carat), 3)2  6.107e+01  2.955e+00   20.667  &lt; 2e-16 ***
+## poly(log(carat), 3)3 -1.502e+01  7.015e-01  -21.414  &lt; 2e-16 ***
+## poly(log(depth), 3)1 -3.101e+01  6.207e+00   -4.996 5.87e-07 ***
+## poly(log(depth), 3)2 -3.812e+00  4.072e-01   -9.362  &lt; 2e-16 ***
+## poly(log(depth), 3)3 -7.741e-01  2.987e-01   -2.592 0.009554 ** 
+## poly(log(table), 3)1 -5.703e+01  1.012e+01   -5.634 1.76e-08 ***
+## poly(log(table), 3)2 -3.648e+00  4.044e-01   -9.020  &lt; 2e-16 ***
+## poly(log(table), 3)3  1.048e+00  2.893e-01    3.622 0.000292 ***
+## cut.L                 2.095e-01  7.150e-03   29.296  &lt; 2e-16 ***
+## cut.Q                -3.752e-02  5.230e-03   -7.174 7.39e-13 ***
+## cut.C                 2.713e-02  4.027e-03    6.737 1.63e-11 ***
+## cut^4                -4.781e-03  3.134e-03   -1.525 0.127173    
+## color.L              -9.810e-01  4.365e-03 -224.708  &lt; 2e-16 ***
+## color.Q              -2.146e-01  3.971e-03  -54.043  &lt; 2e-16 ***
+## color.C              -3.510e-02  3.703e-03   -9.479  &lt; 2e-16 ***
+## color^4               2.859e-02  3.401e-03    8.407  &lt; 2e-16 ***
+## color^5              -1.420e-02  3.212e-03   -4.421 9.85e-06 ***
+## color^6              -3.804e-03  2.921e-03   -1.302 0.192803    
+## clarity.L             1.994e+00  7.654e-03  260.489  &lt; 2e-16 ***
+## clarity.Q            -5.864e-01  7.136e-03  -82.174  &lt; 2e-16 ***
+## clarity.C             3.150e-01  6.097e-03   51.663  &lt; 2e-16 ***
+## clarity^4            -1.325e-01  4.861e-03  -27.261  &lt; 2e-16 ***
+## clarity^5             6.068e-02  3.963e-03   15.310  &lt; 2e-16 ***
+## clarity^6            -4.866e-03  3.448e-03   -1.411 0.158244    
+## clarity^7             6.216e-02  3.044e-03   20.420  &lt; 2e-16 ***
+## carat:depth          -1.731e-02  1.510e-03  -11.460  &lt; 2e-16 ***
+## depth:table           1.721e-03  3.152e-04    5.461 4.76e-08 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 0.2841 on 53911 degrees of freedom
+## Multiple R-squared:  0.9838, Adjusted R-squared:  0.9838 
+## F-statistic: 1.172e+05 on 28 and 53911 DF,  p-value: &lt; 2.2e-16</code></pre>
+<p>Si bien logramos corregir ligeramente la linealidad, en este punto ya no podemos hacer nada más. Más adelante estaremos revisando modelos más complejos que tendrán la capacidad de manejar problemas no lineales de una forma más eficiente.</p>
+</div>
+</div>
+</div>
+</div>

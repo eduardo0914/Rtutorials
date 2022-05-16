@@ -1,0 +1,791 @@
+---
+title: Introduction to Linear Regression
+author: Eduardo Villarreal
+date: '2022-05-15'
+slug: introduction-to-linear-regression
+categories:
+  - Basic Statisitcs
+tags:
+  - Inference and Regression
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#options(width = 300)
+```
+
+# Introducción a la Regresión Lineal
+
+<https://daviddalpiaz.github.io/appliedstats/>
+
+## Regresión Lineal Simple
+
+Cuando estamos interesados en entender la posible relación entre una variable explicativa o **independiente** y una variable de respuesta o **dependiente** podemos hacer uso de la **regresión**.
+
+Una forma de visualizar una posible relación entre 2 variables es con un diagrama de dispersión. Retomando el dataset `diamonds`queremos ver si existe alguna relación entre la variable `price` y la variable `carat`
+
+```{r}
+require(tidyverse)
+ggplot(diamonds, aes(x = carat, y = price)) +
+  geom_point() +
+  labs(title = 'Relacion entre carat y price')
+```
+
+Lo que podemos empezar a observar es que a medida que la variable `carat` incrementa su valor, el precio `price` también va incrementando su valor. A este tipo de relación se le conoce como **positiva**. Existe una forma de mediar la magnitud de esta relación y se logra calculando el **coeficiente de correlación**:
+
+$\rho = \frac{\text{Cov}(x,y)}{\sigma_x \sigma_y}$
+
+```{r}
+covarianza = cov(diamonds$carat, diamonds$price)
+sigma_x = sd(diamonds$carat)
+sigma_y = sd(diamonds$price)
+rho = covarianza / (sigma_x * sigma_y)
+rho
+```
+
+El indice de correlaciones siempre estará entre $-1\leq \rho \leq 1$
+
+> Si $\rho < 0$ se dice que la correlación es **negativa o inversa** y a medida que la variable $x$ se incrementa de valor la variable $y$ disminuye
+
+> Si $\rho > 0$ se dice que la correlación es **positiva o directa** y a medida que la variable $x$ se incrementa de valor la variable $y$ tambien se incrementa
+
+> Si $\rho = 0$ entonces no hay una relación entre ambas variables $x$ y $y$
+
+> Si $|\rho| \rightarrow 1$ enonces la relación es fuerte
+
+En **R** existe la función `cor()` que tiene como argumento `x` y `y` con la cual podemos computar el índice d correlación entre 2 variables:
+
+```{r}
+cor(diamonds$carat, diamonds$price)
+```
+
+El índice de correlación solo nos dice la dirección y la magnitud de la relación entre 2 variables pero no nos ayuda a estimar un **modelo** para explicar o predecir qué pasaría con `price` si la variable `carat` cambia de valor.
+
+### Ecuación de Regresión
+
+Un **modelo** es una representación de la realidad. En el caso de las 2 variables de interés `price`y `carat`, nos interesa estimar una forma funcional $f(x)$ de tal manera que podamos estimar qué le pasará al `precio` si `carat` sube o baja.
+
+La forma más simple de estimar este **modelo** es por medio de una línea recta:
+
+$\hat{y_i} = \beta_0 + \beta_1 x_i$
+
+En donde $\hat{y_i}$ es la **estimación** de $y$, $\beta_0 , \beta_1$ se conocen como parámetros. En el ámbito de modelación, podemos ver un parámetro como una botón que controla la forma en la cual se comporta el modelo. Por ejemplo, si $\beta_0 = 3$ y $\beta_1 =2.4$:
+
+```{r}
+x = seq(-10, 10, by = 0.01)
+y = 3 + 2.4 * x
+plot(x, y, type = 'l')
+```
+
+Si ahora, $\beta_1 = 3.5$
+
+```{r}
+y2 = 3 + 3.5 * x
+plot(x, y, type = 'l')
+lines(x, y2, col = 'red')
+```
+
+Si movemos los parámetros, digamos $\beta_0 = [1, 4]$ y $beta_1 = [1, 5]$ obtendríamos un montónn de modelos distintos:
+
+```{r}
+beta0 = seq(0, 1, length.out = 20)
+beta1 = seq(1, 5, length.out = 20)
+
+#sacar ek numero de modelos n
+n = length(beta0)
+plot(x, y, type = 'l', col = 'red')
+
+#Computar y graficar los modelos
+for (i in 1 : n){
+  beta0_temp = beta0[i]
+  beta1_temp = beta1[i]
+  
+  ytemp = beta0_temp + beta1_temp * x
+  lines(x, ytemp, col = 'blue')
+  
+}
+
+```
+
+Cada línea azul representa una combinación de valores para los parámetros.
+
+Si aplicamos este mismo principio a nuestro data set `diamods` para estudiar la relación entre `price` y `carat`, obtendríamos lo siguiente:
+
+```{r}
+beta0 = seq(-1000, -2270, length.out = 20)
+beta1 = seq(4000, 8000, length.out = 20)
+
+#sacar ek numero de modelos n
+n = length(beta0)
+plot(diamonds$carat, diamonds$price, col = 'red')
+
+#Computar y graficar los modelos
+for (i in 1 : n){
+  beta0_temp = beta0[i]
+  beta1_temp = beta1[i]
+  
+  ytemp = beta0_temp + beta1_temp * x
+  lines(x, ytemp, col = 'blue')
+  
+}
+```
+
+**Si bien, podemos poner muchos valores en los parámetros, cómo elegimos el mejor?**
+
+### El Componente del error
+
+> Todos los modelos están mal, pero algunos funcionan
+
+Esta célebre frase de **Sir George Box** hace alusión al concepto de **error**. El error puede definirse como $\epsilon_i = y_i - \hat{y_i}$ es decir que el error es la **distancia entre el dato real** $y$ y el dato estimado con el modelo $\hat{y}$. Si computamos la **varianza** de $\epsilon_i$ tenemos:
+
+$\sigma_{\epsilon}^2 = \frac{1}{n-1}\sum_{i=1}^n(y_i-\hat{y})^2$
+
+Si $\hat{y_i} = \beta_0 + \beta_1 x_i$ entonces:
+
+$\sigma_{\epsilon}^2 = \frac{1}{n-1}\sum_{i=1}^n(y_i-(\beta_0 + \beta_1 x_i))^2$
+
+Ahora solo tenemos que buscar los parámetros $\beta_0$ y $\beta_1$ que minimizan la varianza del error. A este método se le denomina **mínimos cuadrados**
+
+Supongamos que el valor de $\beta_0 = -2256$, si generamos una malla o **grid** de posibles valores para $\beta_1 = [4000, 8000]$ y computamos la varianza del error, tenemos la siguiente gráfica:
+
+```{r}
+beta0 = -2256
+beta1 = seq(4000, 12000, by = 10)
+
+yreal = diamonds$price
+x = diamonds$carat
+
+#Estimamos yhat
+var_error = NULL
+for (i in 1 : length(beta1)){
+  yhat = beta0 + beta1[i] * x
+  error = yreal - yhat
+  varianza = var(error)
+  var_error = rbind(var_error, varianza)
+}
+
+plot(x = beta1, y = var_error, type = 'l')
+```
+
+Lo que observamos es un **valor mínimo en la curva de varianza del error \~ 7,500**. Este algoritmo converge a un valor **exacto** que se puede computar de la siguiente forma:
+
+$\beta_1 = \frac{\text{Cov}(x,y)}{\sigma_x^2}$
+
+$\beta_0 = \bar{y} - \beta_1 \bar{x}$
+
+```{r}
+yreal = diamonds$price
+x = diamonds$carat
+
+#computo de beta1
+beta1 = cov(x, yreal) / var(x)
+beta0 = mean(yreal) - beta1 * mean(x)
+
+c(beta0, beta1)
+
+
+```
+
+La ecuación de la recta que minimiza la varianza es:
+
+$\hat{y} = -2256.36 + 7756.42 x$
+
+La función `lm(formula, data)` computa los coeficientes de la recta que minimiza la varianza del error. El parámetro `formula` es una formula que describe el modelo y el parámetro `data` es el dataset.
+
+En este caso, la formula del modelo es:
+
+`price ~ carat` que se lee como: la variable `price` es una función de la variable `carat`:
+
+```{r}
+m.price = lm(price ~ carat, data = diamonds)
+summary(m.price)
+```
+
+El objeto `m.price` es un objeto de tipo `list` que tiene varios componentes:
+
+-   **coeficientes** del modelo: guarda los valores de los parámetros. Se accede a el con `m.price$coefficient` o con la función `coef(m.price)`
+
+-   **Valores estimados** para $y$: guarda los valores de $\hat{y}$. Se accede con `m.price$fitted.values` o con la función `fitted(m.price)`
+
+-   **Errores** del modelo: estos se computan con a diferencia $y - \hat{y}$. Se accede con `m.price$residuals`
+
+### Propiedades de los residuales: $\epsilon_i \sim NID(0, \sigma^2)$
+
+Existen varias propiedades deseables en los errores para asegurar la validación de un modelo de regresión:
+
+1.  Los residuales deben ser **normales** o **gausianos** con media $0$
+
+2.  La **varianza** de los errores debe ser **constante** con valor $\sigma_\epsilon^2$
+
+3.  Los residuales deben ser **independientes** entre sí. Es decir, no deben estar **autocorrelacionados**
+
+Para ejemplificar estas propiedades vamos a utilizar un **modelo simulado teórico** utilizando los resultados de la relación que encontramos entre `price` y `carat`:
+
+```{r}
+#Generar beta0 y beta1
+beta0 = coef(m.price)[1] #coeficiente beta0 encontrado en m.price
+beta0_error = 13.06
+beta1 = coef(m.price)[2] #coeficinete beta1 encntrado en m.price
+beta1_error = 14.07
+
+#Asumiendo que los parámetros siguen una distribución normal, generamos 5000 observaciones ficticias de los parámetros:
+beta0_sim = rnorm(mean = beta0,sd = beta0_error, n = 5000)
+beta1_sim = rnorm(mean = beta1, sd = beta1_error, n = 5000)
+
+#Simulamos el error del modelo
+epsilon_sim = rnorm(0, 1549, n = 5000)
+
+#Simulamos los valores potenciales de la variable carat
+x_mean = mean(diamonds$carat)
+x_std = sd(diamonds$carat)
+x = rnorm(mean = x_mean, sd = x_std, n = 5000)
+
+#Simulamos el precio
+y = beta0_sim + beta1_sim * x + epsilon_sim
+
+#Dataframe
+price_sim = data.frame(carat = x, price = y)
+
+#Graficamos
+plot(x , y, col = 'red')
+
+```
+
+Hemos creado un modelo de `price ~ carat`simulado con 5000 observaciones. Supongamos que ahora queremos estimar la ecuación de la recta con mínimos cuadrados:
+
+```{r}
+m.teorico = lm(price ~ carat, data = price_sim)
+summary(m.teorico)
+```
+
+Revisemos ahora los supuestos:
+
+1.  Los residuales deben ser **normales** o **gausianos** con media $0$
+
+```{r}
+#Grafica de los residuales
+mean_error = mean(m.teorico$residuals)
+par(mfrow = c(1,2)) #multiples graficas
+hist(m.teorico$residuals, main = 'Histograma de residuales')
+abline(v = mean_error, col = 'blue')
+
+plot(density(m.teorico$residuals), col = 'red', main = 'Desityplot de residuales')  # density plot for 'speed'
+polygon(density(m.teorico$residuals), col="red")
+abline(v = mean_error, col = 'blue')
+
+print(paste('La media de los errores es: ', mean_error, sep = ' '))
+
+```
+
+Se puede constatar que el error medio es muy cercano a $0$ y que la forma de la distribución es **gausiana** o que tiene forma de **campana**. Generalmente se utiliza una gráfica de cuantiles o **qq-plot**. Si en esta gráfica los residuales se pegan a una línea recta, entonces, los dato provienen de una distribución normal.
+
+```{r}
+qqnorm(m.teorico$residuals)
+qqline(m.teorico$residuals, col = 'red')
+```
+
+2.  La varianza de los errores debe ser constante con valor $\sigma_\epsilon^2$
+
+La varianza y la desviación estándar de los errores se puede computar de la siguiente forma:
+
+$Var_\epsilon = \frac{\sum_{i=1}^n(y_i-\hat{y_i})^2}{n-k-1}$
+
+$sd_\epsilon = \sqrt(var_\epsilon)$
+
+en donde $k$ es el número de parámetros y $n$ el número de datos
+
+```{r}
+k = 2 #beta0 y beta1
+df = length(y) - k - 1
+var_epsilon = sum(m.teorico$residuals^2) / df
+sd_epsilon = sqrt(var_epsilon)
+sd_epsilon
+```
+
+La desviación estándar del error es $1,543$. Para revisar que la varianza es constante, graficamos los residuales a lo largo del tiempo y estos **no deben mostrar ningún patrón: relaciones lineales o no lineales, embudos o conos.**
+
+```{r}
+plot(m.teorico$residuals, type = 'l')
+```
+
+En este caso, podemos constatar que la distribución de los errores es constante.
+
+3.  Los residuales deben ser **independientes** entre sí. Es decir, no deben estar **autocorelacionados**
+
+Para esto usaremos una herramienta denominada **función de autocorrelación** o **ACF**:
+
+```{r}
+acf(m.teorico$residuals)
+```
+
+Entraremos más a detalle cuando revisemos series de tiempo pero lo importante de esta gráfica es que **solamente la primer barra debería estar por encima del intervalo de confianza en líneas azules**. como en este caso, se cumple el supuesto, podemos decir que los residuales son independientes.
+
+> Dado que los residuales son $NID(0, \sigma_\epsilon^2)$ el modelo de regresión es válido.
+
+Ahora vamos a probar los supuestos con los datos reales:
+
+```{r}
+m.price = lm(price ~ carat, data = diamonds)
+summary(m.price)
+
+#Análisis de residuales
+par(mfrow = c(2,2))
+
+#Normalidad
+plot(density(m.price$residuals), col = 'red', main = 'Desityplot de residuales')  # density plot for 'speed'
+polygon(density(m.price$residuals), col="red")
+abline(v = mean_error, col = 'blue')
+
+qqnorm(m.price$residuals)
+qqline(m.price$residuals, col = 'red')
+
+#Varianza Constante
+plot(m.price$residuals, main = 'Constant Variance')
+
+#Residuales independientes
+acf(m.price$residuals)
+```
+
+**En este caso, los supuestos de normalidad, varianza constante y autocorrelación o independencia, no se cumplen para el modelo de regresión.**
+
+## Regresión Lineal Múltiple
+
+Cuando la variable **dependiente** o de **respuesta** $y$ puede ser expresada como una función $f(x_1, x_2,...,x_n)$ de muchas variables **independientes** $x$, se conoce como **Regresión Lineal Múltiple**
+
+En este caso, la solución de mínimos cuadrados está dada por:
+
+Sea $y_i = \beta_0 + \beta_1 x_{i,1} + \beta_2 x_{i,2} +...+\beta_m x_{i,m} + \epsilon_i$. En forma matricial:
+
+$\mathbf{y} = \mathbf{x}\beta + \mathbf{\epsilon}$
+
+En donde $\mathbf{y}$ es el ventor de observaciones de $n \times 1$, $\mathbf{x}$ es una matriz de $n \times (m+1)$ y $\beta$ es un vector de parámetros de $(m+1)\times 1$ y $\mathbf{\epsilon}$ de $n \times 1$.
+
+La solución para el vector $\beta$ es:
+
+$\beta =(\mathbf{x}^t \mathbf{x})^{-1} \mathbf{x}^t\mathbf{y}$
+
+### Caso 1: Todas las variables $x_i$ son continuas:
+
+Supongamos que queremos explicar la variable `price ~ carat + depth + table + x + y + z` que son todas variables continuas. Entonces, la matriz de diseño $\mathbf{x}$ es:
+
+```{r}
+x = diamonds[, c(1, 5 : ncol(diamonds))]
+head(x)
+```
+
+Recordemos que ahora estamos trabajando con **matrices**. En **R** podemos hacer operaciones con matrices y para multiplicar 2 matrices usamos el operador `%*%`. Para más información sobre cómo trabaja la multiplicación de matrices, la transpuesta y la inversa puedes revisar:
+
+<https://en.wikipedia.org/wiki/Matrix_multiplication>
+
+<https://en.wikipedia.org/wiki/Transpose>
+
+<https://en.wikipedia.org/wiki/Invertible_matrix>
+
+Nuestra matriz de diseño debe tener una columna adicional con elementos todos iguales a $1$, esto para poder computar el parámetro $\beta_0$ el cuál no está asociado a ninguna variable del data set. Esto es equivalente a crear una **variable artifical** en la matriz de diseño.
+
+Podemos crear una matriz de diseño con la función `model.matrix(formula, data)` la cual por definición ya agrega la columna de 1´s
+
+```{r}
+x = model.matrix(price ~ carat + depth + table + x + y + z, data = diamonds)
+x[1:10, ]
+
+y = diamonds$price
+```
+
+Vamos a aplicar el algoritmo de mínimos cuadrados en su forma matricial para obtener `betas`
+
+```{r}
+betas = solve(t(x) %*% x) %*% t(x) %*% y
+betas
+```
+
+Ya que encontramos los parámetros óptimos, podemos estimar los valores de precio y hacer el análisis de residuales de la sección anterior:
+
+```{r}
+yhat = x %*% betas
+residuals = y - yhat
+
+#Análisis de residuales
+par(mfrow = c(2,2))
+
+#Normalidad
+plot(density(residuals), col = 'red', main = 'Desityplot de residuales')  # density plot for 'speed'
+polygon(density(residuals), col="red")
+
+qqnorm(residuals)
+qqline(residuals, col = 'red')
+
+#Varianza Constante
+plot(residuals, main = 'Constant Variance')
+
+#Residuales independientes
+acf(residuals)
+```
+
+### Caso 2: Todas las variables $x_i$ son discretas:
+
+Qué pasa si las variables son discretas? En este escenario, creamos una variable artificial o **dummy**. Supongamos que tenemos una variable independiente `x = color del un carro` y que esta variable puede tomar 2 posibles valores. Definimos la variable $x$ como:
+
+$x = 1$ si el carro es **rojo**; $x=0$ en cualquier otro caso.
+
+De esta manera, pasamos una variable categórica a una variable numérica con la cual podemos hacer operaciones.
+
+Regresando al caso del precio, ahora nuestro modelo es `price ~ cut + color + clarity`y las 3 son variables categóricas. Utilizando `model.matrix` podemos hacer la codificación de categórica a numérica con estas variables **dummy**:
+
+```{r}
+x = model.matrix(price ~ cut + color + clarity, data = diamonds)
+y = diamonds$price
+as.data.frame(x[1:3, ])
+
+
+```
+
+Ahora nuestra matriz de diseño tiene 18 columnas o variables artificiales. **R** crea una columna con cada uno de los niveles de cada factor.
+
+```{r}
+betas = solve(t(x) %*% x) %*% t(x) %*% y
+
+yhat = x %*% betas
+residuals = y - yhat
+
+#Análisis de residuales
+par(mfrow = c(2,2))
+
+#Normalidad
+plot(density(residuals), col = 'red', main = 'Desityplot de residuales')  # density plot for 'speed'
+polygon(density(residuals), col="red")
+
+qqnorm(residuals)
+qqline(residuals, col = 'red')
+
+#Varianza Constante
+plot(residuals, main = 'Constant Variance')
+
+#Residuales independientes
+acf(residuals)
+```
+
+### Caso 3: Todas las variables $x_i$ en el modelo
+
+Ahora vamos a aprovechar el poder de la regresión lineal múltiple estimando todos los coeficientes de regresión con el algoritmo:
+
+```{r}
+x = model.matrix(price ~., data = diamonds) #y~. quiere decir: y es una función de Todas las variables
+
+betas = solve(t(x) %*% x) %*% t(x) %*% y
+
+yhat = x %*% betas
+residuals = y - yhat
+
+#Análisis de residuales
+par(mfrow = c(2,2))
+
+#Normalidad
+plot(density(residuals), col = 'red', main = 'Desityplot de residuales')  # density plot for 'speed'
+polygon(density(residuals), col="red")
+
+qqnorm(residuals)
+qqline(residuals, col = 'red')
+
+#Varianza Constante
+plot(residuals, main = 'Constant Variance')
+
+#Residuales independientes
+acf(residuals)
+```
+
+### Usando `lm()`
+
+Por fortuna, no tenemos que programar matrices. La función `lm` que revisamos en regresión lineal hace el trabajo y no necesitamos diseñar una matriz con \`model.matrix() cada vez que queremos hacer una regresión:
+
+```{r}
+m.lineal = lm(price ~., data = diamonds)
+summary(m.lineal)
+```
+
+Si comparamos el resultado de `lm()` con las operaciones con matrices que hemos revisado, veremos que los resultados son similares. Finalmente, vamos a interpretar la tabla:
+
+1.  Los **coeficientes** de la regresión o parámetros:
+
+> Por ejemplo, para la variable `carat`, por cada unidad de incremento en `carat`, el precio incrementa 11,256 unidades. Además el signo es positivo. Esto está relacionado con el coeficiente de correlación. En ese caso, quiere decir que a medida que `carat` se incrementa, `price`también se incrementa
+
+2.  El **Error Estándar** de los parámetros:
+
+> Esto no deja de ser una estimación, por lo que invariablemente tendremos un error. En el caso de `carat` el error estándar o desviación estándar del parámetro es de 48.62 unidades
+
+3.  El estadístico de prueba **t** o **signal to noise ratio**
+
+> Generalemne si $|t| > 2.5$ el $p_{val} < 0.05$. Entonces, la variable afecta de forma sinificativa la $y$. Es decir; existe una relación funcional $y=f(x)$. Para `carat` el valor de $t=231$ y su valor $p<0.05$ por lo tanto, es una variable estadísticamnete significativa.
+
+> Otra cosa importante es que al valor $t$ se le conoce como **signal to noise ratio** y mientras más grande, quiere decir más **señal**. Pensemos en en esto como un televisor 4k vs un televisor blanco y negro. En general, la variable $x_i$ con el $\text{max}(|t|)$ es la que más señal proporciona. Es decir, es la más importante. En este caso es la variable `carat`
+
+4.  Ajuste del modelo $R^2$ y $R_{adj}^2$
+
+> La $R^2$ se computa con **sumas de cuadrados** $R^2 = \frac{SSR}{SST}$ de la tabla **ANOVA**. Es decir, es la razón o ratio entre la Varianza que absorbe el modelo de regresión respecto a la varianza total. Una forma equivalente de computarlo es $R^2=\text{cor}(y, \hat{y})^2$. Sin embargo, la $R^2$ tiende a incrementar a medida que agregamos más y más variables.
+
+> La $R_{adj}^2$ cuida que el modelo explique de manera correcta. Entoces, penaliza que pongamos variables que no nos dicen nada:
+
+$R_{adj}^2 = 1 - \frac{1-R^2}{n-k-1}(n-1)$ en donde $k$ es el número de parámetros del modelo
+
+> En este caso, la $R^2 = 91.98%$ y $R_{adj}^2 = 91.98%$ Esto quiere decir que el modelo explica el 91.98% de la variación. Podemos pensar en este indicador de tal forma que las variables que elejimos tienen una representatividad del 91.98% en el precio. Solo tenemos \~8% que no logramos explicar.
+
+**Importante:** Sería expectacular tener un modelo que explique el 100% de la variación, que su $R_{adj}^2=100%$ pero esto representa un problema: **Overfitting**. cuando tenemos overfiting, estamos sobre estimando el modelo y por lo general, las predicciones no son del todo buenas.
+
+### Hacer predicciones con el modelo
+
+Supongamos que tenemos un diamante con las siguientes características:
+
+```{r}
+diamantes = sample(diamonds$price, 2)
+x_nueva = diamonds[diamantes, -7]
+x_nueva
+```
+
+Cuál debería ser el precio de ambos diamantes? Con el comando `predict(model, xnew)` podemos computar los valores para la predicción:
+
+```{r}
+y_nueva = predict(m.lineal, x_nueva, interval = "confidence")
+y_nueva
+```
+
+Acá hemos computado los **intervalos de confianza** para los valores predichos. Estos nos dan un valor de referencia sobre entre qué valores podría encontrarse nuestra predicción. Para el primer diamante, el precio predicho es de $4,046$ pero podría estar entre $[3997, 4094]$.
+
+## Medidas remediales
+
+Si bien con este modelo podemos empezar a hacer algunas predicciones, según el análisis de residuales, el modelo tiene algunos problemas para cumplir con los supuestos:
+
+```{r}
+residuals = m.lineal$residuals
+
+#Análisis de residuales
+par(mfrow = c(2,2))
+
+#Normalidad
+plot(density(residuals), col = 'red', main = 'Desityplot de residuales')  # density plot for 'speed'
+polygon(density(residuals), col="red")
+
+qqnorm(residuals)
+qqline(residuals, col = 'red')
+
+#Varianza Constante
+plot(residuals, main = 'Constant Variance')
+
+#Residuales independientes
+acf(residuals)
+```
+
+### Transformación de las variables $y$ y $x$
+
+Dentro de las transformaciones de variables podemos englobar 2 grandes grupos:
+
+1.  Transformaciones para **reducir la varianza** de las variables
+
+2.  Transformaciones para introducir términos de **polinomios** en algunas de las variables
+
+El primer indicio que confirma la necesidad de **reducir la varianza** de los datos es el diagrama de dispersión que hicimos inicialmente en este capítulo:
+
+```{r}
+ggplot(diamonds, aes(x = carat, y = price)) +
+  geom_point(aes(color = clarity)) +
+  theme(legend.position = 'none') +
+  labs(title = 'Price vs Carat')
+```
+
+claramente este no es un comportamiento **lineal** y el precio parece crecer en forma exponencial.
+
+Otro indicio es la forma en la distribución de la variable `price`. Los modelos de regresión lineal funcionan mejor cuando la distribución de las variables es **normal**:
+
+```{r}
+ggplot(diamonds, aes(x = price)) +
+  geom_density(fill = 'red') +
+  labs(title = 'Density plot of price')
+```
+
+Para resolver este problema en la variable `price` podemos hacer uso de una herramienta conocida como **transformación de Box-Cox**. Esto consiste en elevar la variable a un **exponente** tal que la varianza de los datos sea reducida:
+
+$y_i ^{(\lambda)} = \frac{y_i^\lambda - 1}{\lambda}$ si $\lambda \neq 0$
+
+$y_i ^{(\lambda)} = ln(y_i)$ si $\lambda = 0$
+
+#### Transformación `log()`
+
+Como **primera opción** recomiendo utilizar la transformación **logaritmo natural**. Generalmente es efectiva y no perdemos **interpretabilidad**. Generalmente funciona bien cuando $y > 0$.
+
+Si $y = x$ entonces $ln(y) = ln(x)$ y $e^{ln(y)} = y$
+
+En donde $e$ es el número $e \approx 2.71$
+
+De esta forma, podemos convertir entre las unidades originales y las unidades en logaritmos.
+
+Para ver el efecto de esta transformación, vamos a hacer el histograma de los datos transformados:
+
+```{r}
+ggplot(diamonds, aes(x = log(price))) +
+  geom_histogram(fill = 'red', color = 'white') +
+  labs(title = 'Density plot of price')
+```
+
+Otra recomendación es que si vamos a aplicar $ln(y)$ también apliquemos $ln(x)$ :
+
+```{r}
+ggplot(diamonds, aes(x = log(carat), y = log(price))) +
+  geom_point(aes(color = clarity)) +
+  theme(legend.position = 'none') +
+  geom_smooth(method = 'lm') +
+  labs(title = 'Price vs Carat')
+```
+
+Lo que sucede es que al aplicar logaritmos **linealizamos** un poco la relación `price ~ carat`. Ahora aplicamos esta transformación a los datos en la ecuación de regresión **solamente en las variables continuas**
+
+```{r}
+m.logreg = lm(log(price) ~ log(carat) + log(depth) + log(table) + cut + color + clarity,
+              data = diamonds)
+
+#Analyis de residuales
+par(mfrow = c(2,2))
+residuals = m.logreg$residuals
+
+#Normalidad
+plot(density(residuals), col = 'red', main = 'Desityplot de residuales')  # density plot for 'speed'
+polygon(density(residuals), col="red")
+
+qqnorm(residuals)
+qqline(residuals, col = 'red')
+
+#Varianza Constante
+plot(residuals, main = 'Constant Variance', type = 'l')
+
+#Residuales independientes
+acf(residuals)
+```
+
+Logramos corregir el supuesto de **varianza constante** y la gráfica **Q-Q plot** se corrige en gran medida pero no en los extremos. Esto no ayuda mucho con el efecto de **autocorrelación**
+
+Hacemos el summary para ver los coeficientes y la $R_{adj}^2$
+
+```{r}
+summary(m.logreg)
+```
+
+Ahora, los coeficiente son distintos al ejercicio previo. Esto es porque transformamos la variable. En este caso, cuando hacemos una transformación **logaritmica en ambos lados de la ecuación** todavía podemos interpretar el resultado. Para la variable `carat` el coeficiente es $1.88$ y esto quiere decir que **1%** de incremento en `carat` trae consigo un incremento de **1.88** en el precio.
+
+Ahora vemos un incremento significativo en la $R_{adj}^2$ de 91% a 98%.
+
+#### Box-Cox Transformation
+
+Con **R** podemos estimar el valor $\lambda$ con la libreria `MASS` con la función `boxcox(model, plotit = TRUE)`
+
+```{r}
+library(MASS)
+transformation = boxcox(m.lineal, plotit = TRUE)
+lambda = transformation$x #valores de lambda
+logfun = transformation$y #log likelihood values
+
+#Creamos un data frame con los valores de lambda y loglikelihod
+bc = cbind(lambda, logfun)
+sorted_bc <- bc[order(-logfun),] #ordenamos de mayor a menor loglikelihod
+lambda_opt = sorted_bc[1] #Obtenemos el mejor valor de labda que maximiza el loglikelihod
+lambda_opt
+```
+
+Ahora que encontramos $\lambda = 0.10$ aplicamos la transformación **Box-Cox**
+
+```{r}
+l = 0.10
+diamonds$y_bc = (diamonds$price^l - 1) / l
+#Graficamos
+ggplot(diamonds, aes(x = y_bc)) +
+  geom_histogram(fill = 'red', color = 'white')
+```
+
+Ahora corremos la regresión y analisamos los residuales:
+
+```{r}
+m.logreg = lm(y_bc ~ log(carat) + log(depth) + log(table) + cut + color + clarity,
+              data = diamonds)
+
+#Analyis de residuales
+par(mfrow = c(2,2))
+residuals = m.logreg$residuals
+
+#Normalidad
+plot(density(residuals), col = 'red', main = 'Desityplot de residuales')  # density plot for 'speed'
+polygon(density(residuals), col="red")
+
+qqnorm(residuals)
+qqline(residuals, col = 'red')
+
+#Varianza Constante
+plot(residuals, main = 'Constant Variance', type = 'l')
+
+#Residuales independientes
+acf(residuals)
+```
+
+**Al parecer no logramos algo mucho mejor que con la transformación \`log()** pero **si perdemos interpretabilidad** porque ahora los coeficientes no tienen un contexto en el problema original. Este es el precio que tenemos que pagar por incremetnar la **complejidad** de los modelos.
+
+#### Incluir polinomios en la ecuación
+
+Supongamos que ahora la relación con la variable `carat` es un polinomio de orden 3:
+
+$\hat{y} = \beta_0 + \beta_1 x_1 + \beta_{12} x_{12}^2 + \beta_{13} x^3$
+
+Para ver cómo opera matemáticamente, vamos a construir con `model.matrix`:
+
+```{r}
+x_cubica = model.matrix(price ~ poly(carat, 3), data = diamonds)
+x_cubica[1 : 10, ]
+```
+
+Automáticamente **R** agrega 3 columnas: `poly(carat, 3)1`, `poly(carat, 3)2` y `poly(carat, 3)3` cada una representando 1 grado de polinomio de orden 3.
+
+Ahora podemos usar nuestro conocimiento matemático para encontrar el valor de los coeficientes:
+
+```{r}
+y = diamonds$price
+betas = solve(t(x_cubica) %*% x_cubica) %*% t(x_cubica) %*% y
+betas
+```
+
+Acá puedes consultar más detalles de la función `poly()` <https://www.rdocumentation.org/packages/stats/versions/3.6.2/topics/poly>
+
+Un indicio de que necesitamos incluir algún término de polinomio en las variables independientes es la gráfica de $\hat{y}$ vs $\epsilon$
+
+Vamos a utilizar el modelo **logarítmico** como base porque ya vimos que aplicar esta técnica ayuda a mejorar los supuestos de varianza constante y normalidad.
+
+```{r}
+plot(y = m.logreg$residuals, x = m.logreg$fitted.values)
+```
+
+Acá podemos percibir un comportamiento de **cuchara** que sugiere que alguna variable podría estar generando un comportamiento no lineal. Vamos a agregar un término **cúbico** para cada variable continua.
+
+```{r}
+m.logreg = lm(y_bc ~ poly(log(carat), 3) + poly(log(depth), 3) + poly(log(table), 3) + cut + color + clarity +
+                carat : depth + carat : depth + depth : table,
+              data = diamonds)
+
+#Analyis de residuales
+par(mfrow = c(3,2))
+residuals = m.logreg$residuals
+
+#Normalidad
+plot(density(residuals), col = 'red', main = 'Desityplot de residuales')  # density plot for 'speed'
+polygon(density(residuals), col="red")
+
+qqnorm(residuals)
+qqline(residuals, col = 'red')
+
+#Varianza Constante
+plot(residuals, main = 'Constant Variance', type = 'l')
+
+#Residuales independientes
+acf(residuals)
+
+plot(y = m.logreg$residuals, x = m.logreg$fitted.values)
+```
+
+```{r}
+summary(m.logreg)
+```
+
+Si bien logramos corregir ligeramente la linealidad, en este punto ya no podemos hacer nada más. Más adelante estaremos revisando modelos más complejos que tendrán la capacidad de manejar problemas no lineales de una forma más eficiente.
