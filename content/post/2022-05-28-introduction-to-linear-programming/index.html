@@ -1,0 +1,493 @@
+---
+title: Introduction to Linear Programming
+author: Eduardo Villarreal
+date: '2022-05-28'
+slug: introduction-to-linear-programming
+categories:
+  - Linear Programming
+tags:
+  - Optimization
+---
+
+
+
+<div id="introduction" class="section level2">
+<h2>Introduction</h2>
+<p><strong>Linear programming</strong> is one of the most extensively used techniques in the toolbox of quantitative methods of optimization. Its origins date as early as 1937, when <strong>Leonid Kantorovich</strong> published his paper <em>A new method of solving some classes of extremal problems</em>. Kantorovich developed linear programming as a technique for planning expenditures and returns in order to optimize costs to the army and increase losses to the enemy.</p>
+<p>The method was kept secret until 1947, when <strong>George B. Dantzig</strong> published the <em>simplex</em> method for solving linear programming</p>
+<p>Roughly speaking, the linear programming problem consists in optimizing (that is, either minimize or maximize) the value of a linear objective function of a vector of decision variables, considering that the variables can only take the values defined by a set of linear constraints. Linear programming is a case of mathematical programming, where objective function and constraints are linear.</p>
+<p>A formulation of a linear program in its canonical form of maximum is:</p>
+<p><span class="math display">\[max Z = \sum_{i = 1} ^ n c_i x_i\]</span> <strong>Subject to</strong></p>
+<p><span class="math display">\[\sum_{i = i} ^ n \sum_{j = i} ^ m a_{ij}x_i \le b_j\]</span> <span class="math display">\[\sum_{i = i} ^ n \sum_{j = i} ^ m a_{ij}x_i \ge b_k\]</span></p>
+<p><span class="math display">\[\sum_{i = i} ^ n \sum_{j = i} ^ m a_{ij}x_i = b_l\]</span></p>
+<p>The model has the following elements:</p>
+<ol style="list-style-type: decimal">
+<li><p>An objective function of the n decision variables <span class="math inline">\(x_i\)</span> . Decision variables are affected by the cost coefficients <span class="math inline">\(c_j\)</span></p></li>
+<li><p>A set of m constraints, in which a linear combination of the variables affected by coefficients <span class="math inline">\(a_{ij}\)</span> has to be less or equal than its right hand side value <span class="math inline">\(b_i\)</span> (constraints with signs greater or equal or equalities are also possible)</p></li>
+<li><p>The bounds of the decision variables. In this case, all decision variables have to be nonnegative</p></li>
+</ol>
+<p>The LP formulation shown above can be expressed in matrix form as follows:</p>
+<p><span class="math display">\[max Z = \mathbf{c}^T \mathbf{x}\]</span></p>
+<p><strong>Subject to</strong></p>
+<p><span class="math display">\[\mathbf{Ax = b}\]</span></p>
+<p><span class="math display">\[\mathbf{x} \ge 0\]</span></p>
+</div>
+<div id="modeling-linear-programs" class="section level2">
+<h2>Modeling Linear Programs</h2>
+<p>Let’s consider the following situation:</p>
+<p>A small business sells two products, named Product 1 and Product 2. Each tonne of Product 1 consumes 30 working hours, and each tonne of Product 2 consumes 20 working hours. The business has a maximum of 2700 working hours for the period considered. As for machine hours, each tonne of Products 1 and 2 consumes 5 and 10 machine hours, respectively. There are 850 machine hours available.</p>
+<p>Each tonne of Product 1 yields 20 Me of profit, while Product 2 yields 60 Me for each tonne sold. For technical reasons, the firm must produce a minimum of 95 tonnes in total between both products. We need to know how many tonnes of Product 1 and 2 must be produced to maximize total profit.</p>
+<pre><code>##      Variable P1 P2 Available
+## 1 Working Hrs 30 20      2700
+## 2 Machine Hrs  5 10       850
+## 3      Profit 20 60        NA</code></pre>
+<p>This situation is apt to be modeled as a PL model. First, we need to define the decision variables. In this case we have:</p>
+<ol style="list-style-type: decimal">
+<li><span class="math inline">\(x_1\)</span> number of tonnes produced and sold of Product 1</li>
+<li><span class="math inline">\(x_2\)</span> number of tonnes produced and sold of Product 2</li>
+</ol>
+<p>The cost coefficients of these variables are 20 and 60, respectively. Therefore, the objective function is defined multiplying each variable by its corresponding cost coefficient</p>
+<p><span class="math display">\[maxZ = 20 x_1 + 60 x_2\]</span></p>
+<p>A constraint <strong>WH</strong> making that the total amount of working hours used in Product 1 and Product 2, which equals <span class="math inline">\(30 x_1 + 20 x_2\)</span>, is less or equal than 2,700 hours.</p>
+<p>A similar constraint MH making that the total machine hours <span class="math inline">\(5 x_1 + 10 x_2\)</span> are less or equal than 850.</p>
+<p>A constraint making that the total units produced and sold <span class="math inline">\(x_1 + x_2\)</span> are greater or equal than 95</p>
+<p>Putting all this together, and considering that the decision variables are nonnegative, the LP that maximizes profit is:</p>
+<p><span class="math display">\[maxZ = 20 x_1 + 60 x_2\]</span></p>
+<p><strong>Subject to</strong></p>
+<p><span class="math display">\[30 x_1 + 20 x_2 \le 2700\]</span></p>
+<p><span class="math display">\[5 x_1 + 10 x_2 \le 850\]</span> <span class="math display">\[x_1 + x_2 \le 95 \]</span> <span class="math display">\[x_1, x_2 \ge 0\]</span></p>
+<p>The following code solves that LP with two variables:</p>
+<pre class="r"><code>require(lpSolve)</code></pre>
+<pre><code>## Loading required package: lpSolve</code></pre>
+<pre class="r"><code>require(tidyverse)</code></pre>
+<pre><code>## Loading required package: tidyverse</code></pre>
+<pre><code>## ── Attaching packages ─────────────────────────────────────── tidyverse 1.3.1 ──</code></pre>
+<pre><code>## ✔ ggplot2 3.3.6     ✔ purrr   0.3.4
+## ✔ tibble  3.1.7     ✔ dplyr   1.0.9
+## ✔ tidyr   1.2.0     ✔ stringr 1.4.0
+## ✔ readr   2.1.2     ✔ forcats 0.5.1</code></pre>
+<pre><code>## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+## ✖ dplyr::filter() masks stats::filter()
+## ✖ dplyr::lag()    masks stats::lag()</code></pre>
+<pre class="r"><code>#defining parameters
+obj.fun &lt;- c(20 , 60)
+
+constr &lt;- matrix (c(30 , 20, 5, 10, 1, 1) , ncol = 2, byrow = TRUE)
+
+constr.dir &lt;- c(&quot;&lt;=&quot;, &quot;&lt;=&quot;, &quot;&gt;=&quot;)
+rhs &lt;- c(2700 , 850 , 95)
+
+#solving model
+prod.sol &lt;- lp(&quot;max&quot;, obj.fun, constr, constr.dir, rhs , compute.sens = TRUE )
+
+prod.sol$solution</code></pre>
+<pre><code>## [1] 20 75</code></pre>
+<div id="a-trasportation-problem" class="section level3">
+<h3>A Trasportation Problem</h3>
+<p>Let’s consider a transportation problem of two origins <strong>a</strong> and <strong>b</strong>, and three destinations 1, 2 and 3. In the Table below are presented the cost <span class="math inline">\(c_{ij}\)</span> of transporting one unit from the origin <span class="math inline">\(i\)</span> to destination <span class="math inline">\(j\)</span>, and the maximal capacity of the origins and the required demand in the destinations.</p>
+<p>We need to know how we must cover the demand of the destinations at a minimal cost.</p>
+<pre class="r"><code>Table2 = data.frame(Parameter = c(&#39;Origin A&#39;, &#39;Origin B&#39;, &#39;Demand&#39;),
+                    Dest.1 = c(8, 2, 40),
+                    Dest.2 = c(6, 4, 35),
+                    Dest.3 = c(3, 9, 25),
+                    Capacity = c(70, 40, NA))
+Table2</code></pre>
+<pre><code>##   Parameter Dest.1 Dest.2 Dest.3 Capacity
+## 1  Origin A      8      6      3       70
+## 2  Origin B      2      4      9       40
+## 3    Demand     40     35     25       NA</code></pre>
+<p>This situation can be modeled with a LP with the following elements:</p>
+<ol style="list-style-type: decimal">
+<li>Decision variables of the form $x_{ij} , representing units transportedfrom origin <span class="math inline">\(i\)</span> to destination <span class="math inline">\(j\)</span></li>
+<li>An objective function with cost coefficients equal to <span class="math inline">\(c_{ij}\)</span></li>
+<li>Two sets of constraints: a less or equal set of constraints for each origin, limiting the units to be transported, and a greater of equal set of constraints representing that the demand of each destination must be covered.</li>
+</ol>
+<p>The resulting LP is:</p>
+<p><span class="math display">\[maxZ = 8x_{a1} + 6x_{a2} + 3x_{a3} + 2x_{b1} + 4x_{b2} + 9x_{b3}\]</span></p>
+<p><strong>Subject to:</strong></p>
+<p><span class="math display">\[x_{a1} + x_{a2} + x_{a3} \le 70\]</span> <span class="math display">\[x_{b1} + x_{b2} + x_{b3} \le 40\]</span> <span class="math display">\[x_{a1} + x_{b1} \ge 40\]</span> <span class="math display">\[x_{a2} + x_{b2} \ge 35\]</span> <span class="math display">\[x_{a3} + x_{b3} \ge 25\]</span></p>
+<p><span class="math display">\[x_{ij} \ge 0\]</span></p>
+<pre class="r"><code>library ( lpSolve )
+library(tidyverse)
+#defining parameters
+#origins run i in 1:m
+
+#destinations run j in 1:n
+obj.fun &lt;- c(8, 6, 3, 2, 4, 9)
+
+m &lt;- 2 #number of Origins
+n &lt;- 3 #number of destinies
+
+
+#Create a Matrix of Constraints n + m rowa and  n x m columns
+constr &lt;- matrix (0, n + m, n * m)
+for (i in 1 : m) {
+  for (j in 1 : n) {
+    constr [i, n * (i -1) + j] &lt;- 1
+    constr [m + j, n * (i - 1) + j] &lt;- 1
+  }
+}
+
+
+constr.dir &lt;- c(rep(&quot;&lt;=&quot;, m), rep(&quot;&gt;=&quot;, n))
+
+rhs &lt;- c(70 , 40, 40, 35, 25)
+
+#solving LP model
+prod.trans &lt;- lp(&quot;min&quot;, obj.fun , constr , constr.dir , rhs , compute.sens = TRUE )
+
+#LP solution
+prod.trans $obj.val</code></pre>
+<pre><code>## NULL</code></pre>
+<pre class="r"><code>sol &lt;- matrix ( prod.trans$solution , m, n, byrow = TRUE )
+sol</code></pre>
+<pre><code>##      [,1] [,2] [,3]
+## [1,]    0   35   25
+## [2,]   40    0    0</code></pre>
+</div>
+<div id="transportation-by-truks" class="section level3">
+<h3>Transportation by Truks</h3>
+<p>In Table3 can be found the quarterly demand (in tonnes) and the acquisition costs per tonne (in ke per tonne) for each quarter of raw materials for a chemical plant. All purchases in a given quarter can be used to cover the demand of the present quarter, or the demand of quarters in the future. The costs of stocking are of 8k USD per tonne stored at the end of each quarter. The stocks at the beginning of first quarter are of 100 tonnes, and it is needed the same amount of stock at the end of the fourth quarter.</p>
+<p>In addition to the purchase and storage costs, the transportation costs have to be considered. All the purchased quantity of raw materials has to be transported, using any combination of the two available truck models:</p>
+<ol style="list-style-type: decimal">
+<li>Small trucks: cost of 700k uSD, and capacity of 500 tonnes.</li>
+<li>Large trucks: cost of 1,400k USD, and capacity of 1,200 tonnes.</li>
+</ol>
+<p>We need to define a linear programming model that allows the minimization of the total costs: acquisition, storage and transport, obtaining the amount raw materials to purchase, and the amount of trucks of both kinds to be contracted each quarter.</p>
+<pre class="r"><code>Table3 = data.frame(Quarter = c(&#39;Demand&#39;, &#39;Unit Cost&#39;),
+                    T1 = c(1000, 20) ,
+                    T2 = c(1200, 25),
+                    T3 = c(1500, 30),
+                    T4 = c(1800, 40))
+
+Table3</code></pre>
+<pre><code>##     Quarter   T1   T2   T3   T4
+## 1    Demand 1000 1200 1500 1800
+## 2 Unit Cost   20   25   30   40</code></pre>
+<p>The variables to define are:</p>
+<ol style="list-style-type: decimal">
+<li><span class="math inline">\(q_i\)</span> continuous: tonnes of raw material to purchase in quarter i</li>
+<li><span class="math inline">\(s_i\)</span> continuous: tonnes in stock at the end of quarter i, and <span class="math inline">\(s_0\)</span> as the initial stock</li>
+<li><span class="math inline">\(t_i\)</span> integer: small trucks to contract in quarter i</li>
+<li><span class="math inline">\(u_i\)</span> integer: large trucks to contract in quarter i</li>
+</ol>
+<p>Once defined the variables, two sets of constraints have to be defined:</p>
+<ol style="list-style-type: decimal">
+<li>Constraints assuring that the purchase plan meets the demand commitments. These are of the form <span class="math inline">\(s_{i-1} + q_i - s_i = d_i\)</span>, being <span class="math inline">\(d_i\)</span> the demand of the quarter.</li>
+<li>Constraints assuring that a sufficient number of each kind of trucks is contracted: <span class="math inline">\(q_i \le 500t_i + 12004 u_i\)</span></li>
+</ol>
+<p>The resulting model is:</p>
+<p><span class="math display">\[minZ = \sum_{i = 1} ^ 4 (c_iq_i + 8s_i + 700t_i + 1400u_i) \]</span> <strong>Subject to:</strong></p>
+<p><span class="math display">\[s_{i-1} + q_i - s_i = d_i \Rightarrow\forall i = 1,...,4\]</span> <span class="math display">\[q_i - 500t_i - 1200ui \le 0 \Rightarrow\forall i = 1,...,4\]</span></p>
+<p><span class="math display">\[s_0 = s_4 = 100\]</span></p>
+<p><span class="math display">\[s_i, q_i \ge 0\]</span></p>
+<pre class="r"><code>library ( lpSolve )
+#defining parameters
+#origins run i in 1:m
+
+#vector of Cost coeficients for each of qi, si, ti and ui conaining 4 x 4 = 16 coeficients
+obj.fun &lt;- c(20, 25, 30, 40,
+             0, 8, 8, 8, 8,
+             700, 700, 700, 700,
+             1400, 1400, 1400, 1400)
+
+
+#In this case, we have design the model Matrix in an excel spreadsheet
+data.truck = read.csv(&#39;Truck Distribution Problem.csv&#39;)
+data.truck</code></pre>
+<pre><code>##                 CostrId q1 q2 q3 q4 s0 s1 s2 s3 s4   t1   t2   t3   t4    u1
+## 1  inital values for S0  0  0  0  0  1  0  0  0  0    0    0    0    0     0
+## 2              demand 1  1  0  0  0  1 -1  0  0  0    0    0    0    0     0
+## 3              demand 2  0  1  0  0  0  1 -1  0  0    0    0    0    0     0
+## 4              demand 3  0  0  1  0  0  0  1 -1  0    0    0    0    0     0
+## 5              demand 4  0  0  0  1  0  0  0  1 -1    0    0    0    0     0
+## 6    Final Value for s4  0  0  0  0  0  0  0  0  1    0    0    0    0     0
+## 7                  Cap1  1  0  0  0  0  0  0  0  0 -500    0    0    0 -1200
+## 8                  Cap2  0  1  0  0  0  0  0  0  0    0 -500    0    0     0
+## 9                  Cap3  0  0  1  0  0  0  0  0  0    0    0 -500    0     0
+## 10                 Cap4  0  0  0  1  0  0  0  0  0    0    0    0 -500     0
+##       u2    u3    u4  RHS
+## 1      0     0     0  100
+## 2      0     0     0 1000
+## 3      0     0     0 1200
+## 4      0     0     0 1500
+## 5      0     0     0 1800
+## 6      0     0     0  100
+## 7      0     0     0    0
+## 8  -1200     0     0    0
+## 9      0 -1200     0    0
+## 10     0     0 -1200    0</code></pre>
+<pre class="r"><code>#Taking the constraint piece
+constr = data.truck[, 2 : (ncol(data.truck) - 1)]
+constr = as.matrix(constr)
+constr</code></pre>
+<pre><code>##       q1 q2 q3 q4 s0 s1 s2 s3 s4   t1   t2   t3   t4    u1    u2    u3    u4
+##  [1,]  0  0  0  0  1  0  0  0  0    0    0    0    0     0     0     0     0
+##  [2,]  1  0  0  0  1 -1  0  0  0    0    0    0    0     0     0     0     0
+##  [3,]  0  1  0  0  0  1 -1  0  0    0    0    0    0     0     0     0     0
+##  [4,]  0  0  1  0  0  0  1 -1  0    0    0    0    0     0     0     0     0
+##  [5,]  0  0  0  1  0  0  0  1 -1    0    0    0    0     0     0     0     0
+##  [6,]  0  0  0  0  0  0  0  0  1    0    0    0    0     0     0     0     0
+##  [7,]  1  0  0  0  0  0  0  0  0 -500    0    0    0 -1200     0     0     0
+##  [8,]  0  1  0  0  0  0  0  0  0    0 -500    0    0     0 -1200     0     0
+##  [9,]  0  0  1  0  0  0  0  0  0    0    0 -500    0     0     0 -1200     0
+## [10,]  0  0  0  1  0  0  0  0  0    0    0    0 -500     0     0     0 -1200</code></pre>
+<pre class="r"><code>#Getting the right hand side of the ecuations
+
+rhs &lt;- data.truck[, ncol(data.truck)]
+rhs &lt;- as.numeric(rhs)
+
+
+#Creating the constraint direction vector. The firts 6 constrsints are &quot;=&quot; the other 4 are &quot;&lt;=&quot;
+
+constr.dir &lt;- c(rep(&quot;=&quot;, 6), rep(&quot;&lt;=&quot;, 4))
+
+
+#solving LP model
+prod.trans &lt;- lp(&quot;min&quot;, obj.fun , constr , constr.dir , rhs , compute.sens = TRUE )
+prod.trans$solution</code></pre>
+<pre><code>##  [1]  900.000000 1200.000000 3400.000000    0.000000  100.000000    0.000000
+##  [7]    0.000000 1900.000000  100.000000    0.000000    0.000000    0.000000
+## [13]    0.000000    0.750000    1.000000    2.833333    0.000000</code></pre>
+<p>In this case, the solution has some practical and technical issues. We supposed to have only integer solutions and in the case of <span class="math inline">\(u_1 = 0.75\)</span> and <span class="math inline">\(u_3 = 2.83\)</span> this condition is not true.</p>
+<p>To fix this, we use <strong>Integer Programming models</strong> ensuring all variables to be integer:</p>
+<pre class="r"><code>prod.trans &lt;- lp(&quot;min&quot;, obj.fun , constr , constr.dir , rhs , compute.sens = FALSE,
+                 all.int = TRUE)
+prod.trans$solution</code></pre>
+<pre><code>##  [1]  900 1200 3400    0  100    0    0 1900  100    0    0    0    0    1    1
+## [16]    3    0</code></pre>
+<pre class="r"><code>#Create a data frame with the solutions
+prod.trans = data.frame(Variable = names(data.truck)[2 : (ncol(data.truck) - 1)],
+                        Solution = prod.trans$solution)
+prod.trans</code></pre>
+<pre><code>##    Variable Solution
+## 1        q1      900
+## 2        q2     1200
+## 3        q3     3400
+## 4        q4        0
+## 5        s0      100
+## 6        s1        0
+## 7        s2        0
+## 8        s3     1900
+## 9        s4      100
+## 10       t1        0
+## 11       t2        0
+## 12       t3        0
+## 13       t4        0
+## 14       u1        1
+## 15       u2        1
+## 16       u3        3
+## 17       u4        0</code></pre>
+</div>
+<div id="hiring-firing" class="section level3">
+<h3>Hiring &amp; Firing</h3>
+<p>In Table4 are listed the needs of pilots able to flight an A320 for the following six months. The cost of a pilot’s salary is $8k USD per month. At the beginning of Month 1 the airline has a staff of 20 pilots, but this staff can be adjusted each month.</p>
+<p>Pilots can be hired and fired at the beginning of each month. Newly hired pilots can start working at the same month, and fired pilots stop working the same day they are fired. The cost of firing a pilot is $10k USD, and the hiring cost is of 5K USD per pilot. If it is convenient, the airline can have a staff of pilots larger than the actual needs.</p>
+<ol style="list-style-type: decimal">
+<li>Define a linear programming model to obtain the pilots to hire and fire each month to minimize the total cost of pilot staff (costs of salary plus hiring and firing costs).</li>
+</ol>
+<p>To model this situation, we’ll have to define the following variables:</p>
+<ol style="list-style-type: decimal">
+<li>Variables <span class="math inline">\(h_i\)</span>: pilots hired at the beginning of month i</li>
+<li>Variables <span class="math inline">\(f_i\)</span>: pilots fired at the beginning of month i</li>
+<li>Variables <span class="math inline">\(s_i\)</span>: staff of pilots during month i</li>
+</ol>
+<p>The model should have the following groups of constraints:</p>
+<ol style="list-style-type: decimal">
+<li>Constraints assuring that the staff of pilots at the beginning of month i is equal to <span class="math inline">\(s_i = h_i - f_i + s_{i-1}\)</span>. In this case, we have that <span class="math inline">\(s_0 = 20\)</span>.</li>
+<li>Constraints assuring that variables <span class="math inline">\(s_i\)</span> are bigger of equal to the values of staff required di listed in Table4.</li>
+</ol>
+<pre class="r"><code>table4 = data.frame(Months = c(&#39;m1&#39;, &#39;m2&#39;, &#39;m3&#39;, &#39;m4&#39;, &#39;m5&#39;, &#39;m6&#39;),
+                    PilotsNeed = c(30, 60, 55, 40, 45, 50))
+table4</code></pre>
+<pre><code>##   Months PilotsNeed
+## 1     m1         30
+## 2     m2         60
+## 3     m3         55
+## 4     m4         40
+## 5     m5         45
+## 6     m6         50</code></pre>
+<p>The linear problem to be solced is:</p>
+<p><span class="math display">\[minZ = 5\sum_{i = 1} ^ 6 h_i + 10\sum_{i = 1} ^ 6 f_i + 8\sum_{i = 1} ^ 6 s_i\]</span></p>
+<p><strong>Subject to</strong></p>
+<p><span class="math display">\[s_i = h_i - f_i + s_{i-1} \Rightarrow\forall i = 1,...,6\]</span> <span class="math display">\[s_i \ge d_i \Rightarrow\forall i = 1,...,6\]</span> <span class="math display">\[h_i, f_i, s_i \ge 0\]</span></p>
+<pre class="r"><code>#Variable names
+var.names = c(&#39;h1&#39;, &#39;h2&#39;, &#39;h3&#39;, &#39;h4&#39;, &#39;h5&#39;, &#39;h6&#39;,
+                  &#39;f1&#39;, &#39;f2&#39;, &#39;f3&#39;, &#39;f4&#39;, &#39;f5&#39;, &#39;f6&#39;,
+                  &#39;s0&#39;, &#39;s1&#39;, &#39;s2&#39;, &#39;s3&#39;, &#39;s4&#39;, &#39;s5&#39;, &#39;s6&#39;)
+
+
+#destinations run j in 1:n
+obj.fun &lt;- c(rep(5, 6), rep(10, 6), 0, rep(8, 6))
+names(obj.fun) = c(&#39;h1&#39;, &#39;h2&#39;, &#39;h3&#39;, &#39;h4&#39;, &#39;h5&#39;, &#39;h6&#39;,
+                  &#39;f1&#39;, &#39;f2&#39;, &#39;f3&#39;, &#39;f4&#39;, &#39;f5&#39;, &#39;f6&#39;,
+                  &#39;s0&#39;, &#39;s1&#39;, &#39;s2&#39;, &#39;s3&#39;, &#39;s4&#39;, &#39;s5&#39;, &#39;s6&#39;)
+
+m &lt;- length(obj.fun) #number of vars
+n &lt;- 7 #number of months + 1
+
+constr1 &lt;- matrix (0, nrow = n, ncol = m)
+colnames(constr1) = var.names
+
+#Create model for Constraint 1: s[i-1] - s[i] - f[i] + h[i] = 0
+
+constr1[1 : 6, 1 : 6] = diag(x = 1, ncol = 6, nrow = 6)
+constr1[1 : 6, 7 : 12] = diag(x = -1, ncol = 6, nrow = 6)
+constr1[1 : 6, 13 : 18]  = diag(x = 1, ncol = 6, nrow = 6)
+i= 1
+j = 14
+for(i in 1 : (n - 1)){
+    constr1[i, j] = -1
+    j = j + 1
+}
+constr1[7, 13]  = 1
+
+#Create second constraint on minimun requirements s[i] &gt; = d[i]
+constr2 &lt;- matrix (0, nrow = n - 1, ncol = m)
+constr2[1 : 6, 14 : 19] = diag(x = 1, ncol = 6, nrow = 6)
+
+#Bind Constr1 and Consr2 in a single matrix
+constr = rbind(constr1, constr2)
+
+#Create RHS consraintin a vector of 1 row x 13 rows
+rhs = c(rep(0, 6), 20, 30, 60, 55, 40, 45, 50)
+
+#Create direction
+constr.dir &lt;- c(rep(&quot;=&quot;, 7), rep(&quot;&gt;=&quot;, 6))
+
+#Solve Problem
+staffing = lp(&#39;min&#39;, obj.fun, constr, constr.dir, rhs)
+
+#Solution
+staffing = staffing$solution
+staffing = data.frame(Var.Name = var.names, Solution = staffing)
+staffing</code></pre>
+<pre><code>##    Var.Name Solution
+## 1        h1       10
+## 2        h2       30
+## 3        h3        0
+## 4        h4        0
+## 5        h5        0
+## 6        h6        5
+## 7        f1        0
+## 8        f2        0
+## 9        f3        5
+## 10       f4       10
+## 11       f5        0
+## 12       f6        0
+## 13       s0       20
+## 14       s1       30
+## 15       s2       60
+## 16       s3       55
+## 17       s4       45
+## 18       s5       45
+## 19       s6       50</code></pre>
+<ol start="2" style="list-style-type: decimal">
+<li>Modify the linear model to include the constraint that the airline cannot fire pilots if it has hired pilots the previous month.</li>
+</ol>
+<p>Looking at the solution of the previous problem, it can be seen that this new constraint does not hold for months 2 and 3: in month 2 are hired 30 pilots, and in month 3 are fired 5 pilots. Then a new model has to be defined to account for this new restriction. To do so, we have to add a new binari variable:</p>
+<ul>
+<li>Variabe <span class="math inline">\(b_i\)</span>: equals one if pilots are hired in month i, and zero otherwise</li>
+</ul>
+<p>Then, two new sets of constraints must be added: one set assuring that <span class="math inline">\(b_i = 0 \Rightarrow f_i = 0\)</span>, and another set making that <span class="math inline">\(b_i = 1 \Rightarrow f_{i+1} = 0\)</span></p>
+<p>The linear problem to be solced is:</p>
+<p><span class="math display">\[minZ = 5\sum_{i = 1} ^ 6 h_i + 10\sum_{i = 1} ^ 6 f_i + 8\sum_{i = 1} ^ 6 s_i\]</span></p>
+<p><strong>Subject to</strong></p>
+<p><span class="math display">\[s_i = h_i - f_i + s_{i-1} \Rightarrow\forall i = 1,...,6\]</span> <span class="math display">\[s_i \ge d_i \Rightarrow\forall i = 1,...,6\]</span> <span class="math display">\[f_i \le Mb_i \Rightarrow \forall i = 1,...,5\]</span> <span class="math display">\[h_{i+1} \le M(1 - b_i) \Rightarrow \forall i = 1,...,5\]</span></p>
+<p><span class="math display">\[b_i \in [0, 1]\]</span> <span class="math display">\[h_i, f_i, s_i \ge 0\]</span></p>
+<p>The letter <span class="math inline">\(M\)</span> represents an artifitial penalty and is usually asumed to be a big number. In the context of the problem, <span class="math inline">\(M=1000\)</span> is big.</p>
+<pre class="r"><code>#Variable names
+
+M = 1000 #Penalty Variable
+
+var.names = c(&#39;h1&#39;, &#39;h2&#39;, &#39;h3&#39;, &#39;h4&#39;, &#39;h5&#39;, &#39;h6&#39;,
+                  &#39;f1&#39;, &#39;f2&#39;, &#39;f3&#39;, &#39;f4&#39;, &#39;f5&#39;, &#39;f6&#39;,
+                  &#39;s0&#39;, &#39;s1&#39;, &#39;s2&#39;, &#39;s3&#39;, &#39;s4&#39;, &#39;s5&#39;, &#39;s6&#39;,
+              &#39;b1&#39;, &#39;b2&#39;, &#39;b3&#39;, &#39;b4&#39;, &#39;b5&#39;)
+
+
+#destinations run j in 1:n
+obj.fun &lt;- c(rep(5, 6), rep(10, 6), 0, rep(8, 6), rep(0, 5))
+names(obj.fun) = var.names
+
+m &lt;- length(obj.fun) #number of vars
+n &lt;- 7 #number of months + 1
+
+#Create model for Constraint 1: s[i-1] - s[i] - f[i] + h[i] = 0
+constr1 &lt;- matrix (0, nrow = n, ncol = m)
+colnames(constr1) = var.names
+
+
+constr1[1 : 6, 1 : 6] = diag(x = 1, ncol = 6, nrow = 6)
+constr1[1 : 6, 7 : 12] = diag(x = -1, ncol = 6, nrow = 6)
+constr1[1 : 6, 13 : 18]  = diag(x = 1, ncol = 6, nrow = 6)
+i= 1
+j = 14
+for(i in 1 : (n - 1)){
+    constr1[i, j] = -1
+    j = j + 1
+}
+constr1[7, 13]  = 1
+
+#Create second constraint on minimun requirements s[i] &gt; = d[i]
+constr2 &lt;- matrix (0, nrow = n - 1, ncol = m)
+constr2[1 : 6, 14 : 19] = diag(x = 1, ncol = 6, nrow = 6)
+
+#Create the 3rd set of constraints f[i] - M b[i] &lt;= 0
+constr3 = matrix(0, nrow = 5, ncol = m)
+colnames(constr3) = var.names
+
+constr3[, 7 : 11] = diag(1, nrow = 5, ncol = 5)
+constr3[, 20 : 24] = diag(-M, nrow = 5, ncol = 5)
+
+#Create the 4th set of constraints h[i+1] + M b[i] &lt;= M
+constr4 = matrix(0, nrow = 5, ncol = m)
+colnames(constr4) = var.names
+
+constr4[, 2 : 6] = diag(1, nrow = 5, ncol = 5)
+constr4[, 20 : 24] = diag(M, nrow = 5, ncol = 5)
+
+#Bind Constr1 and Consr2 in a single matrix
+constr = rbind(constr1, constr2, constr3, constr4)
+
+#Create RHS of ecuations
+#Create RHS consraintin a vector of 1 row x 13 rows
+rhs = c(rep(0, 6), 20, 30, 60, 55, 40, 45, 50, rep(0, 5), rep(M, 5))
+
+#Create direction
+constr.dir &lt;- c(rep(&quot;=&quot;, 7), rep(&quot;&gt;=&quot;, 6), rep(&#39;&lt;=&#39;, 5), rep(&#39;&lt;=&#39;, 5))
+
+#Solve Problem
+staffing = lp(&#39;min&#39;, obj.fun, constr, constr.dir, rhs, binary.vec = c(20 : 24))
+
+#Solution
+staffing = staffing$solution
+staffing = data.frame(Var.Name = var.names, Solution = staffing)
+staffing</code></pre>
+<pre><code>##    Var.Name Solution
+## 1        h1       10
+## 2        h2       30
+## 3        h3        0
+## 4        h4        0
+## 5        h5        0
+## 6        h6        5
+## 7        f1        0
+## 8        f2        0
+## 9        f3        5
+## 10       f4       10
+## 11       f5        0
+## 12       f6        0
+## 13       s0       20
+## 14       s1       30
+## 15       s2       60
+## 16       s3       55
+## 17       s4       45
+## 18       s5       45
+## 19       s6       50
+## 20       b1        0
+## 21       b2        0
+## 22       b3        1
+## 23       b4        1
+## 24       b5        0</code></pre>
+</div>
+</div>
