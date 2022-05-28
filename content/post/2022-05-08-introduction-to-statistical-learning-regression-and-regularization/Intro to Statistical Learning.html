@@ -1,0 +1,1330 @@
+
+
+<pre class="r"><code>knitr::opts_chunk$set(echo = TRUE)
+
+#Cargar librerias
+require(tidyverse)
+require(data.table)
+require(tidymodels)
+require(visreg)
+require(arules)
+require(patchwork)
+
+theme_set(theme_bw())
+tidymodels_prefer()</code></pre>
+<div id="introducción-al-machine-learning" class="section level1">
+<h1>Introducción al Machine Learning</h1>
+<p>El aprendizaje automático o aprendizaje automatizado o aprendizaje de máquinas (del inglés, machine learning) es el subcampo de las ciencias de la computación y una rama de la inteligencia artificial, cuyo objetivo es desarrollar técnicas que permitan que las computadoras aprendan.</p>
+<p>Se dice que un agente aprende cuando su desempeño mejora con la experiencia y mediante el uso de datos; es decir, cuando la habilidad no estaba presente en su genotipo o rasgos de nacimiento.​ “En el aprendizaje de máquinas un computador observa datos, construye un modelo basado en esos datos y utiliza ese modelo a la vez como una hipótesis acerca del mundo y una pieza de software que puede resolver problemas”.​</p>
+<p>En muchas ocasiones el campo de actuación del aprendizaje automático se solapa con el de la estadística inferencial, ya que las dos disciplinas se basan en el análisis de datos. Sin embargo, el aprendizaje automático incorpora las preocupaciones de la complejidad computacional de los problemas. Muchos problemas son de clase NP-hard, por lo que gran parte de la investigación realizada en aprendizaje automático está enfocada al diseño de soluciones factibles a esos problemas. El aprendizaje automático también está estrechamente relacionado con el reconocimiento de patrones. El aprendizaje automático puede ser visto como un intento de automatizar algunas partes del método científico mediante métodos matemáticos. Por lo tanto es un proceso de inducción del conocimiento.</p>
+<p>El aprendizaje automático tiene una amplia gama de aplicaciones, incluyendo motores de búsqueda, diagnósticos médicos, detección de fraude en el uso de tarjetas de crédito, análisis de mercado para los diferentes sectores de actividad, clasificación de secuencias de ADN, reconocimiento del habla y del lenguaje escrito, juegos y robótica.</p>
+<p><img src="data_science%20Venn.png" /></p>
+<div id="tipos-de-machine-learning" class="section level2">
+<h2>Tipos de Machine Learning</h2>
+<p>Los diferentes <a href="https://es.wikipedia.org/wiki/Algoritmos" title="Algoritmos">algoritmos</a> de Aprendizaje Automático se agrupan en una <a href="https://es.wikipedia.org/wiki/Taxonom%C3%ADa" title="Taxonomía">taxonomía</a> en función de la salida de los mismos. Algunos tipos de algoritmos son:</p>
+<p><strong>Aprendizaje supervisado</strong></p>
+<p>El algoritmo produce una función que establece una correspondencia entre las entradas y las salidas deseadas del sistema. Un ejemplo de este tipo de algoritmo es el problema de <a href="https://es.wikipedia.org/wiki/Clasificaci%C3%B3n_de_documentos" title="Clasificación de documentos">clasificación</a>, donde el sistema de aprendizaje trata de etiquetar (clasificar) una serie de vectores utilizando una entre varias categorías (clases). La base de conocimiento del sistema está formada por ejemplos de etiquetados anteriores.</p>
+<p><strong>Aprendizaje no supervisado</strong></p>
+<p>Todo el proceso de modelado se lleva a cabo sobre un conjunto de ejemplos formado tan solo por entradas al sistema. No se tiene información sobre las categorías de esos ejemplos. Por lo tanto, en este caso, el sistema tiene que ser capaz de reconocer patrones para poder etiquetar las nuevas entradas.</p>
+<p><strong>Aprendizaje por refuerzo</strong></p>
+<p>El algoritmo aprende observando el mundo que le rodea. Su información de entrada es el <em>feedback</em> o <a href="https://es.wikipedia.org/wiki/Retroalimentaci%C3%B3n" title="Retroalimentación">retroalimentación</a> que obtiene del mundo exterior como respuesta a sus acciones. Por lo tanto, el sistema aprende a base de ensayo-error.</p>
+<p>El <a href="https://es.wikipedia.org/wiki/Aprendizaje_por_refuerzo" title="Aprendizaje por refuerzo">aprendizaje por refuerzo</a> es el más general entre las tres categorías. En vez de que un instructor indique al agente qué hacer, el agente inteligente debe aprender cómo se comporta el entorno mediante recompensas (refuerzos) o castigos, derivados del éxito o del fracaso respectivamente. El objetivo principal es aprender la función de valor que le ayude al agente inteligente a maximizar la señal de recompensa y así optimizar sus políticas de modo a comprender el comportamiento del entorno y a tomar buenas decisiones para el logro de sus objetivos formales.</p>
+<p><img src="ML%20Types.png" /></p>
+</div>
+<div id="cómo-aprende-la-máquina" class="section level2">
+<h2>Cómo aprende la máquina?</h2>
+<p>La capacidad de una computadora para reconocer patrones tiene que ver con el problema de <strong>optimizar</strong> una métrica de desempeño. Por ejemplo, en promedio cuanto me equivoco al tomar una desición.</p>
+<p>Para ejemplificar esto, supongamos que nos interesa predecir cuál es el precio de un diamante si conocemos su peso. En el siguiente data set, se recolectó información sobre 54,000 diamantes, la variable <code>price</code> guarda el precio del diamante y la variable <code>carat</code> el peso del diamante.</p>
+<pre class="r"><code>head(diamonds)</code></pre>
+<pre><code>## # A tibble: 6 × 10
+##   carat cut       color clarity depth table price     x     y     z
+##   &lt;dbl&gt; &lt;ord&gt;     &lt;ord&gt; &lt;ord&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;int&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1  0.23 Ideal     E     SI2      61.5    55   326  3.95  3.98  2.43
+## 2  0.21 Premium   E     SI1      59.8    61   326  3.89  3.84  2.31
+## 3  0.23 Good      E     VS1      56.9    65   327  4.05  4.07  2.31
+## 4  0.29 Premium   I     VS2      62.4    58   334  4.2   4.23  2.63
+## 5  0.31 Good      J     SI2      63.3    58   335  4.34  4.35  2.75
+## 6  0.24 Very Good J     VVS2     62.8    57   336  3.94  3.96  2.48</code></pre>
+<pre class="r"><code>#Plot Diamonds
+diamonds %&gt;%
+  ggplot(aes(x = carat, y = price, color = color)) +
+  geom_point(alpha = 0.4) +
+  labs(title = &#39;Price vs Weight&#39;)</code></pre>
+<p><img src="/post/2022-05-08-introduction-to-statistical-learning-regression-and-regularization/Intro%20to%20Statistical%20Learning_files/figure-html/unnamed-chunk-2-1.png" width="672" /></p>
+<p>De acuerdo con el digrama de dispersión, a mayor peso mayor precio. Entonces, podemos concluir que de alguna forma, estas dos variables están relacionadas. Esto nos lo va a decir el coeficiente de correlación.</p>
+<p>La correlación entre 2 variables puede computarse como:</p>
+<p><span class="math display">\[
+\rho = \frac{\text{Cov}(x,y)}{\sigma_x\sigma_y}
+\]</span></p>
+<p><img src="01-correlation-types.png" /></p>
+<p>La <strong>correlacion</strong> es un indice que va de -1 a 1 en donde <span class="math inline">\(\rho = 1\)</span> es una correlación perfecta positiva, <span class="math inline">\(\rho = -1\)</span> es una correlación perfecta negativa y <span class="math inline">\(\rho=0\)</span> es una correlación nula.</p>
+<pre class="r"><code>cor(diamonds$price, diamonds$carat)</code></pre>
+<pre><code>## [1] 0.9215913</code></pre>
+<p>En este caso la correlación entre precio y peso de un diamante es de 0.92, es fuerte positiva.</p>
+<p>Esto nos da la pauta para hacer un <strong>modelo estadístico</strong>. Vamos a utilizar un modelo de <strong>aprendizaje supervisado</strong> llamado <strong>regresión lineal</strong>. La regresión lineal asume que la relación entre precio y peso puede parecerse a una línea recta:</p>
+<p><span class="math display">\[
+y=\beta_0 + \beta_1x+\epsilon
+\]</span></p>
+<p>En donde <span class="math inline">\(\beta_0\)</span> es la ordenanda al origen, <span class="math inline">\(\beta_1\)</span> es la pendiente de la recta y <span class="math inline">\(\epsilon\)</span> es un error aleatorio <span class="math inline">\(NID(0,\sigma^2)\)</span>. Al precio la conoces como variable dependiente, <span class="math inline">\(y\)</span> , y al peso se le conoce variable independiente o <span class="math inline">\(x\)</span> . Entonces, el problema consiste en encontrar los valore de <span class="math inline">\(\beta_0\)</span> y <span class="math inline">\(\beta_1\)</span> que optimicen alguna métrica de desempeño.</p>
+<p><strong>¿Qué metrica de desempeño podemos usar?</strong></p>
+<p>Una forma muy intuititiva es eligir una métrica que nos diga nuestro grado de error. Es decir, cuanto nos equivocamos al estimar el precio de diamante con su peso. De la ecuación anterior, podemos reescribir:</p>
+<p><span class="math display">\[
+\epsilon = y - \hat{y} = y - (\beta_0 + \beta_1x)
+\]</span></p>
+<p>A esta ecuación se le conoce como <strong>error de predicción</strong>. Si computamos este error para cada punto de los 54,000 tenemos:</p>
+<p><span class="math display">\[
+\epsilon_i = y_i - (\beta_0 + \beta_1 x_i)
+\]</span></p>
+<p>Una forma común de representar la función del error es elevando al cuadrado para computar una especie de <strong>disperción media</strong></p>
+<p><span class="math display">\[
+\epsilon_i^2 = \bigg(y_i - (\beta_o + \beta_1 x_i)\bigg)^2
+\]</span></p>
+<p>Y ahora simplemente obtenemos el error promedio sobre todo los puntos:</p>
+<p><span class="math display">\[
+\bar{\epsilon}_i^2 = \frac{1}{n}\sum_{i=1}^n \bigg(y_i - (\beta_o + \beta_1 x_i)\bigg)^2
+\]</span></p>
+<p>Y ahora tenemos nuestro primer algoritmo de aprendizaje automático conocido como <strong>mínimos cuadrados</strong>. Vamos a investigar que pasa cuando fijamos los valores de <span class="math inline">\(\beta_0\)</span> y <span class="math inline">\(\beta_1\)</span> con nuestro modelo:</p>
+<pre class="r"><code>#Create a function
+#Si b0 = 0; beta1 = 7000 : 8000
+f = function(x, beta = 0, beta1 = 7000){
+  y = beta0 + beta1 * x
+  return(y)
+}
+beta0 = 0
+beta1 = 7000
+diamonds %&gt;%
+  ggplot(aes(x = carat, y = price)) +
+  xlim(0, 3) +
+  geom_point(alpha = 0.2, aes(color = color)) +
+  labs(title = &#39;Price vs Weight&#39;) +
+  geom_function(fun = f, color = &#39;red&#39;, size = 2) +
+  geom_smooth(method = &#39;lm&#39;, size = 2)</code></pre>
+<pre><code>## `geom_smooth()` using formula &#39;y ~ x&#39;</code></pre>
+<pre><code>## Warning: Removed 32 rows containing non-finite values (stat_smooth).</code></pre>
+<pre><code>## Warning: Removed 32 rows containing missing values (geom_point).</code></pre>
+<p><img src="/post/2022-05-08-introduction-to-statistical-learning-regression-and-regularization/Intro%20to%20Statistical%20Learning_files/figure-html/unnamed-chunk-4-1.png" width="672" /></p>
+<p>En rojo se encuentra nuestra recta simulada y en azul la recta que minimiza el error. Vamos a computar el error asumiendo que el valor de <span class="math inline">\(\beta_0 = -2256.361\)</span> y dando distintos valores a la pendiente <span class="math inline">\(\beta1\)</span></p>
+<pre class="r"><code>beta1 = seq(7000, 8500, by = 2)
+beta0 = -2256.361
+
+#Computar el error
+MSE = NULL
+for(i in beta1){
+  model = beta0 + i * diamonds$carat
+  error_sqr = mean((diamonds$price - model)^2)
+  result = data.frame(MSE = error_sqr, beta1 = i)
+  MSE = bind_rows(MSE, result)
+}
+
+#plot error vs beta1
+ggplot(MSE, aes(x = beta1, y = MSE)) +
+  geom_line(aes(color = MSE), size = 2) +
+  labs(title = &#39;Funcion del Error&#39;)</code></pre>
+<p><img src="/post/2022-05-08-introduction-to-statistical-learning-regression-and-regularization/Intro%20to%20Statistical%20Learning_files/figure-html/unnamed-chunk-5-1.png" width="672" /></p>
+<p>Aproximadamente, el valor de <span class="math inline">\(\beta_1\)</span> que minimiza el error cuadrático es ~7700. Con la ayuda del software, podemos encontrar el valor óptimo con más presición:</p>
+<pre class="r"><code>m1 = lm(price ~ carat, data = diamonds)
+betas = round(coef(m1),2)
+paste(&#39;El valor de b0 y b1 que minimiza el error es:&#39;, betas[1], &#39;y&#39;, betas[2])</code></pre>
+<pre><code>## [1] &quot;El valor de b0 y b1 que minimiza el error es: -2256.36 y 7756.43&quot;</code></pre>
+<p>En este caso, la función que estamos minimizando es relativamente sencilla de resolver pero en problemas más complejos, estas funciones son realmente complicadas y requieren del uso de una computadora.</p>
+<p><img src="Loss%20Function.png" /></p>
+</div>
+</div>
+<div id="aprendizaje-supervisado" class="section level1">
+<h1>Aprendizaje Supervisado</h1>
+<p>En <a href="https://es.wikipedia.org/wiki/Aprendizaje_autom%C3%A1tico" title="Aprendizaje automático">aprendizaje automático</a> y <a href="https://es.wikipedia.org/wiki/Miner%C3%ADa_de_datos" title="Minería de datos">minería de datos</a>, el <strong>aprendizaje supervisado</strong> es una técnica para deducir una función a partir de datos de entrenamiento. Los datos de entrenamiento consisten de pares de objetos (normalmente vectores): una componente del par son los datos de entrada y el otro, los resultados deseados.</p>
+<p>La salida de la función puede ser un valor numérico (como en los problemas de <a href="https://es.wikipedia.org/wiki/An%C3%A1lisis_de_la_regresi%C3%B3n" title="Análisis de la regresión">regresión</a>) o una etiqueta de clase (como en los de <a href="https://es.wikipedia.org/wiki/Clasificaci%C3%B3n_estad%C3%ADstica" title="Clasificación estadística">clasificación</a>). El objetivo del aprendizaje supervisado es el de crear una función capaz de predecir el valor correspondiente a cualquier objeto de entrada válida después de haber visto una serie de ejemplos, los datos de entrenamiento. Para ello, tiene que generalizar a partir de los datos presentados a las situaciones no vistas previamente.</p>
+<p>Suponga que observamos un <em>respuesta</em> <span class="math inline">\(y\)</span> y <span class="math inline">\(p\)</span> predictores distintos <span class="math inline">\(x_1, x_2,...,x_p\)</span>. Entonces, podemos asumir que existe una relación entre <span class="math inline">\(y\)</span> y <span class="math inline">\(x = [x_1, x_2,..., x_p]\)</span> que puede ser escrita como:</p>
+<p><span class="math display">\[y = f(x_1, x_2, ..., x_p) + \epsilon\]</span> en donde <span class="math inline">\(f\)</span> un función fija pero desconocida de <span class="math inline">\(x_1, x_2, ..., x_p\)</span> y el término <span class="math inline">\(\epsilon\)</span> es un <strong>error</strong> aleatorio que es independiente con media <span class="math inline">\(0\)</span> y varianza <span class="math inline">\(\sigma^2\)</span> constante. Bajo estas condiciones, <span class="math inline">\(f\)</span> representa el comportamiento esperado a ser estimado. En principio, el <strong>Aprendizaje Estadístico</strong> es la tarea de estimar <span class="math inline">\(f\)</span> a partir de los datos observados.</p>
+<p>Existen 2 razones por las cuales nos interesa estimar <span class="math inline">\(f\)</span>:</p>
+<ol style="list-style-type: decimal">
+<li>Predicción</li>
+<li>Inferencia</li>
+</ol>
+<div id="predicción" class="section level3">
+<h3>Predicción</h3>
+<p>Asuma que podemos expresar una respuesta <span class="math inline">\(y\)</span> como:</p>
+<p><span class="math display">\[y = f(x) + \epsilon\]</span></p>
+<p>En dond <span class="math inline">\(f\)</span> es una función desconocida pero fija que depende de <span class="math inline">\(x_1,x_2,...,x_p\)</span> y que <span class="math inline">\(\epsilon\)</span> es un <strong>error aleatorio</strong> <span class="math inline">\(NID(0,\sigma^2)\)</span>. En este caso, <span class="math inline">\(f\)</span> representa la información <em>sistemática</em> y <span class="math inline">\(\epsilon\)</span> represente el <strong>error</strong></p>
+<p>La <strong>exactitud</strong> en la estimacion de <span class="math inline">\(y\)</span> depende de 2 cantidades que llamaremos <strong>error reducible</strong> y <strong>error irreducible</strong>. En general, <span class="math inline">\(f\)</span> no logrará hacer un ajuste perfecto por lo que esta diferencia es la parte reducible del error por que podemos, de alguna forma, mejorar la exactitud utilizando métodos estadísticos. Sin embargo, aún cuando logremos mejorar el ajuste de <span class="math inline">\(y\)</span> por medio de una <span class="math inline">\(f\)</span> adecuada, <span class="math inline">\(y\)</span> depende de <span class="math inline">\(\epsilon\)</span> el cual, por definición, no puede ser predicho o ajustado por ninguna de las <span class="math inline">\(x\)</span>. Por lo tanto, la variabilidad de <span class="math inline">\(\epsilon\)</span> depende de la exactitud de la predicción. Esta es la parte irreducible del error:</p>
+<p><span class="math display">\[E[y - \hat{y}] = E[f(x) + \epsilon - \hat{f}(x)]^2\]</span> <span class="math display">\[E[y - \hat{y}] = E[f(x)- \hat{f}(x)]^2 + \sigma^2_\epsilon\]</span> El obetivo de este curso es estimar <span class="math inline">\(f\)</span> de tal manera que <em>minimicemos</em> el <strong>error reducible</strong></p>
+</div>
+<div id="inferencia" class="section level3">
+<h3>Inferencia</h3>
+<p>Generalemte también estamos interesados en entender la manera en la cual <span class="math inline">\(x_1,x_2,...,x_p\)</span> afecta a <span class="math inline">\(y\)</span>. En este caso, queremos estimar <span class="math inline">\(f\)</span> para entender esta relación. En el caso del problema de <strong>predicción</strong>, <span class="math inline">\(\hat{f}(x)\)</span> puede ser tratada como <strong>caja negra</strong> pero en el caso del problema de <strong>inferencia</strong> esto no puede ser ya que para poder entender y describir necesitamos la forma exacta de <span class="math inline">\(f\)</span>.</p>
+<p>En el problema de <strong>inferencia</strong> estamos interesados en contestar las siguientes preguntas:</p>
+<ul>
+<li>Cual predictor está asociado con la variable de respuesta?</li>
+<li>Cual es la relación entre la respuesta y cada predictor?</li>
+<li>El comportamiento entre el predictor y la respuesta puede entenderse con un modelo parametrico?</li>
+</ul>
+</div>
+<div id="cómo-estimar-f" class="section level2">
+<h2>Cómo estimar <span class="math inline">\(f\)</span></h2>
+<p>Nuestra meta es aplicar métodos de aprendizaje estadísticos a un conjunto de datos para estimar la <span class="math inline">\(f\)</span> que minimiza el <strong>error reducible</strong>. Existen dos enfoques para lograr esto:</p>
+<ol style="list-style-type: decimal">
+<li>Estimación Paramétrica</li>
+<li>Estimación No Paramétrica</li>
+</ol>
+<div id="estimación-paramétrica" class="section level3">
+<h3>Estimación Paramétrica</h3>
+<p>La <strong>estimación paramétrica</strong> involucra 2 pasos:</p>
+<ol style="list-style-type: decimal">
+<li>Primero hacemos un supuesto de la forma funcional de <span class="math inline">\(f\)</span>. Por ejemplo, una forma simple de hacerlo es asumir que la forma de <span class="math inline">\(f\)</span> es lineal del tipo <span class="math inline">\(y = \beta_0 + \beta_1 x_1 +...+ \beta_px_p\)</span></li>
+<li>Una vez que asumimos la forma de <span class="math inline">\(f\)</span>, procedemos a estimar los <strong>parámetros</strong> de <span class="math inline">\(f\)</span> por medio de un procedimiento en el cual involucramos un <em>training set</em>. Si el modelo es lineal podemos hacerlo mediante <strong>mínimos cuadrados ordinarios</strong></li>
+</ol>
+<p>Asumiendo una forma <em>paramétrica</em> simplificamos el espacio de estimación de parámetros a <span class="math inline">\(\beta_0,...,\beta_p\)</span>. La principal desventaja de la estimación paramétrica es que partimos de la base de que conocemos la forma e <span class="math inline">\(f\)</span>, lo cual, no es necesariamente cierto y por lo tanto, podemos obtener estimaciones <em>pobres</em>.</p>
+<p>Podemos resolver el problema de <em>accuracy</em> utilizando modelos más flexibles. Sin embargo, estimar modelos más flexibles involucra la estimación de más parámetros lo cual puede llevar a un poblema conocido como <strong>overfiting</strong></p>
+</div>
+<div id="estimación-no-paramétrica" class="section level3">
+<h3>Estimación No Paramétrica</h3>
+<p>En la <strong>estimación no paramétrica</strong> no hacemos un supuesto explícito de la forma funcional de <span class="math inline">\(f\)</span>. En contraste, buscamos estimar <span class="math inline">\(f\)</span> de tal forma que nos acerquemos lo más posible a los <strong>datos Observados</strong>. Este tipo de métodos pueden ser más <em>exactos</em> y <em>flexibles</em> a distintas formas de <span class="math inline">\(f\)</span>. Sin embargo, los modelos no parametricos tienen la desventaja que para ser flexibles, necesitan un gran número de parámetros a estimar y por lo tanto necesitan un gran número de observaciones.</p>
+<p>Otro problema de las estimaciones no paramétricas es que pierden iterpretabilidad y se vuelven en modelos de <strong>caja negra</strong> o <strong>black box</strong>.</p>
+<p><img src="Parametric.png" /></p>
+</div>
+<div id="aprendizaje-supervisado-1" class="section level3">
+<h3>Aprendizaje Supervisado</h3>
+<p>En aprendizaje supervisado nos interesa encontrar una función <span class="math inline">\(f\)</span> que ajuste los datos de la mejor manera posible. Reconociendo que los modelos siempre tendrán un error, una métrica que puede ayudarnos para saber la exactitud de nuestra estimación (cuando la <span class="math inline">\(y\)</span> es continua) es el <strong>Mean Square Error-MSE</strong> o el <strong>Rooth Mean Squeare Error-RMSE</strong></p>
+<p><span class="math display">\[MSE = \frac{1}{n} \sum_{i = 1}^n(y_i -\hat{f}(x_i))^2\]</span> En donde <span class="math inline">\(\hat{f}(x_i)\)</span> es el valor estimado de <span class="math inline">\(y\)</span> dados los valores de <span class="math inline">\(x\)</span>.</p>
+<p>El <strong>MSE</strong> se computa utilizando un conjunto de datos al cual llamaremos <strong>training set</strong>; sin embargo, no nos interesa que tan bueno es el trabajo de estimación en el <strong>training set</strong>. En su lugar, nos interesa la exactitud del modelo <em>fuera</em> de la muestra utlizada. Esta muestra es denominada <strong>test set</strong>.</p>
+<p>Porque este asuto es importante?</p>
+<p>Suponga que queremos predecir el precio de una acción basada en observaciones previas. Podemos utlizar los últimos 6 meses de historia para hacer nuestra estimación. Sin embargo, no nos interesa que tan bien podemos predecir los precios de la última semana. Lo que realmente nos interesa es saber que tan bien podemos predecir el precio del día de mañana ya que tomaremos desiciones importantes basado en esto.</p>
+<p>Entonces lo que podemos hacer es seleccionar el <strong>modelo</strong> que minimiza el error de predicción en una muestra ciega. Es decir, en el <strong>test set</strong>.</p>
+<p><span class="math display">\[MSE_{test} = \frac{1}{m} \sum_{j = 1}^m(y_{jt} -\hat{f}(x_{jt}))^2\]</span></p>
+</div>
+<div id="overfiting" class="section level3">
+<h3>Overfiting</h3>
+<p>El <strong>Overfiting</strong> es un problema que se presenta cuando un modelo ajusta <span class="math inline">\(f\)</span> con una exactitud muy alta dentro del <em>trining set</em> pero al momento de predecir en el <em>test set</em> el desempeño del modelo no es el adecuado. El efecto típico en el mundo de <strong>Regresión</strong> es ajustar un polinomio de ornden <span class="math inline">\(p_{10}\)</span> a un conjunto de 11 datos. Muy probablemente la <span class="math inline">\(R^2\)</span> será muy cercana al 100%.</p>
+<p>Para evitar este problema, recordemos que <strong>Teoria mata Esfuerzo Computacional</strong>. Por otro lado, los mejores modelos son los más <strong>Parsimónicos</strong> los cuales, tienen la capacidad de explicar/ajustar la mayor cantidad de variación observada con el modelo más simple posible.</p>
+<p>Otra forma de evitar el <strong>overfiting</strong> es decidir sobre el modelo que minimice el <span class="math inline">\(MSE_{test}\)</span>.</p>
+<p>Bias-Variance trade off</p>
+<p>Laforma de <strong>U</strong> observada en la curva de la <em>fig. 3.7</em> es el resultado de 2 propiedas estadísticas que compiten entre sí. Se puede demostrar que <span class="math inline">\(MSE_{test}\)</span> puede descomponerse en la suma de 3 cantidades para cada punto <span class="math inline">\(x_o\)</span> dentro del <strong>test set</strong>:</p>
+<ol style="list-style-type: decimal">
+<li>La <em>varianza</em></li>
+<li>El <em>Bias</em></li>
+<li>La <em>Varianza del error</em></li>
+</ol>
+<p><span class="math display">\[E[y_o - \hat{f}(x_o)]^2 = Var(\hat{f}(x_0)) + [Bias(\hat{f}(x_0))]^2 + Var(\epsilon)\]</span></p>
+<p>Esta ecuación nos dice que para minimizar <span class="math inline">\(MSE_{test}\)</span> necesitamos seleccionar el modelo que en forma simultanea minimice la <em>varianza</em> y el <em>Bias</em></p>
+<p>Bajo este cotexto, la <em>varianza</em> se refiere a la cantidad en la que <span class="math inline">\(\hat{f}\)</span> cambia conforme utilizamos distintos <strong>training sets</strong>. Dado que utilizamos distintos métodos de aprendizaje, con distintos datos, produciremos distintos valores de <span class="math inline">\(\hat{f}\)</span>. Idealmente la estimacion de <span class="math inline">\(f\)</span> no debería variar mucho entre <strong>traing sets</strong>. sin embargo, si un método tiene <em>alta varianza</em>, entonces, cambios pequeños en el <strong>training set</strong> produciran cambios muy grandes en la estimacion de <span class="math inline">\(f\)</span>.</p>
+<p>Por otro lado, el <em>Bias</em> se refiere al error que se genere al <em>aproximar</em> un problema del <em>mundo real</em> (que es por lo general complejo) con un modelo muy simple.</p>
+<p>Como regla general, métodos o modelos más flexibles incrementan la <em>varianza</em> y reducen el <em>bias</em>.</p>
+<p><img src="Bias%20Variance%20Tradeoff.png" /></p>
+</div>
+</div>
+</div>
+<div id="regresión-lineal---introducción" class="section level1">
+<h1>Regresión Lineal - Introducción</h1>
+<p>En esta sección vamos a utilizar datos de precios de casa-habitación de la ciudad de Ames, Iowa (De Cock 2011) el cual contiene datos de 2,930 propiedades con información de cada una de ellas como:</p>
+<ul>
+<li><p>Características de la casa (cuartos, garage, añberca, etc)</p></li>
+<li><p>Ubicación (vecindario)</p></li>
+<li><p>Características del Lote (forma, dimensiones, etc)</p></li>
+<li><p>Ratings de la casa</p></li>
+<li><p>Precio</p></li>
+</ul>
+<p>El objetivo es predecir el precio de las casas dadas las caracterísiticas de cada una de ellas como una función lineal:</p>
+<p><span class="math display">\[
+\hat{y_i} = \beta_0+\beta_1 x_1+\beta_2 x_2 + ... +\beta_n x_n
+\]</span></p>
+<p>El trabajo computacional consiste en estimar los <strong>parámetros</strong> <span class="math inline">\(\beta_1, \beta_2,...\beta_n\)</span> y esto lo hacemos con el algoritmo de mínimos cuadrados minimizando el <strong>RMSE</strong> (Root Mean Square Errror):</p>
+<p><span class="math display">\[
+\text{min RMSE} = \sqrt{\frac{1}{n}\sum_{i = 1}^m (y_i - \hat{y_i})^2}
+\]</span></p>
+<p>El <strong>workflow</strong> que típicamente se utiliza en este tipo de análisis es el siguiente:</p>
+<ol style="list-style-type: decimal">
+<li><p>Análisis Exploratorio de los Datos</p></li>
+<li><p>Pre-procesamiento de la información</p></li>
+<li><p>Ingeniería de Variables (Feature Engineering)</p></li>
+<li><p>Entrenamiento o Estimación del modelo</p></li>
+<li><p>Medir el Accuracy del Modelo</p></li>
+<li><p>Seleccionar el mejor modelo</p></li>
+<li><p>Hacer predicciones</p></li>
+</ol>
+<div id="análisis-exploratorio" class="section level2">
+<h2>Análisis Exploratorio</h2>
+<pre class="r"><code>#Load the data
+data(&quot;ames&quot;)
+glimpse(ames)</code></pre>
+<pre><code>## Rows: 2,930
+## Columns: 74
+## $ MS_SubClass        &lt;fct&gt; One_Story_1946_and_Newer_All_Styles, One_Story_1946…
+## $ MS_Zoning          &lt;fct&gt; Residential_Low_Density, Residential_High_Density, …
+## $ Lot_Frontage       &lt;dbl&gt; 141, 80, 81, 93, 74, 78, 41, 43, 39, 60, 75, 0, 63,…
+## $ Lot_Area           &lt;int&gt; 31770, 11622, 14267, 11160, 13830, 9978, 4920, 5005…
+## $ Street             &lt;fct&gt; Pave, Pave, Pave, Pave, Pave, Pave, Pave, Pave, Pav…
+## $ Alley              &lt;fct&gt; No_Alley_Access, No_Alley_Access, No_Alley_Access, …
+## $ Lot_Shape          &lt;fct&gt; Slightly_Irregular, Regular, Slightly_Irregular, Re…
+## $ Land_Contour       &lt;fct&gt; Lvl, Lvl, Lvl, Lvl, Lvl, Lvl, Lvl, HLS, Lvl, Lvl, L…
+## $ Utilities          &lt;fct&gt; AllPub, AllPub, AllPub, AllPub, AllPub, AllPub, All…
+## $ Lot_Config         &lt;fct&gt; Corner, Inside, Corner, Corner, Inside, Inside, Ins…
+## $ Land_Slope         &lt;fct&gt; Gtl, Gtl, Gtl, Gtl, Gtl, Gtl, Gtl, Gtl, Gtl, Gtl, G…
+## $ Neighborhood       &lt;fct&gt; North_Ames, North_Ames, North_Ames, North_Ames, Gil…
+## $ Condition_1        &lt;fct&gt; Norm, Feedr, Norm, Norm, Norm, Norm, Norm, Norm, No…
+## $ Condition_2        &lt;fct&gt; Norm, Norm, Norm, Norm, Norm, Norm, Norm, Norm, Nor…
+## $ Bldg_Type          &lt;fct&gt; OneFam, OneFam, OneFam, OneFam, OneFam, OneFam, Twn…
+## $ House_Style        &lt;fct&gt; One_Story, One_Story, One_Story, One_Story, Two_Sto…
+## $ Overall_Cond       &lt;fct&gt; Average, Above_Average, Above_Average, Average, Ave…
+## $ Year_Built         &lt;int&gt; 1960, 1961, 1958, 1968, 1997, 1998, 2001, 1992, 199…
+## $ Year_Remod_Add     &lt;int&gt; 1960, 1961, 1958, 1968, 1998, 1998, 2001, 1992, 199…
+## $ Roof_Style         &lt;fct&gt; Hip, Gable, Hip, Hip, Gable, Gable, Gable, Gable, G…
+## $ Roof_Matl          &lt;fct&gt; CompShg, CompShg, CompShg, CompShg, CompShg, CompSh…
+## $ Exterior_1st       &lt;fct&gt; BrkFace, VinylSd, Wd Sdng, BrkFace, VinylSd, VinylS…
+## $ Exterior_2nd       &lt;fct&gt; Plywood, VinylSd, Wd Sdng, BrkFace, VinylSd, VinylS…
+## $ Mas_Vnr_Type       &lt;fct&gt; Stone, None, BrkFace, None, None, BrkFace, None, No…
+## $ Mas_Vnr_Area       &lt;dbl&gt; 112, 0, 108, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6…
+## $ Exter_Cond         &lt;fct&gt; Typical, Typical, Typical, Typical, Typical, Typica…
+## $ Foundation         &lt;fct&gt; CBlock, CBlock, CBlock, CBlock, PConc, PConc, PConc…
+## $ Bsmt_Cond          &lt;fct&gt; Good, Typical, Typical, Typical, Typical, Typical, …
+## $ Bsmt_Exposure      &lt;fct&gt; Gd, No, No, No, No, No, Mn, No, No, No, No, No, No,…
+## $ BsmtFin_Type_1     &lt;fct&gt; BLQ, Rec, ALQ, ALQ, GLQ, GLQ, GLQ, ALQ, GLQ, Unf, U…
+## $ BsmtFin_SF_1       &lt;dbl&gt; 2, 6, 1, 1, 3, 3, 3, 1, 3, 7, 7, 1, 7, 3, 3, 1, 3, …
+## $ BsmtFin_Type_2     &lt;fct&gt; Unf, LwQ, Unf, Unf, Unf, Unf, Unf, Unf, Unf, Unf, U…
+## $ BsmtFin_SF_2       &lt;dbl&gt; 0, 144, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1120, 0…
+## $ Bsmt_Unf_SF        &lt;dbl&gt; 441, 270, 406, 1045, 137, 324, 722, 1017, 415, 994,…
+## $ Total_Bsmt_SF      &lt;dbl&gt; 1080, 882, 1329, 2110, 928, 926, 1338, 1280, 1595, …
+## $ Heating            &lt;fct&gt; GasA, GasA, GasA, GasA, GasA, GasA, GasA, GasA, Gas…
+## $ Heating_QC         &lt;fct&gt; Fair, Typical, Typical, Excellent, Good, Excellent,…
+## $ Central_Air        &lt;fct&gt; Y, Y, Y, Y, Y, Y, Y, Y, Y, Y, Y, Y, Y, Y, Y, Y, Y, …
+## $ Electrical         &lt;fct&gt; SBrkr, SBrkr, SBrkr, SBrkr, SBrkr, SBrkr, SBrkr, SB…
+## $ First_Flr_SF       &lt;int&gt; 1656, 896, 1329, 2110, 928, 926, 1338, 1280, 1616, …
+## $ Second_Flr_SF      &lt;int&gt; 0, 0, 0, 0, 701, 678, 0, 0, 0, 776, 892, 0, 676, 0,…
+## $ Gr_Liv_Area        &lt;int&gt; 1656, 896, 1329, 2110, 1629, 1604, 1338, 1280, 1616…
+## $ Bsmt_Full_Bath     &lt;dbl&gt; 1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, …
+## $ Bsmt_Half_Bath     &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+## $ Full_Bath          &lt;int&gt; 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 3, 2, …
+## $ Half_Bath          &lt;int&gt; 0, 0, 1, 1, 1, 1, 0, 0, 0, 1, 1, 0, 1, 1, 1, 1, 0, …
+## $ Bedroom_AbvGr      &lt;int&gt; 3, 2, 3, 3, 3, 3, 2, 2, 2, 3, 3, 3, 3, 2, 1, 4, 4, …
+## $ Kitchen_AbvGr      &lt;int&gt; 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+## $ TotRms_AbvGrd      &lt;int&gt; 7, 5, 6, 8, 6, 7, 6, 5, 5, 7, 7, 6, 7, 5, 4, 12, 8,…
+## $ Functional         &lt;fct&gt; Typ, Typ, Typ, Typ, Typ, Typ, Typ, Typ, Typ, Typ, T…
+## $ Fireplaces         &lt;int&gt; 2, 0, 0, 2, 1, 1, 0, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, …
+## $ Garage_Type        &lt;fct&gt; Attchd, Attchd, Attchd, Attchd, Attchd, Attchd, Att…
+## $ Garage_Finish      &lt;fct&gt; Fin, Unf, Unf, Fin, Fin, Fin, Fin, RFn, RFn, Fin, F…
+## $ Garage_Cars        &lt;dbl&gt; 2, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 2, …
+## $ Garage_Area        &lt;dbl&gt; 528, 730, 312, 522, 482, 470, 582, 506, 608, 442, 4…
+## $ Garage_Cond        &lt;fct&gt; Typical, Typical, Typical, Typical, Typical, Typica…
+## $ Paved_Drive        &lt;fct&gt; Partial_Pavement, Paved, Paved, Paved, Paved, Paved…
+## $ Wood_Deck_SF       &lt;int&gt; 210, 140, 393, 0, 212, 360, 0, 0, 237, 140, 157, 48…
+## $ Open_Porch_SF      &lt;int&gt; 62, 0, 36, 0, 34, 36, 0, 82, 152, 60, 84, 21, 75, 0…
+## $ Enclosed_Porch     &lt;int&gt; 0, 0, 0, 0, 0, 0, 170, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…
+## $ Three_season_porch &lt;int&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+## $ Screen_Porch       &lt;int&gt; 0, 120, 0, 0, 0, 0, 0, 144, 0, 0, 0, 0, 0, 0, 140, …
+## $ Pool_Area          &lt;int&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, …
+## $ Pool_QC            &lt;fct&gt; No_Pool, No_Pool, No_Pool, No_Pool, No_Pool, No_Poo…
+## $ Fence              &lt;fct&gt; No_Fence, Minimum_Privacy, No_Fence, No_Fence, Mini…
+## $ Misc_Feature       &lt;fct&gt; None, None, Gar2, None, None, None, None, None, Non…
+## $ Misc_Val           &lt;int&gt; 0, 0, 12500, 0, 0, 0, 0, 0, 0, 0, 0, 500, 0, 0, 0, …
+## $ Mo_Sold            &lt;int&gt; 5, 6, 6, 4, 3, 6, 4, 1, 3, 6, 4, 3, 5, 2, 6, 6, 6, …
+## $ Year_Sold          &lt;int&gt; 2010, 2010, 2010, 2010, 2010, 2010, 2010, 2010, 201…
+## $ Sale_Type          &lt;fct&gt; WD , WD , WD , WD , WD , WD , WD , WD , WD , WD , W…
+## $ Sale_Condition     &lt;fct&gt; Normal, Normal, Normal, Normal, Normal, Normal, Nor…
+## $ Sale_Price         &lt;int&gt; 215000, 105000, 172000, 244000, 189900, 195500, 213…
+## $ Longitude          &lt;dbl&gt; -93.61975, -93.61976, -93.61939, -93.61732, -93.638…
+## $ Latitude           &lt;dbl&gt; 42.05403, 42.05301, 42.05266, 42.05125, 42.06090, 4…</code></pre>
+<p>El dataset consiste de 2,930 observaciones y 74 columnas.</p>
+<pre class="r"><code>library(ggpubr)
+#Análisis del Precio
+hist = ames %&gt;%
+  ggplot(aes(x = Sale_Price)) +
+  geom_histogram(color = &#39;white&#39;, fill = &#39;steelblue&#39;) +
+  labs(title = &#39;Histograma del Precio de Venta de Casa en Ames, Iowa&#39;)
+
+qqplot = ggqqplot(ames, x = &#39;Sale_Price&#39;,
+                  color = &#39;orange&#39;,
+                  ggtheme = theme_bw()) +
+  labs(title = &#39;QQ-Normality Plot&#39;)
+
+hist | qqplot</code></pre>
+<pre><code>## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.</code></pre>
+<p><img src="/post/2022-05-08-introduction-to-statistical-learning-regression-and-regularization/Intro%20to%20Statistical%20Learning_files/figure-html/unnamed-chunk-8-1.png" width="672" /></p>
+<pre class="r"><code>#==================Estadistica Descriptiva
+ames %&gt;%
+  summarise(mean = mean(Sale_Price),
+            sd = sd(Sale_Price),
+            n = nrow(.),
+            se = sd / sqrt(n),
+            median = median(Sale_Price),
+            Q1 = quantile(Sale_Price, prob = 0.25),
+            Q3 = quantile(Sale_Price, prob = 0.75),
+            Lower95 = mean - qnorm(0.975) * se,
+            Upper95 = mean + qnorm(0.975) * se)</code></pre>
+<pre><code>## # A tibble: 1 × 9
+##      mean     sd     n    se median     Q1     Q3 Lower95 Upper95
+##     &lt;dbl&gt;  &lt;dbl&gt; &lt;int&gt; &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;  &lt;dbl&gt;   &lt;dbl&gt;   &lt;dbl&gt;
+## 1 180796. 79887.  2930 1476. 160000 129500 213500 177903. 183689.</code></pre>
+<pre class="r"><code>#==================Prueba de Normalidad
+#perform kolmogorov-smirnov test
+ks.test(ames$Sale_Price, &#39;pnorm&#39;)</code></pre>
+<pre><code>## Warning in ks.test.default(ames$Sale_Price, &quot;pnorm&quot;): ties should not be present
+## for the Kolmogorov-Smirnov test</code></pre>
+<pre><code>## 
+##  Asymptotic one-sample Kolmogorov-Smirnov test
+## 
+## data:  ames$Sale_Price
+## D = 1, p-value &lt; 2.2e-16
+## alternative hypothesis: two-sided</code></pre>
+<p>El hallazgo más importante hasta este momento es que la distribución del precio de las casas no sigue una distribución normal (de acuerdo a la gráfica de quantiles) con desviaciones en las dos colas (particularmente hay un Sesgo hacia la derecha). Esto se confirma con la prueba de normalidad <strong>Kolmogorov-Smirnof</strong> cuyo valor <span class="math inline">\(p&lt;0.05\)</span> lo cual rechaza la <strong>hipotesis nula: Los datos provienen de una distribución normal</strong>.</p>
+<p>Este hallazgo es importante y lo trataremos cuando hagamos el <strong>preprocesamiento</strong> de los datos.</p>
+<pre class="r"><code>#Ver las posibles relaciones con las variables categoricas
+ames %&gt;%
+  mutate(house_id = 1 : nrow(.)) %&gt;%
+  select(house_id, Sale_Price, where(is.factor)) %&gt;%
+  select(1 : 11) %&gt;% #Select just a subset of variables
+  gather(Variable, Value, 3 : ncol(.)) %&gt;%
+  ggplot(aes(x = Value, y = Sale_Price)) +
+  geom_boxplot() +
+  facet_wrap(~Variable, scales = &#39;free&#39;) +
+  labs(title = &#39;Box Plot for some Vars vs Price&#39;)</code></pre>
+<pre><code>## Warning: attributes are not identical across measure variables;
+## they will be dropped</code></pre>
+<p><img src="/post/2022-05-08-introduction-to-statistical-learning-regression-and-regularization/Intro%20to%20Statistical%20Learning_files/figure-html/unnamed-chunk-9-1.png" width="672" /></p>
+<p>Ahora vamos a ver algunas posibles relaciones con variables numéricas:</p>
+<pre class="r"><code>#Ver las posibles relaciones con las variables numéricas
+ames %&gt;%
+  mutate(house_id = 1 : nrow(.)) %&gt;%
+  select(house_id, Sale_Price, where(is.numeric)) %&gt;%
+  select(1 : 11) %&gt;% #Select just a subset of variables
+  gather(Variable, Value, 3 : ncol(.)) %&gt;%
+  ggplot(aes(x = Value, y = Sale_Price, color = Sale_Price)) +
+  geom_point(alpha = 0.6) +
+  facet_wrap(~Variable, scales = &#39;free&#39;) +
+  labs(title = &#39;Scatter for some Vars vs Price&#39;) +
+  scale_color_viridis_c() +
+  theme(legend.position = &#39;none&#39;)</code></pre>
+<p><img src="/post/2022-05-08-introduction-to-statistical-learning-regression-and-regularization/Intro%20to%20Statistical%20Learning_files/figure-html/unnamed-chunk-10-1.png" width="672" /></p>
+<p>Otra de las visuales interesates, es revisar la matriz de correlaciones entre las variables:</p>
+<pre class="r"><code>require(corrplot)</code></pre>
+<pre><code>## Loading required package: corrplot</code></pre>
+<pre><code>## corrplot 0.92 loaded</code></pre>
+<pre class="r"><code>corr_mat = ames %&gt;%
+  select(where(is.numeric), -Sale_Price) %&gt;%
+  cor()
+
+corrplot(corr_mat, method = &#39;color&#39;, order = &#39;hclust&#39;, tl.cex = 0.6)</code></pre>
+<p><img src="/post/2022-05-08-introduction-to-statistical-learning-regression-and-regularization/Intro%20to%20Statistical%20Learning_files/figure-html/unnamed-chunk-11-1.png" width="672" /></p>
+<p>Hay 3 puntos a considerar:</p>
+<ol style="list-style-type: decimal">
+<li>Potencialmente, puede existir una relación entre el precio de venta y una o varias variables categóricas (i.e <code>street</code> o <code>MS_Zoning</code>)</li>
+<li>Potencialmente, puede existir una relación entre el precio de venta y una o varias variables numéricas (i.e <code>Year_Built</code>)</li>
+<li>De acuerdo con el diagrama de correlaciones, existe <strong>multicolinealidad</strong> o <strong>correlación</strong> entre algunas variables independientes</li>
+</ol>
+<p>Estos 3 puntos implican que:</p>
+<ol style="list-style-type: decimal">
+<li>Podemos intentar hacer un modelo y probablemente podamos encontrar algo de interés</li>
+<li>Existen algunas variables que por su relación con otras sean <strong>redundantes</strong> y que no aporten más información al modelo</li>
+<li>De alguna manera podemos simplificar nuestro espacio de hipótesis y variables</li>
+</ol>
+</div>
+<div id="preprocesamiento-de-datos-workflow" class="section level2">
+<h2>Preprocesamiento de datos: <code>workflow()</code></h2>
+<p>El procesamiento de los datos implica 2 pasos (los más comunes):</p>
+<ol style="list-style-type: decimal">
+<li>Transformación de los datos</li>
+<li>Reducción en la Dimensión de los datos</li>
+</ol>
+<p>Todos los pasos necesarion para ajustar el modelo empiezan definiendo un <code>workflow</code> dentro de <code>tidymodels</code>.</p>
+<p>Primero definimos el <strong>engine</strong> que en esta sección es <code>lm</code> y creamos un objeto con el modelo:</p>
+<pre class="r"><code>lm_model = linear_reg() %&gt;%
+  set_engine(&#39;lm&#39;)</code></pre>
+<p>Después creamos el workflow:</p>
+<pre class="r"><code>lm_workflow = workflow() %&gt;%
+  add_model(lm_model)
+
+lm_workflow</code></pre>
+<pre><code>## ══ Workflow ════════════════════════════════════════════════════════════════════
+## Preprocessor: None
+## Model: linear_reg()
+## 
+## ── Model ───────────────────────────────────────────────────────────────────────
+## Linear Regression Model Specification (regression)
+## 
+## Computational engine: lm</code></pre>
+<p>Si el modelo es simple, podemos pasar directamente a definir la formula:</p>
+<pre class="r"><code>lm_workflow = lm_workflow %&gt;%
+  add_formula(Sale_Price ~ Longitude + Latitude)
+lm_workflow</code></pre>
+<pre><code>## ══ Workflow ════════════════════════════════════════════════════════════════════
+## Preprocessor: Formula
+## Model: linear_reg()
+## 
+## ── Preprocessor ────────────────────────────────────────────────────────────────
+## Sale_Price ~ Longitude + Latitude
+## 
+## ── Model ───────────────────────────────────────────────────────────────────────
+## Linear Regression Model Specification (regression)
+## 
+## Computational engine: lm</code></pre>
+<p>finalmente podemos crear el ajuste del modelo con el método <code>fit()</code>:</p>
+<pre class="r"><code>lm_fit = fit(lm_workflow, ames)
+lm_fit</code></pre>
+<pre><code>## ══ Workflow [trained] ══════════════════════════════════════════════════════════
+## Preprocessor: Formula
+## Model: linear_reg()
+## 
+## ── Preprocessor ────────────────────────────────────────────────────────────────
+## Sale_Price ~ Longitude + Latitude
+## 
+## ── Model ───────────────────────────────────────────────────────────────────────
+## 
+## Call:
+## stats::lm(formula = ..y ~ ., data = data)
+## 
+## Coefficients:
+## (Intercept)    Longitude     Latitude  
+##  -130101804      -809404      1296260</code></pre>
+<p>Y ahora podemos hacer predicciones con <code>predict()</code></p>
+<pre class="r"><code>predict(lm_fit, ames[1 : 3, ])</code></pre>
+<pre><code>## # A tibble: 3 × 1
+##     .pred
+##     &lt;dbl&gt;
+## 1 187410.
+## 2 186088.
+## 3 185329.</code></pre>
+</div>
+<div id="preprocesamiento-de-datos-recipe" class="section level2">
+<h2>Preprocesamiento de datos: <code>recipe()</code></h2>
+<p>Una <strong>receta</strong> es un objeto que define una serie de pasos que serán ejecutados:</p>
+<pre class="r"><code>simple_ames = recipe(Sale_Price ~ Neighborhood + Gr_Liv_Area + Year_Built + Bldg_Type, data = ames) %&gt;%
+  step_log(Gr_Liv_Area, base = 10) %&gt;%
+  step_dummy(all_nominal_predictors())
+
+simple_ames</code></pre>
+<pre><code>## Recipe
+## 
+## Inputs:
+## 
+##       role #variables
+##    outcome          1
+##  predictor          4
+## 
+## Operations:
+## 
+## Log transformation on Gr_Liv_Area
+## Dummy variables from all_nominal_predictors()</code></pre>
+<p>La función <code>step_log</code> declara la variable <code>Gr_Liv_Area</code> como una transformación logarítmica mientras que <code>step_dummy</code> se usa para especificar que para todas las variables qualitativas se va a crear una <strong>variable indicativa</strong> binaria.</p>
+<p>La función <code>all_nominal_predictors</code> identifica cada columna que es de tipo <strong>factor</strong></p>
+<p>Una receta puede adjuntarse a un workflow:</p>
+<pre class="r"><code>#Set up Engine
+lm_model &lt;- linear_reg() %&gt;% set_engine(&quot;lm&quot;)
+
+#Create Workflow
+lm_wflow = workflow() %&gt;%
+  add_model(lm_model) %&gt;%
+  add_variables(outcome = Sale_Price, predictors = c(Longitude,
+Latitude, Neighborhood, Gr_Liv_Area, Year_Built, Bldg_Type)) #Setup Y and X
+
+lm_workflow = lm_workflow %&gt;%
+  remove_variables() %&gt;% #Remove formula from workflow
+  add_recipe(simple_ames)</code></pre>
+<pre><code>## Warning: The workflow has no variables preprocessor to remove.</code></pre>
+<p>Ahora podemos hacer el ajuste:</p>
+<pre class="r"><code>lm_fit = fit(lm_workflow, ames)
+tidy(lm_fit)</code></pre>
+<pre><code>## # A tibble: 35 × 5
+##    term                             estimate std.error statistic   p.value
+##    &lt;chr&gt;                               &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;
+##  1 (Intercept)                     -2320382.  101509.    -22.9   1.84e-106
+##  2 Gr_Liv_Area                       256327.    6191.     41.4   1.07e-294
+##  3 Year_Built                           855.      51.3    16.7   1.22e- 59
+##  4 Neighborhood_College_Creek          6361.    3602.      1.77  7.75e-  2
+##  5 Neighborhood_Old_Town               1485.    3673.      0.404 6.86e-  1
+##  6 Neighborhood_Edwards               -8878.    3342.     -2.66  7.93e-  3
+##  7 Neighborhood_Somerset              31390.    4249.      7.39  1.95e- 13
+##  8 Neighborhood_Northridge_Heights    99358.    4436.     22.4   1.32e-102
+##  9 Neighborhood_Gilbert              -18504.    4107.     -4.51  6.89e-  6
+## 10 Neighborhood_Sawyer                 -983.    3660.     -0.268 7.88e-  1
+## # … with 25 more rows</code></pre>
+<p>Si queremos extraer la receta una vez que el modelo ha sido estimado, podemos hacerlo con el método <code>extract_recipe</code> y <code>extract_fit_parsnip</code></p>
+<pre class="r"><code>lm_fit %&gt;%
+  extract_recipe()</code></pre>
+<pre><code>## Recipe
+## 
+## Inputs:
+## 
+##       role #variables
+##    outcome          1
+##  predictor          4
+## 
+## Training data contained 2930 data points and no missing data.
+## 
+## Operations:
+## 
+## Log transformation on Gr_Liv_Area [trained]
+## Dummy variables from Neighborhood, Bldg_Type [trained]</code></pre>
+<pre class="r"><code>#Imprimir los resultados del modelo
+lm_fit %&gt;%
+  extract_fit_parsnip() %&gt;%
+  tidy()</code></pre>
+<pre><code>## # A tibble: 35 × 5
+##    term                             estimate std.error statistic   p.value
+##    &lt;chr&gt;                               &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;
+##  1 (Intercept)                     -2320382.  101509.    -22.9   1.84e-106
+##  2 Gr_Liv_Area                       256327.    6191.     41.4   1.07e-294
+##  3 Year_Built                           855.      51.3    16.7   1.22e- 59
+##  4 Neighborhood_College_Creek          6361.    3602.      1.77  7.75e-  2
+##  5 Neighborhood_Old_Town               1485.    3673.      0.404 6.86e-  1
+##  6 Neighborhood_Edwards               -8878.    3342.     -2.66  7.93e-  3
+##  7 Neighborhood_Somerset              31390.    4249.      7.39  1.95e- 13
+##  8 Neighborhood_Northridge_Heights    99358.    4436.     22.4   1.32e-102
+##  9 Neighborhood_Gilbert              -18504.    4107.     -4.51  6.89e-  6
+## 10 Neighborhood_Sawyer                 -983.    3660.     -0.268 7.88e-  1
+## # … with 25 more rows</code></pre>
+</div>
+<div id="transformación-de-los-datos" class="section level2">
+<h2>Transformación de los datos</h2>
+<p>En la sección anterior vimos que la <strong>variable dependiente</strong>, precio de venta, no tiene una distribución normal y que tienen una cola muy alragada hacia la derecha. Existen varios motivos teóricos por los cuales es deseable que la variable dependiente tenga una distribución normal pero la conclusión práctica es que si tal variable tiene una distribución normal, los modelos de regresión funcionan mejor.</p>
+<p>En este caso, podemos intentar apicar una técnica de <strong>reducción de varianza</strong> para transformar los datos y con suerte lograr una distribución gaussiana. A este proceso se le llama <strong>transformación Box-Cox</strong> y con sistente en elevar <span class="math inline">\(x\)</span> a una potencia <span class="math inline">\(\lambda\)</span> de tal forma que <span class="math inline">\(x^\lambda \sim N(\bar{x}^{(\lambda)},s_{(\lambda)}^2)\)</span> (aproxime una distribución normal.</p>
+<p><span class="math display">\[
+x_i^{(\lambda)}=\begin{cases}
+\dfrac{x_i^\lambda-1}{\lambda}&amp;(\lambda\neq0)\\
+\log{(x_i)} &amp; (\lambda=0)
+\end{cases}
+\]</span></p>
+<p>La transformación inversa es:</p>
+<p><span class="math display">\[
+x_i=\begin{cases}
+\exp \left( \dfrac{\log(1 + \lambda x_i^{(\lambda)})}{\lambda} \right) &amp; (\lambda\neq0)\\
+\exp( {x_i^\lambda)}  &amp; (\lambda=0)
+\end{cases}
+\]</span></p>
+<p>Una transformación típica es tomar <span class="math inline">\(\lambda = 0\)</span> o <span class="math inline">\(log(x_i)\)</span> :</p>
+<pre class="r"><code>#log transformation
+ames$log_y = log(ames$Sale_Price)
+
+#Análisis del Precio
+hist = ames %&gt;%
+  ggplot(aes(x = log_y)) +
+  geom_histogram(color = &#39;white&#39;, fill = &#39;steelblue&#39;) +
+  labs(title = &#39;Histograma del Precio de Venta de Casa en Ames, Iowa&#39;)
+
+qqplot = ggqqplot(ames, x = &#39;log_y&#39;,
+                  color = &#39;orange&#39;,
+                  ggtheme = theme_bw()) +
+  labs(title = &#39;QQ-Normality Plot&#39;)
+
+hist | qqplot</code></pre>
+<pre><code>## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.</code></pre>
+<p><img src="/post/2022-05-08-introduction-to-statistical-learning-regression-and-regularization/Intro%20to%20Statistical%20Learning_files/figure-html/unnamed-chunk-21-1.png" width="672" /></p>
+<pre class="r"><code>#==================Prueba de Normalidad
+#perform kolmogorov-smirnov test
+ks.test(ames$Sale_Price, &#39;pnorm&#39;)</code></pre>
+<pre><code>## Warning in ks.test.default(ames$Sale_Price, &quot;pnorm&quot;): ties should not be present
+## for the Kolmogorov-Smirnov test</code></pre>
+<pre><code>## 
+##  Asymptotic one-sample Kolmogorov-Smirnov test
+## 
+## data:  ames$Sale_Price
+## D = 1, p-value &lt; 2.2e-16
+## alternative hypothesis: two-sided</code></pre>
+<p>Ahora vamos a construir la receta aplicando la trasnformación a la variable precio utilizando una secuencia de pasos con el método <code>step</code>:</p>
+<pre class="r"><code>#Set up Engine
+lm_model &lt;- linear_reg() %&gt;% set_engine(&quot;lm&quot;)
+
+#Create Workflow
+lm_wflow = workflow() %&gt;%
+  add_model(lm_model) %&gt;%
+  add_variables(outcome = Sale_Price, predictors = c(Longitude,
+Latitude, Neighborhood, Gr_Liv_Area, Year_Built, Bldg_Type)) #Setup Y and X
+
+
+#Create a Recipe
+simple_ames = recipe(Sale_Price ~ Neighborhood + 
+                       Gr_Liv_Area + Year_Built + Bldg_Type,
+                     data = ames,
+                     step_log(Sale_Price, base = 10),
+                     step_dummy(all_nominal_predictors),
+                     step_other(Neighborhood, threshold = 0.01),
+                     step_interact(~ Gr_Liv_Area:starts_with(&quot;Bldg_Type_&quot;)))</code></pre>
+<p>El método <code>step_log</code> transforma la variable o grupo de variables en logaritmos, <code>step_dummy</code> crea una variable dummy (0,1) para cada variable nominal o factor, <code>step_other</code> agrpa en una categoría de <strong>otros</strong> los niveles dentro de una variable nominal o factor que tengan menos de cierta representatividad dada por el parámetro <code>treshold</code>.</p>
+<p>Una forma de agregar interacciones al model es mediante el método <code>step_interact</code>. en este caso estamos agregando interacciones entre <code>Gr_Liv_Area</code> y todas las ariables que comienzan con <code>Bldg_Type</code>.</p>
+</div>
+<div id="spline-functions" class="section level2">
+<h2>Spline functions</h2>
+<p>Cuando un preductor tienen una relación no lineal con la salida, podemos agregar algunas <strong>variables artificiales no lineales</strong> por medio de <strong>Splines</strong>. Estos, reemplazan los predictores numéricos con un conjunto de columnas que permiten agregar cierta flexibilidad o no linealidades dentro del modelo.</p>
+<pre class="r"><code>library(splines)
+
+plot_smoother &lt;- function(deg_free) {
+ ggplot(ames, aes(x = Latitude, y = Sale_Price)) +
+ geom_point(alpha = .2) +
+ scale_y_log10() +
+ geom_smooth(method = lm,formula = y ~ ns(x, df = deg_free),
+             color = &quot;lightblue&quot;,
+             se = FALSE) +
+ labs(title = paste(deg_free, &quot;Spline Terms&quot;),
+      y = &quot;Sale Price (USD)&quot;)
+}
+
+(plot_smoother(2) + plot_smoother(5)) / (plot_smoother(20) +
+plot_smoother(100) )</code></pre>
+<p><img src="/post/2022-05-08-introduction-to-statistical-learning-regression-and-regularization/Intro%20to%20Statistical%20Learning_files/figure-html/unnamed-chunk-23-1.png" width="672" /></p>
+<p>La función <code>ns</code> de la libraria <code>splines</code> genera varables utilizando un método conocido como <em>natural splines</em>. Por ejemplo:</p>
+<pre class="r"><code>head(ns(ames$Latitude, df = 5))</code></pre>
+<pre><code>##                 1           2          3         4          5
+## [1,] 0.0000000000 0.092922141 0.52914806 0.2508161 0.12711372
+## [2,] 0.0000000000 0.126795878 0.55650226 0.2307417 0.08596014
+## [3,] 0.0000000000 0.140263328 0.56279619 0.2238019 0.07313863
+## [4,] 0.0001441406 0.202779424 0.57055371 0.1964050 0.03011771
+## [5,] 0.0000000000 0.001751222 0.08524272 0.3890015 0.52400457
+## [6,] 0.0000000000 0.002016920 0.09553224 0.3865543 0.51589658</code></pre>
+<p>Podemos agregar splines dentro de una receta con <code>step_ns</code></p>
+<pre class="r"><code>#Set up Engine
+lm_model &lt;- linear_reg() %&gt;% set_engine(&quot;lm&quot;)
+
+#Create Workflow
+lm_wflow = workflow() %&gt;%
+  add_model(lm_model) %&gt;%
+  add_variables(outcome = Sale_Price, predictors = c(Longitude,
+Latitude, Neighborhood, Gr_Liv_Area, Year_Built, Bldg_Type)) #Setup Y and X
+
+
+#Create a Recipe
+simple_ames = 
+  recipe(Sale_Price ~ Neighborhood + 
+                      Gr_Liv_Area + Year_Built + Bldg_Type,
+         data = ames,
+         step_log(Sale_Price, base = 10),
+         step_dummy(all_nominal_predictors),
+         step_other(Neighborhood, threshold = 0.01),
+         step_interact(~Gr_Liv_Area:starts_with(&#39;Bldg_Typ_&#39;)), 
+         step_ns(Latitude, deg_free = 20))</code></pre>
+</div>
+<div id="feature-extraction" class="section level2">
+<h2>Feature Extraction</h2>
+<p>En este data set, tenemos varios predictores que miden el tamaño de una casa tal como el tamaño del sótano <code>Total_Bsmt_SF</code>, el tamaño del primer piso <code>First_Flr_SF</code>, etc. Podemos aplicar <strong>Análisis de Componentes Principales</strong> o <strong>PCA</strong> es una opción para representar estas variables potencialmente redundantes. Esto podemos hacerlo con <code>step_pca</code>.</p>
+<pre class="r"><code>#Set up Engine
+lm_model &lt;- linear_reg() %&gt;% set_engine(&quot;lm&quot;)
+
+#Create Workflow
+lm_wflow = workflow() %&gt;%
+  add_model(lm_model) %&gt;%
+  add_variables(outcome = Sale_Price, predictors = c(Longitude,
+Latitude, Neighborhood, Gr_Liv_Area, Year_Built, Bldg_Type,
+Total_Bsmt_SF, Bsmt_Unf_SF, First_Flr_SF)) #Setup Y and X
+
+
+#Create a Recipe
+simple_ames = 
+  recipe(Sale_Price ~ Neighborhood + 
+                      Gr_Liv_Area + 
+           Year_Built + Bldg_Type +
+           Total_Bsmt_SF + Bsmt_Unf_SF + First_Flr_SF ,
+         data = ames,
+         step_log(Sale_Price, base = 10),
+         step_dummy(all_nominal_predictors),
+         step_other(Neighborhood, threshold = 0.01),
+         step_interact(~Gr_Liv_Area:starts_with(&#39;Bldg_Typ_&#39;)), 
+         step_ns(Latitude, deg_free = 20),
+         step_pca(Total_Bsmt_SF, Bsmt_Unf_SF ,First_Flr_SF, num_comp = 2))</code></pre>
+</div>
+<div id="data-scaling" class="section level2">
+<h2>Data Scaling</h2>
+<p>Esta parte del proceso es útil por varios motivos:</p>
+<ol style="list-style-type: decimal">
+<li><p>En algunos algoritmos, tener todo bajo una misma escala, ayuda a mejorar la velocidad y estabilidad de los métodos númericos para optimización de variables</p></li>
+<li><p>En el caso cuando las variables númericas están en distintas unidades, escalar los datos permite manejar todo dentro de una misma magnitud</p></li>
+</ol>
+<p>La transformación más común es normalizar los datos:</p>
+<p><span class="math display">\[
+z = \frac{x-\mu}{\sigma}
+\]</span> Esto podemos hacerlo con <code>step_normalize</code> :</p>
+<pre class="r"><code>#Set up Engine
+lm_model &lt;- linear_reg() %&gt;% set_engine(&quot;lm&quot;)
+
+#Create Workflow
+lm_wflow = workflow() %&gt;%
+  add_model(lm_model) %&gt;%
+  add_variables(outcome = Sale_Price, predictors = c(Longitude,
+Latitude, Neighborhood, Gr_Liv_Area, Year_Built, Bldg_Type,
+Total_Bsmt_SF, Bsmt_Unf_SF, First_Flr_SF)) #Setup Y and X
+
+#Create a Recipe
+simple_ames = 
+  recipe(Sale_Price ~ Neighborhood + 
+                      Gr_Liv_Area + 
+           Year_Built + Bldg_Type +
+           Total_Bsmt_SF + Bsmt_Unf_SF + First_Flr_SF ,
+         data = ames,
+         step_log(Sale_Price, base = 10),
+         step_dummy(all_nominal_predictors),
+         step_other(Neighborhood, threshold = 0.01),
+         step_interact(~Gr_Liv_Area:starts_with(&#39;Bldg_Typ_&#39;)), 
+         step_ns(Latitude, deg_free = 20),
+         step_normalize(all_numeric()), #Scaling to mu=0, s=1
+         step_pca(Total_Bsmt_SF, Bsmt_Unf_SF ,First_Flr_SF, num_comp = 2))</code></pre>
+<p>Ahora podemos estimar el modelo:</p>
+<pre class="r"><code>#Create Workflow
+lm_wflow = workflow() %&gt;%
+  add_model(lm_model) %&gt;%
+  add_recipe(simple_ames)
+
+
+lm_fit &lt;- fit(lm_wflow, ames)
+
+lm_fit %&gt;%
+  extract_recipe(estimated = TRUE)</code></pre>
+<pre><code>## Recipe
+## 
+## Inputs:
+## 
+##       role #variables
+##    outcome          1
+##  predictor          7
+## 
+## Training data contained 2930 data points and no missing data.</code></pre>
+<pre class="r"><code>#Imprimir los resultados del modelo
+lm_fit %&gt;%
+  extract_fit_parsnip() %&gt;%
+  tidy()</code></pre>
+<pre><code>## # A tibble: 37 × 5
+##    term                            estimate std.error statistic   p.value
+##    &lt;chr&gt;                              &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;
+##  1 (Intercept)                    -1157772.    90871.   -12.7   3.24e- 36
+##  2 NeighborhoodCollege_Creek         18664.     3221.     5.80  7.56e-  9
+##  3 NeighborhoodOld_Town               8195.     3283.     2.50  1.26e-  2
+##  4 NeighborhoodEdwards               -6779.     2959.    -2.29  2.20e-  2
+##  5 NeighborhoodSomerset              49252.     3815.    12.9   4.18e- 37
+##  6 NeighborhoodNorthridge_Heights    97244.     3954.    24.6   1.98e-121
+##  7 NeighborhoodGilbert               10976.     3801.     2.89  3.91e-  3
+##  8 NeighborhoodSawyer                -1601.     3229.    -0.496 6.20e-  1
+##  9 NeighborhoodNorthwest_Ames         1111.     3525.     0.315 7.53e-  1
+## 10 NeighborhoodSawyer_West            7342.     3787.     1.94  5.26e-  2
+## # … with 27 more rows</code></pre>
+</div>
+<div id="efectividad-del-modelo" class="section level2">
+<h2>Efectividad del Modelo</h2>
+<p>La idea de optimizar las características estadísiticas del modelo no implica que el modelo tienen un buen ajuste.</p>
+<p>Una forma de visualizar que tan bueno es el modelo es graficar el precio que el modelo predice vs el precio real. Si el modelo tiene un ajuste perfecto, la relación entre el dato predicho y el real es 1 a 1, dibujando una recta a 45°:</p>
+<pre class="r"><code>ames_yhat &lt;- predict(lm_fit, new_data = ames)
+ames$y_hat = ames_yhat$.pred
+
+#Plot actual vs predicted
+ames %&gt;%
+  ggplot(aes(x = Sale_Price, y = y_hat)) +
+  geom_abline(lty = 2) + # Create a diagonal line:
+  geom_point(alpha = 0.3) +
+  labs(y = &quot;Predicted Sale Price)&quot;, x = &quot;Sale Price&quot;) +
+  # Scale and size the x- and y-axis uniformly:
+  coord_obs_pred()</code></pre>
+<p><img src="/post/2022-05-08-introduction-to-statistical-learning-regression-and-regularization/Intro%20to%20Statistical%20Learning_files/figure-html/unnamed-chunk-29-1.png" width="672" /></p>
+<p>Al parecer, el modelo lineal propuesto es bueno aún cuando con precios por encima de los 400K el modelo tiende a tener una falta de ajuste. Para medir que tan bien ajust el modelo, podemos computar el <strong>RMSE</strong> o la <span class="math inline">\(R^2\)</span> la cual mide el grado de ajuste del modelo:</p>
+<pre class="r"><code>ames_metrics &lt;- metric_set(rmse, rsq, mae)
+ames_metrics(ames, truth = Sale_Price, estimate = y_hat)</code></pre>
+<pre><code>## # A tibble: 3 × 3
+##   .metric .estimator .estimate
+##   &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt;
+## 1 rmse    standard   33888.   
+## 2 rsq     standard       0.820
+## 3 mae     standard   21231.</code></pre>
+<p>De acuerdo al computo, el modelo explica con un 82% de ajuste el precio de las casas en la ciudad de Ames.</p>
+<p>Finalmente, tenemos que revisar que los <strong>residuales</strong> del modelo cumplan con los supuestos de <span class="math inline">\(NID(0,\sigma^2)\)</span></p>
+<pre class="r"><code>ames = ames %&gt;%
+  mutate(residuals = Sale_Price - y_hat)
+
+#Plot Residuales
+#Histogram of Residuales
+p1 = ames %&gt;%
+  ggplot(aes(x = residuals)) +
+  geom_histogram(color = &#39;white&#39;, fill = &#39;orange&#39;) +
+  labs(title = &#39;Histogram of Residuals&#39;)
+
+#Quantile plot of residuals
+qqplot = ggqqplot(ames, x = &#39;y_hat&#39;,
+                  color = &#39;orange&#39;,
+                  ggtheme = theme_bw()) +
+  labs(title = &#39;QQ-Normality Plot&#39;)
+
+#Residuals vs Obs Order
+p2 = ames %&gt;%
+  mutate(Obs_order = 1 : nrow(.)) %&gt;%
+  ggplot(aes(x = Obs_order, y = residuals)) +
+  geom_point(alpha = 0.2) +
+  geom_hline(yintercept = 0, lty = 2, color = &#39;grey&#39;) +
+  labs(title = &#39;Residuals vs Order&#39;)
+
+#Predicted vs Residuals
+p3 = ames %&gt;%
+  ggplot(aes(x = y_hat, y = residuals)) +
+  geom_point(alpha = 0.2) +
+  geom_hline(yintercept = 0, color = &#39;grey&#39;) +
+  labs(title = &#39;Predicted vs Residuals&#39;)
+
+(p1 | qqplot) / (p2 | p3)</code></pre>
+<pre><code>## `stat_bin()` using `bins = 30`. Pick better value with `binwidth`.</code></pre>
+<p><img src="/post/2022-05-08-introduction-to-statistical-learning-regression-and-regularization/Intro%20to%20Statistical%20Learning_files/figure-html/unnamed-chunk-31-1.png" width="672" /></p>
+</div>
+</div>
+<div id="regularización" class="section level1">
+<h1>Regularización</h1>
+<p>Si bien el modelo ajusta el 82% del precio de venta de las casas, de acuerdo al análisis de residuales, el modelo tiene opotunidades de mejora.</p>
+<p>Para un detalle más profundo, se puede consultar <a href="https://eduardo0914rtutorials.netlify.app/post/2022/03/05/introduction-to-linear-models/">Introducción a los modelos lineales</a>.</p>
+<p>De las 72 variables disponibles, solo estamos utilizando 9. Si bien esto podría ayudar a mejorar el modelo, también incrementa su complejidad. Entonces necesitamos técnicas más robustas para estimar y seleccionar las variables que mejor expliquen el precio de las casas en Ames.</p>
+<div id="test-set-vs-training-set" class="section level2">
+<h2>Test Set vs Training Set</h2>
+<p>Hasta ahora, hemos ocupado el 100% de los datos para estimar el modelo. Considere que usted está de vuelta en la escuale y que el día de mañana tendrá un examen. El profesor le ha dado la guía del examen, la bibliografía e incluso las 10 preguntas que componen el examen. Qué calificación esperaría obtener?</p>
+<p>Si el profesor quisiera evaluar su conocimiento en un tema, entonces quizás le daría la guía del examen y la bibliografía sugerida de estudio. Luego el pondría las preguntas de manera que unted tenga que estudiar lo suficiente para demostrar conocimiento y quizás agregaría una o dos preguntas sorpresa para corroborar si en verdad usted sabe del tema.</p>
+<p>En general, lo que nos importa del modelo es el segundo enfoque. Queremos que el modelo pueda explicar sobre un conjunto de observaciones que nunca ha visto:</p>
+<ol style="list-style-type: decimal">
+<li>El <strong>Training Set</strong> es el conjunto de datos que el algoritmo utiliza para estimar los parámetros el modelo. Típicamente es el 70% u 80% de todos los datos</li>
+<li>El <strong>Test Set</strong> es el conjunto de datos que utilizamos para probar que tan bueno es el modelo para explicar o predecir. Este conjunto representa entre el 30% y el 20% de los datos</li>
+</ol>
+<p>En <code>tidymodels</code> podemos hacer esto con el método <code>initial_split</code> y después podemos aplicar <code>training</code> y <code>testing</code> para separar en 2 el data set.</p>
+<pre class="r"><code>ames_split = initial_split(ames, prop = 0.80)
+ames_train = testing(ames_split)
+ames_test = testing(ames_split)</code></pre>
+</div>
+<div id="ridge-regression" class="section level2">
+<h2>Ridge Regression</h2>
+<p>Recordemos que el objetivo del algoritmo de mínimos cuadrados es encontrar <span class="math inline">\(\beta_0, \beta_1,…,\beta_p\)</span> que minimise la Suma de cuadrados:</p>
+<p><span class="math display">\[
+RSS = \sum_{i=1}^n (y_i - \beta_0 -\sum_{j=1}^p\beta_px_p)^2
+\]</span></p>
+<p>La regresión **Ridge** es similar solo que los coeficientes se estima agregando un penalty <span class="math inline">\(\lambda\)</span> a **RSS** de tal forma que se minimice:</p>
+<p><span class="math display">\[
+RSS = \sum_{i=1}^n (y_i - \beta_0 -\sum_{j=1}^p\beta_px_p)^2 + \lambda \sum_{j=1}^p\beta_j^2
+\]</span>En donde <span class="math inline">\(\lambda &gt;= 0\)</span></p>
+<p><img src="RidgeRegression.PNG" /></p>
+<p>De acuerdo a la imagen, cuando el valor de <span class="math inline">\(\lambda\to 0\)</span> los coeficientes de regresión <span class="math inline">\(\beta_\lambda \to \beta_{ols}\)</span>; cuando el valor de <span class="math inline">\(\lambda\to \inf\)</span>, el valor de los coeficientes <span class="math inline">\(\beta_\lambda \to 0\)</span>. Esto quiere decir que la <strong>Regresion Ridge</strong> no solo nos ayuda a estimar los coeficientes si no que también nos ayuda a seleccionar variables.</p>
+<p>Estimar el valor de <span class="math inline">\(\lambda\)</span> se vuelve crítico. Para esto usamos el algoritmo de <strong>Cross-Validation</strong></p>
+<div id="cross-validation" class="section level3">
+<h3>Cross-Validation</h3>
+<p><img src="K-fold_cross_validation.jpg" /></p>
+<p>El <strong>resampling</strong> se refiere al procedimiento mediante el cual tomamos muestras del <em>training set</em> y hacemos un reajuste del modelo en cada muestra con la finalidad de obtener infomación del modelo en cuestión. Una desventaja de los métodos de <strong>resampling</strong> es que son computacionalmente costosos ya que, al tener distintas muestras del <em>training set</em>, requerimos ajustar múltiples veces el modelo.</p>
+<p>La validación cruzada, o <strong>Cross-Validation</strong> es un método de <strong>resampling</strong> para estimar el error dentro del <em>test set</em> producido por algúna técnica de ajuste (ej. Regresión) con el fin de evaluar su desempeño y seleccionar el nivel de flexivilidad adecuado. Esto evita un problema que ya revisamos conocido como <strong>Overfiting</strong>.</p>
+<p>Típicamente, separamos los datos en 2 subconjutos:</p>
+<p>1. Training Set: la muestra utilizada para estimar el modelo. Generalmente utilizamos el 70%-80% de todos los datos para ajustar el modelo</p>
+<p>2. Test Set. la muestra estimada para validar el modelo. Por lo general, este conjunto representa entre el 20%-30% de todos los datos.</p>
+<p>La forma en la cual separamos el <em>training set</em> y el <em>test set</em> es con un muestreo <em>aleatorio simple</em>. Existen varios enfoques para hacer la validación cruzada.</p>
+</div>
+<div id="k-fold-cross-validation" class="section level3">
+<h3>K-fold Cross Validation</h3>
+<p>Este método separa en forma aleatoria el conjunto de observacione dentro del <em>training set</em> y los separa en <em>k</em> grupos, o <em>folds</em>, de aproximadamente el mismo tamaño. El primer <em>fold</em> es tratado como <em>validation set</em> y el modelo es ajustado para los datos restantes. El <span class="math inline">\(MSE_1\)</span> se computa para el primer <em>fold</em>. Este procedimiento se repite <em>k-1</em> veces más y al final se promedian los <span class="math inline">\(MSE_k\)</span> computados:</p>
+<p><span class="math display">\[
+CV_k = \frac{1}{k} \sum_{i=1}^k MSE_i
+\]</span></p>
+<p>Los valores típicos de <em>k</em> son <em>k=5</em> y <em>k=10</em>. <em>k-fold CV</em> requiere ajustar <em>k</em> veces el modelo seleccionado. Valores por encima de <em>k=10</em> hacen que el procedimiento incremente su tiempo de computo y en base a observaciones empíricas, valores más altos, no mejoran el accuracy.</p>
+<p>La función <code>lm</code> no es capaz de estimar una regresión <strong>ridge</strong>. En su lugar vamos a usar <strong>glmnet</strong> como engine: <code>set_engine(glmnet)</code> y vamos a paremetrizar <code>linear_reg(penalty = 0.1, mixture = 0)</code>. El parámetro <code>penalty</code> es la <span class="math inline">\(\lambda\)</span> que tenemos que estimar y en este momento estamos diciendo que vamos a dejarla fija en 0.1.</p>
+<pre class="r"><code>message(&#39;Split test and training set===================================&#39;)</code></pre>
+<pre><code>## Split test and training set===================================</code></pre>
+<pre class="r"><code>ames_split = initial_split(ames, prop = 0.80)
+ames_train = testing(ames_split)
+ames_test = testing(ames_split)
+
+message(&#39;Create Workflow================================================&#39;)</code></pre>
+<pre><code>## Create Workflow================================================</code></pre>
+<pre class="r"><code>#Set up Engine
+lm_model &lt;- linear_reg(penalty = 0.1, mixture = 0) %&gt;% 
+  set_engine(&quot;glmnet&quot;)
+
+#setup Workflow
+ames_wflow = workflow() %&gt;%
+  add_model(lm_model) %&gt;%
+  add_variables(outcomes = Sale_Price,
+                predictor = c(all_numeric(), all_nominal()))
+
+#Create Recipe
+ames_recipe = recipe(Sale_Price ~ Longitude + Latitude + Lot_Area + 
+                       Neighborhood + Year_Sold + Lot_Frontage +
+                       Lot_Area + Lot_Shape + Land_Contour + Year_Built +
+                       Bsmt_Cond + Bsmt_Exposure + Bsmt_Exposure +
+                       Gr_Liv_Area + Bedroom_AbvGr + Garage_Area,
+                     data = ames_train) %&gt;%
+  step_other(all_nominal()) %&gt;% 
+  step_dummy(all_nominal()) %&gt;%
+  step_center(all_predictors()) %&gt;%
+  step_scale(all_predictors()) %&gt;%
+  step_log(Sale_Price, base = 10) %&gt;% 
+  # estimate the means and standard deviations
+  prep(training = ames_train, retain = TRUE)
+
+#Update Workflow
+ames_wflow = ames_wflow %&gt;%
+  remove_variables() %&gt;%
+  add_recipe(ames_recipe)</code></pre>
+<p>Ahora estamos listos para estimar el modelo:</p>
+<pre class="r"><code>#Fit the model
+ridge_fit = ames_wflow %&gt;%
+  fit(data = ames_train)
+
+message(&#39;Printing the results=========================================&#39;)</code></pre>
+<pre><code>## Printing the results=========================================</code></pre>
+<pre class="r"><code>ridge_fit</code></pre>
+<pre><code>## ══ Workflow [trained] ══════════════════════════════════════════════════════════
+## Preprocessor: Recipe
+## Model: linear_reg()
+## 
+## ── Preprocessor ────────────────────────────────────────────────────────────────
+## 5 Recipe Steps
+## 
+## • step_other()
+## • step_dummy()
+## • step_center()
+## • step_scale()
+## • step_log()
+## 
+## ── Model ───────────────────────────────────────────────────────────────────────
+## 
+## Call:  glmnet::glmnet(x = maybe_matrix(x), y = y, family = &quot;gaussian&quot;,      alpha = ~0) 
+## 
+##     Df  %Dev  Lambda
+## 1   39  0.00 123.100
+## 2   39  0.66 112.100
+## 3   39  0.73 102.200
+## 4   39  0.80  93.090
+## 5   39  0.88  84.820
+## 6   39  0.96  77.280
+## 7   39  1.05  70.420
+## 8   39  1.15  64.160
+## 9   39  1.27  58.460
+## 10  39  1.39  53.270
+## 11  39  1.52  48.540
+## 12  39  1.67  44.220
+## 13  39  1.83  40.300
+## 14  39  2.00  36.720
+## 15  39  2.19  33.450
+## 16  39  2.40  30.480
+## 17  39  2.63  27.770
+## 18  39  2.87  25.310
+## 19  39  3.15  23.060
+## 20  39  3.44  21.010
+## 21  39  3.76  19.140
+## 22  39  4.12  17.440
+## 23  39  4.50  15.890
+## 24  39  4.92  14.480
+## 25  39  5.37  13.200
+## 26  39  5.86  12.020
+## 27  39  6.39  10.950
+## 28  39  6.97   9.982
+## 29  39  7.60   9.095
+## 30  39  8.28   8.287
+## 31  39  9.01   7.551
+## 32  39  9.80   6.880
+## 33  39 10.65   6.269
+## 34  39 11.57   5.712
+## 35  39 12.55   5.204
+## 36  39 13.60   4.742
+## 37  39 14.72   4.321
+## 38  39 15.92   3.937
+## 39  39 17.19   3.587
+## 40  39 18.55   3.269
+## 41  39 19.98   2.978
+## 42  39 21.48   2.714
+## 43  39 23.07   2.473
+## 44  39 24.73   2.253
+## 45  39 26.47   2.053
+## 46  39 28.28   1.870
+## 
+## ...
+## and 54 more lines.</code></pre>
+<pre class="r"><code>#tidy the results
+ridge_fit %&gt;%
+  pull_workflow_fit() %&gt;%
+  tidy()</code></pre>
+<pre><code>## Warning: `pull_workflow_fit()` was deprecated in workflows 0.2.3.
+## Please use `extract_fit_parsnip()` instead.</code></pre>
+<pre><code>## Loaded glmnet 4.1-4</code></pre>
+<pre><code>## # A tibble: 42 × 3
+##    term          estimate penalty
+##    &lt;chr&gt;            &lt;dbl&gt;   &lt;dbl&gt;
+##  1 (Intercept)    5.22        0.1
+##  2 Longitude     -0.0112      0.1
+##  3 Latitude       0.0166      0.1
+##  4 Lot_Area       0.0111      0.1
+##  5 Year_Sold     -0.00361     0.1
+##  6 Lot_Frontage   0.00651     0.1
+##  7 Year_Built     0.0419      0.1
+##  8 Gr_Liv_Area    0.0496      0.1
+##  9 Bedroom_AbvGr  0.00217     0.1
+## 10 Garage_Area    0.0367      0.1
+## # … with 32 more rows</code></pre>
+<p>Cómo sabemos que <span class="math inline">\(\lambda = 0.1\)</span> es el mejor valor?</p>
+</div>
+<div id="hyper-parameter-tuning" class="section level3">
+<h3>Hyper Parameter Tuning</h3>
+<p>Acá es donde usamos <strong>K-fold CV</strong> para estimar el valor óptimo de <span class="math inline">\(\lambda\)</span></p>
+<pre class="r"><code>set.seed(1234)
+ames_cv = vfold_cv(ames_train, v = 10)
+ames_cv</code></pre>
+<pre><code>## #  10-fold cross-validation 
+## # A tibble: 10 × 2
+##    splits           id    
+##    &lt;list&gt;           &lt;chr&gt; 
+##  1 &lt;split [527/59]&gt; Fold01
+##  2 &lt;split [527/59]&gt; Fold02
+##  3 &lt;split [527/59]&gt; Fold03
+##  4 &lt;split [527/59]&gt; Fold04
+##  5 &lt;split [527/59]&gt; Fold05
+##  6 &lt;split [527/59]&gt; Fold06
+##  7 &lt;split [528/58]&gt; Fold07
+##  8 &lt;split [528/58]&gt; Fold08
+##  9 &lt;split [528/58]&gt; Fold09
+## 10 &lt;split [528/58]&gt; Fold10</code></pre>
+<p>Y ahora, dejamos el parámetro <code>penalty = tune()</code> para indicar que este valor puede tomar distinton niveles en función de la variable <code>grid_regular(penalty(), levels = 50)</code> . Con <code>levels = 50</code> estamos indicando que <span class="math inline">\(\lambda\)</span> puede tener 50 valores dentro de un grid.</p>
+<pre class="r"><code>tune_spec &lt;- linear_reg(penalty = tune(), mixture = 0) %&gt;%
+  set_engine(&quot;glmnet&quot;)
+lambda_grid &lt;- grid_regular(penalty(), levels = 50)</code></pre>
+<p>Ahora creamos el workflow:</p>
+<pre class="r"><code>message(&#39;Activate Parallel Processing====================================&#39;)</code></pre>
+<pre><code>## Activate Parallel Processing====================================</code></pre>
+<pre class="r"><code>doParallel::registerDoParallel()
+
+set.seed(1234)
+ridge_grid &lt;- tune_grid(ames_wflow %&gt;%
+                          remove_model() %&gt;% #Remove previous models
+                          add_model(tune_spec),
+                        resamples = ames_cv,
+                        grid = lambda_grid)</code></pre>
+<p>Ahore, veamos el desempeño del modelo:</p>
+<pre class="r"><code>ridge_grid %&gt;%
+  collect_metrics()</code></pre>
+<pre><code>## # A tibble: 100 × 7
+##     penalty .metric .estimator   mean     n std_err .config              
+##       &lt;dbl&gt; &lt;chr&gt;   &lt;chr&gt;       &lt;dbl&gt; &lt;int&gt;   &lt;dbl&gt; &lt;chr&gt;                
+##  1 1   e-10 rmse    standard   0.0789    10 0.00410 Preprocessor1_Model01
+##  2 1   e-10 rsq     standard   0.806     10 0.0127  Preprocessor1_Model01
+##  3 1.60e-10 rmse    standard   0.0789    10 0.00410 Preprocessor1_Model02
+##  4 1.60e-10 rsq     standard   0.806     10 0.0127  Preprocessor1_Model02
+##  5 2.56e-10 rmse    standard   0.0789    10 0.00410 Preprocessor1_Model03
+##  6 2.56e-10 rsq     standard   0.806     10 0.0127  Preprocessor1_Model03
+##  7 4.09e-10 rmse    standard   0.0789    10 0.00410 Preprocessor1_Model04
+##  8 4.09e-10 rsq     standard   0.806     10 0.0127  Preprocessor1_Model04
+##  9 6.55e-10 rmse    standard   0.0789    10 0.00410 Preprocessor1_Model05
+## 10 6.55e-10 rsq     standard   0.806     10 0.0127  Preprocessor1_Model05
+## # … with 90 more rows</code></pre>
+<pre class="r"><code>message(&#39;Ploting the Results=============================================&#39;)</code></pre>
+<pre><code>## Ploting the Results=============================================</code></pre>
+<pre class="r"><code>ridge_grid %&gt;%
+  collect_metrics() %&gt;%
+  ggplot(aes(penalty, mean, color = .metric)) +
+  geom_errorbar(aes(ymin = mean - std_err,ymax = mean + std_err),
+                alpha = 0.5) +
+  geom_line(size = 1.5) +
+  facet_wrap(~.metric, scales = &quot;free&quot;, nrow = 2) +
+  scale_x_log10() +
+  theme(legend.position = &quot;none&quot;)</code></pre>
+<p><img src="/post/2022-05-08-introduction-to-statistical-learning-regression-and-regularization/Intro%20to%20Statistical%20Learning_files/figure-html/unnamed-chunk-38-1.png" width="672" /></p>
+<p>Ahora podemos seleccionar el parámetro óptimo y terminar el modelo:</p>
+<pre class="r"><code>lowest_rmse = ridge_grid %&gt;%
+  select_best(&quot;rmse&quot;)
+
+final_ridge = finalize_workflow(
+  ames_wflow %&gt;%
+    remove_model() %&gt;%
+    add_model(tune_spec),
+  lowest_rmse)
+
+library(vip)
+
+final_ridge %&gt;%
+  fit(ames_train) %&gt;%
+  pull_workflow_fit() %&gt;%
+  vip::vi(lambda = lowest_rmse$penalty) %&gt;%
+  mutate(Importance = abs(Importance),
+         Variable = fct_reorder(Variable, Importance)) %&gt;%
+  ggplot(aes(x = Importance, y = Variable, fill = Sign)) +
+  geom_col() +
+  scale_x_continuous(expand = c(0, 0)) +
+  labs(y = NULL)</code></pre>
+<pre><code>## Warning: `pull_workflow_fit()` was deprecated in workflows 0.2.3.
+## Please use `extract_fit_parsnip()` instead.</code></pre>
+<p><img src="/post/2022-05-08-introduction-to-statistical-learning-regression-and-regularization/Intro%20to%20Statistical%20Learning_files/figure-html/unnamed-chunk-39-1.png" width="672" /></p>
+<p>Finalmete, vamos a ver el desempeño en el test set con el método <code>last_fit()</code></p>
+<pre class="r"><code>last_fit(final_ridge, ames_split) %&gt;%
+  collect_metrics()</code></pre>
+<pre><code>## # A tibble: 2 × 4
+##   .metric .estimator .estimate .config             
+##   &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt; &lt;chr&gt;               
+## 1 rmse    standard      0.0791 Preprocessor1_Model1
+## 2 rsq     standard      0.806  Preprocessor1_Model1</code></pre>
+</div>
+</div>
+<div id="lasso-regression" class="section level2">
+<h2>LASSO Regression</h2>
+<p>Un potencial “problema” de la <strong>Regresion Ridge</strong> es que siempre tiende a acercar a 0 los coeficientes de regresión de las variables no informativas pero no los hace exactamente igul a 0.</p>
+<p>La regresión <strong>LASSO</strong> corrige este problema modificando la ecuación de <strong>RSS</strong> a optimizar:</p>
+<p><span class="math display">\[
+RSS = \sum_{i=1}^n (y_i - \beta_0 -\sum_{j=1}^p\beta_px_p)^2 + \lambda \sum_{j=1}^p|\beta_j|
+\]</span></p>
+<p>En <code>tidymodels</code> lo único que tenemos que hacer es cambiar el parámetr <code>mixture = 1</code> para hacer una regression LASSO:</p>
+<pre class="r"><code>message(&#39;Change Mixture = 1 for LASSO===================================&#39;)</code></pre>
+<pre><code>## Change Mixture = 1 for LASSO===================================</code></pre>
+<pre class="r"><code>tune_spec &lt;- linear_reg(penalty = tune(), mixture = 1) %&gt;%
+  set_engine(&quot;glmnet&quot;)
+lambda_grid &lt;- grid_regular(penalty(), levels = 50)</code></pre>
+<p>Ahora ejecutamos el workflow:</p>
+<pre class="r"><code>message(&#39;Activate Parallel Processing====================================&#39;)</code></pre>
+<pre><code>## Activate Parallel Processing====================================</code></pre>
+<pre class="r"><code>doParallel::registerDoParallel()
+
+#Fit the Model
+set.seed(1234)
+lasso_grid &lt;- tune_grid(ames_wflow %&gt;%
+                          remove_model() %&gt;% #Remove previous models
+                          add_model(tune_spec),
+                        resamples = ames_cv,
+                        grid = lambda_grid)
+
+#Collect Metrics
+lasso_grid %&gt;%
+  collect_metrics()</code></pre>
+<pre><code>## # A tibble: 100 × 7
+##     penalty .metric .estimator   mean     n std_err .config              
+##       &lt;dbl&gt; &lt;chr&gt;   &lt;chr&gt;       &lt;dbl&gt; &lt;int&gt;   &lt;dbl&gt; &lt;chr&gt;                
+##  1 1   e-10 rmse    standard   0.0790    10 0.00407 Preprocessor1_Model01
+##  2 1   e-10 rsq     standard   0.807     10 0.0125  Preprocessor1_Model01
+##  3 1.60e-10 rmse    standard   0.0790    10 0.00407 Preprocessor1_Model02
+##  4 1.60e-10 rsq     standard   0.807     10 0.0125  Preprocessor1_Model02
+##  5 2.56e-10 rmse    standard   0.0790    10 0.00407 Preprocessor1_Model03
+##  6 2.56e-10 rsq     standard   0.807     10 0.0125  Preprocessor1_Model03
+##  7 4.09e-10 rmse    standard   0.0790    10 0.00407 Preprocessor1_Model04
+##  8 4.09e-10 rsq     standard   0.807     10 0.0125  Preprocessor1_Model04
+##  9 6.55e-10 rmse    standard   0.0790    10 0.00407 Preprocessor1_Model05
+## 10 6.55e-10 rsq     standard   0.807     10 0.0125  Preprocessor1_Model05
+## # … with 90 more rows</code></pre>
+<pre class="r"><code>message(&#39;Ploting the Results=============================================&#39;)</code></pre>
+<pre><code>## Ploting the Results=============================================</code></pre>
+<pre class="r"><code>lasso_grid %&gt;%
+  collect_metrics() %&gt;%
+  ggplot(aes(penalty, mean, color = .metric)) +
+  geom_errorbar(aes(ymin = mean - std_err,ymax = mean + std_err),
+                alpha = 0.5) +
+  geom_line(size = 1.5) +
+  facet_wrap(~.metric, scales = &quot;free&quot;, nrow = 2) +
+  scale_x_log10() +
+  theme(legend.position = &quot;none&quot;)</code></pre>
+<pre><code>## Warning: Removed 5 row(s) containing missing values (geom_path).</code></pre>
+<p><img src="/post/2022-05-08-introduction-to-statistical-learning-regression-and-regularization/Intro%20to%20Statistical%20Learning_files/figure-html/unnamed-chunk-42-1.png" width="672" /></p>
+<pre class="r"><code>#Final Models
+
+lowest_rmse = lasso_grid %&gt;%
+  select_best(&quot;rmse&quot;)
+
+final_lasso = finalize_workflow(
+  ames_wflow %&gt;%
+    remove_model() %&gt;%
+    add_model(tune_spec),
+  lowest_rmse)
+
+final_lasso %&gt;%
+  fit(ames_train) %&gt;%
+  pull_workflow_fit() %&gt;%
+  vip::vi(lambda = lowest_rmse$penalty) %&gt;%
+  mutate(Importance = abs(Importance),
+         Variable = fct_reorder(Variable, Importance)) %&gt;%
+  ggplot(aes(x = Importance, y = Variable, fill = Sign)) +
+  geom_col() +
+  scale_x_continuous(expand = c(0, 0))</code></pre>
+<pre><code>## Warning: `pull_workflow_fit()` was deprecated in workflows 0.2.3.
+## Please use `extract_fit_parsnip()` instead.</code></pre>
+<p><img src="/post/2022-05-08-introduction-to-statistical-learning-regression-and-regularization/Intro%20to%20Statistical%20Learning_files/figure-html/unnamed-chunk-42-2.png" width="672" /></p>
+<pre class="r"><code>#LAst Fit on Test Set
+last_fit(final_lasso, ames_split) %&gt;%
+  collect_metrics()</code></pre>
+<pre><code>## # A tibble: 2 × 4
+##   .metric .estimator .estimate .config             
+##   &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt; &lt;chr&gt;               
+## 1 rmse    standard      0.0782 Preprocessor1_Model1
+## 2 rsq     standard      0.811  Preprocessor1_Model1</code></pre>
+</div>
+<div id="elastic-nets" class="section level2">
+<h2>Elastic Nets</h2>
+<p>La regresión <strong>Lasso</strong> y <strong>Ridge</strong> es un caso paticlar de un algoritmos denominado <strong>Elastic Nets</strong></p>
+<p><span class="math display">\[
+RSS = \sum_{i=1}^n (y_i - \beta_0 -\sum_{j=1}^p\beta_px_p)^2 + \lambda (\alpha\sum_{j=1}^p|\beta_j| + \frac{1-\alpha}{2}\sum_{j=1}^p\beta_j^2)
+\]</span></p>
+<p>El parámetro <span class="math inline">\(\alpha\)</span> es el argumeto <code>mixture</code> y también podemos utilizar cross validation para estimar el parámetro más adecuado:</p>
+<pre class="r"><code>message(&#39;Change Mixture = 1 for LASSO===================================&#39;)</code></pre>
+<pre><code>## Change Mixture = 1 for LASSO===================================</code></pre>
+<pre class="r"><code>tune_spec &lt;- linear_reg(penalty = tune(), mixture = tune()) %&gt;%
+  set_engine(&quot;glmnet&quot;)
+lambda_grid &lt;- grid_regular(penalty(), mixture(),
+                            levels = list(penalty = 100,
+                                          mixture = 10))
+
+
+message(&#39;Activate Parallel Processing====================================&#39;)</code></pre>
+<pre><code>## Activate Parallel Processing====================================</code></pre>
+<pre class="r"><code>doParallel::registerDoParallel()
+
+#Fit the Model
+set.seed(1234)
+enet_grid &lt;- tune_grid(ames_wflow %&gt;%
+                          remove_model() %&gt;% #Remove previous models
+                          add_model(tune_spec),
+                        resamples = ames_cv,
+                        grid = lambda_grid)
+
+#Collect Metrics
+enet_grid %&gt;%
+  collect_metrics()</code></pre>
+<pre><code>## # A tibble: 2,000 × 8
+##     penalty mixture .metric .estimator   mean     n std_err .config             
+##       &lt;dbl&gt;   &lt;dbl&gt; &lt;chr&gt;   &lt;chr&gt;       &lt;dbl&gt; &lt;int&gt;   &lt;dbl&gt; &lt;chr&gt;               
+##  1 1   e-10       0 rmse    standard   0.0789    10 0.00410 Preprocessor1_Model…
+##  2 1   e-10       0 rsq     standard   0.806     10 0.0127  Preprocessor1_Model…
+##  3 1.26e-10       0 rmse    standard   0.0789    10 0.00410 Preprocessor1_Model…
+##  4 1.26e-10       0 rsq     standard   0.806     10 0.0127  Preprocessor1_Model…
+##  5 1.59e-10       0 rmse    standard   0.0789    10 0.00410 Preprocessor1_Model…
+##  6 1.59e-10       0 rsq     standard   0.806     10 0.0127  Preprocessor1_Model…
+##  7 2.01e-10       0 rmse    standard   0.0789    10 0.00410 Preprocessor1_Model…
+##  8 2.01e-10       0 rsq     standard   0.806     10 0.0127  Preprocessor1_Model…
+##  9 2.54e-10       0 rmse    standard   0.0789    10 0.00410 Preprocessor1_Model…
+## 10 2.54e-10       0 rsq     standard   0.806     10 0.0127  Preprocessor1_Model…
+## # … with 1,990 more rows</code></pre>
+<pre class="r"><code>message(&#39;Ploting the Results=============================================&#39;)</code></pre>
+<pre><code>## Ploting the Results=============================================</code></pre>
+<pre class="r"><code>#Final Models
+
+lowest_rmse = enet_grid %&gt;%
+  select_best(&quot;rmse&quot;)
+
+final_enet = finalize_workflow(
+  ames_wflow %&gt;%
+    remove_model() %&gt;%
+    add_model(tune_spec),
+  lowest_rmse)
+
+final_enet %&gt;%
+  fit(ames_train) %&gt;%
+  pull_workflow_fit() %&gt;%
+  vip::vi(lambda = lowest_rmse$penalty) %&gt;%
+  mutate(Importance = abs(Importance),
+         Variable = fct_reorder(Variable, Importance)) %&gt;%
+  ggplot(aes(x = Importance, y = Variable, fill = Sign)) +
+  geom_col() +
+  scale_x_continuous(expand = c(0, 0))</code></pre>
+<pre><code>## Warning: `pull_workflow_fit()` was deprecated in workflows 0.2.3.
+## Please use `extract_fit_parsnip()` instead.</code></pre>
+<p><img src="/post/2022-05-08-introduction-to-statistical-learning-regression-and-regularization/Intro%20to%20Statistical%20Learning_files/figure-html/unnamed-chunk-43-1.png" width="672" /></p>
+<pre class="r"><code>#LAst Fit on Test Set
+last_fit(final_enet, ames_split) %&gt;%
+  collect_metrics()</code></pre>
+<pre><code>## # A tibble: 2 × 4
+##   .metric .estimator .estimate .config             
+##   &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt; &lt;chr&gt;               
+## 1 rmse    standard      0.0783 Preprocessor1_Model1
+## 2 rsq     standard      0.811  Preprocessor1_Model1</code></pre>
+<p>Ahora, vamos a recaputlar el resultado de los 3 modelos para ver cual es el mejor de los 3:</p>
+<pre class="r"><code>last_fit(final_ridge, ames_split) %&gt;%
+  collect_metrics()</code></pre>
+<pre><code>## # A tibble: 2 × 4
+##   .metric .estimator .estimate .config             
+##   &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt; &lt;chr&gt;               
+## 1 rmse    standard      0.0791 Preprocessor1_Model1
+## 2 rsq     standard      0.806  Preprocessor1_Model1</code></pre>
+<pre class="r"><code>last_fit(final_lasso, ames_split) %&gt;%
+  collect_metrics()</code></pre>
+<pre><code>## # A tibble: 2 × 4
+##   .metric .estimator .estimate .config             
+##   &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt; &lt;chr&gt;               
+## 1 rmse    standard      0.0782 Preprocessor1_Model1
+## 2 rsq     standard      0.811  Preprocessor1_Model1</code></pre>
+<pre class="r"><code>last_fit(final_enet, ames_split) %&gt;%
+  collect_metrics()</code></pre>
+<pre><code>## # A tibble: 2 × 4
+##   .metric .estimator .estimate .config             
+##   &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt; &lt;chr&gt;               
+## 1 rmse    standard      0.0783 Preprocessor1_Model1
+## 2 rsq     standard      0.811  Preprocessor1_Model1</code></pre>
+</div>
+</div>
