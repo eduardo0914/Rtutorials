@@ -569,4 +569,62 @@ fitdata = eng_last_fit[[5]][[1]]
 caret::confusionMatrix(fitdata$.pred_class, fitdata$ENG, positive = '1')
 ```
 
-Now it´s time for an action plan!!
+# Machine Learning Interpretability
+
+There is no mathematical definition of interpretability. A (non-mathematical) definition I like by Miller (2017)¹⁰ is: Interpretability is the degree to which a human can understand the cause of a decision. Another one is: Interpretability is the degree to which a human can consistently predict the model's result ¹¹. The higher the interpretability of a machine learning model, the easier it is for someone to comprehend why certain decisions or predictions have been made.
+
+A model is better interpretable than another model if its decisions are easier for a human to comprehend than decisions from the other model. I will use both the terms interpretable and explainable interchangeably.
+
+Methods for machine learning interpretability can be classified according to various criteria. Intrinsic or post hoc? This criteria distinguishes whether interpretability is achieved by restricting the complexity of the machine learning model (intrinsic) or by applying methods that analyze the model after training (post hoc).
+
+Intrinsic interpretability refers to machine learning models that are considered interpretable due to their simple structure, such as short decision trees or sparse linear models.
+
+Post hoc interpretability refers to the application of interpretation methods after model training. Permutation feature importance is, for example, a post hoc interpretation method. Post hoc methods can also be applied to intrinsically interpretable models. For example, permutation feature importance can be computed for decision trees.
+
+Result of the interpretation method The various interpretation methods can be roughly differentiated according to their results.
+
+-   Feature summary statistic: Many interpretation methods provide summary statistics for each feature. Some methods return a single number per feature, such as feature importance, or a more complex result, such as the pairwise feature interaction strengths, which consist of a number for each feature pair.
+
+-   Feature summary visualization: Most of the feature summary statistics can also be visualized. Some feature summaries are actually only meaningful if they are visualized and a table would be a wrong choice. The partial dependence of a feature is such a case. Partial dependence plots are curves that show a feature and the average predicted outcome. The best way to present partial dependences is to actually draw the curve instead of printing the coordinates.
+
+-   Model internals (e.g. learned weights): The interpretation of intrinsically interpretable models falls into this category. Examples are the weights in linear models or the learned tree structure (the features and thresholds used for the splits) of decision trees. The lines are blurred between model internals and feature summary statistic in, for example, linear models, because the weights are both model internals and summary statistics for the features at the same time.
+
+-   Data point: This category includes all methods that return data points (already existent or newly created) to make a model interpretable. One method is called counterfactual explanations. To explain the prediction of a data instance, the method finds a similar data point by changing some of the features for which the predicted outcome changes in a relevant way (e.g. a flip in the predicted class). Another example is the identification of prototypes of predicted classes. To be useful, interpretation methods that output new data points require that the data points themselves can be interpreted. This works well for images and texts, but is less useful for tabular data with hundreds of features.
+
+-   Intrinsically interpretable model: One solution to interpreting black box models is to approximate them (either globally or locally) with an interpretable model. The interpretable model itself is interpreted by looking at internal model parameters or feature summary statistics.
+
+```{r}
+require(DALEXtra)
+set.seed(1234)
+
+#Set Variables on the Model
+vip_features <- c('P5', 'P6', 'P7', 'P8', 'P9', 'P10', 'P11', 'P12', 'P13', 'P14', 'P16', 'P18', 'P19', 'P20', 'P21', 'P22', 'P23', 'P24', 'P25', 'P26', 'P27', 'P28', 'P29', 'P30', 'P31', 'P32', 'P33', 'P34', 'P35', 'P36', 'P37', 'P38', 'P39', 'P40', 'P41', 'P42', 'P43', 'P44', 'P45', 'P46', 'P47', 'P49', 'P50', 'P51', 'P52', 'P53', 'P54', 'P55', 'Age_d', 'Gender','P15', 'P17', 'P48')
+
+#Select variables
+vip_train <- 
+  eng_train %>% 
+  select(all_of(vip_features))
+
+#Fit the final model
+fitm = eng_lasso_final %>%
+  fit(eng_train)
+
+
+#Get the explainer
+explainer_lm = explain_tidymodels(fitm, 
+                                  data = vip_train, 
+                                  y = eng_train$ENG,
+                                  label = "1",
+                                  verbose = FALSE)
+#Select Individual #200
+manager <- engagement_df[200, ]
+
+lm_breakdown = predict_parts(explainer = explainer_lm, 
+                             new_observation = manager)
+#Plot Results
+plot(lm_breakdown)
+
+
+
+
+```

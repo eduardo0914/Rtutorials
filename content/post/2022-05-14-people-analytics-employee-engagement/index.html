@@ -291,40 +291,40 @@ tidy(eng_glm)</code></pre>
 <pre><code>## # A tibble: 14 × 5
 ##    term          estimate std.error statistic  p.value
 ##    &lt;chr&gt;            &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;
-##  1 (Intercept)  -26.2       1.29      -20.4   1.56e-92
-##  2 G2            -0.00871   0.00978    -0.891 3.73e- 1
-##  3 G3            -0.00877   0.0165     -0.533 5.94e- 1
-##  4 G4             0.180     0.0140     12.9   5.51e-38
-##  5 G5            -0.0168    0.00987    -1.70  8.87e- 2
-##  6 G6            -0.0329    0.0129     -2.55  1.08e- 2
-##  7 G7             0.0146    0.0123      1.19  2.35e- 1
-##  8 G8             0.0156    0.00932     1.67  9.40e- 2
-##  9 G9            -0.0206    0.0123     -1.67  9.44e- 2
-## 10 G10            0.0968    0.0178      5.44  5.39e- 8
-## 11 G11            0.0874    0.0129      6.80  1.04e-11
-## 12 Age_d[34,42)  -0.0701    0.180      -0.388 6.98e- 1
-## 13 Age_d[42,71]  -0.0790    0.181      -0.436 6.63e- 1
-## 14 GenderMale    -0.0844    0.191      -0.442 6.59e- 1</code></pre>
+##  1 (Intercept)  -27.3       1.36     -20.1    4.84e-90
+##  2 G2             0.00499   0.0102     0.487  6.26e- 1
+##  3 G3             0.00555   0.0169     0.329  7.42e- 1
+##  4 G4             0.186     0.0147    12.7    1.11e-36
+##  5 G5            -0.0315    0.0104    -3.02   2.55e- 3
+##  6 G6            -0.00945   0.0134    -0.705  4.81e- 1
+##  7 G7             0.0234    0.0132     1.77   7.64e- 2
+##  8 G8             0.0141    0.00954    1.48   1.39e- 1
+##  9 G9            -0.0424    0.0128    -3.31   9.20e- 4
+## 10 G10            0.0895    0.0178     5.04   4.73e- 7
+## 11 G11            0.0785    0.0130     6.04   1.52e- 9
+## 12 Age_d[34,42)  -0.00666   0.186     -0.0358 9.71e- 1
+## 13 Age_d[42,71]  -0.0246    0.185     -0.133  8.94e- 1
+## 14 GenderMale    -0.0748    0.206     -0.363  7.16e- 1</code></pre>
 <p>A more clear interpretation is on terms of the <strong>odds ratio</strong> defined as:</p>
 <p><span class="math display">\[\text{odds}_i = e ^ {\beta_i}\]</span></p>
 <pre class="r"><code>tidy(eng_glm, exponentiate = T)</code></pre>
 <pre><code>## # A tibble: 14 × 5
 ##    term         estimate std.error statistic  p.value
 ##    &lt;chr&gt;           &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;
-##  1 (Intercept)  4.03e-12   1.29      -20.4   1.56e-92
-##  2 G2           9.91e- 1   0.00978    -0.891 3.73e- 1
-##  3 G3           9.91e- 1   0.0165     -0.533 5.94e- 1
-##  4 G4           1.20e+ 0   0.0140     12.9   5.51e-38
-##  5 G5           9.83e- 1   0.00987    -1.70  8.87e- 2
-##  6 G6           9.68e- 1   0.0129     -2.55  1.08e- 2
-##  7 G7           1.01e+ 0   0.0123      1.19  2.35e- 1
-##  8 G8           1.02e+ 0   0.00932     1.67  9.40e- 2
-##  9 G9           9.80e- 1   0.0123     -1.67  9.44e- 2
-## 10 G10          1.10e+ 0   0.0178      5.44  5.39e- 8
-## 11 G11          1.09e+ 0   0.0129      6.80  1.04e-11
-## 12 Age_d[34,42) 9.32e- 1   0.180      -0.388 6.98e- 1
-## 13 Age_d[42,71] 9.24e- 1   0.181      -0.436 6.63e- 1
-## 14 GenderMale   9.19e- 1   0.191      -0.442 6.59e- 1</code></pre>
+##  1 (Intercept)  1.34e-12   1.36     -20.1    4.84e-90
+##  2 G2           1.01e+ 0   0.0102     0.487  6.26e- 1
+##  3 G3           1.01e+ 0   0.0169     0.329  7.42e- 1
+##  4 G4           1.20e+ 0   0.0147    12.7    1.11e-36
+##  5 G5           9.69e- 1   0.0104    -3.02   2.55e- 3
+##  6 G6           9.91e- 1   0.0134    -0.705  4.81e- 1
+##  7 G7           1.02e+ 0   0.0132     1.77   7.64e- 2
+##  8 G8           1.01e+ 0   0.00954    1.48   1.39e- 1
+##  9 G9           9.59e- 1   0.0128    -3.31   9.20e- 4
+## 10 G10          1.09e+ 0   0.0178     5.04   4.73e- 7
+## 11 G11          1.08e+ 0   0.0130     6.04   1.52e- 9
+## 12 Age_d[34,42) 9.93e- 1   0.186     -0.0358 9.71e- 1
+## 13 Age_d[42,71] 9.76e- 1   0.185     -0.133  8.94e- 1
+## 14 GenderMale   9.28e- 1   0.206     -0.363  7.16e- 1</code></pre>
 <p>Let´s do a plot to figure out what is going on:</p>
 <pre class="r"><code>tidy(eng_glm, exponentiate = T) %&gt;%
   ggplot(aes(x = term, y = estimate)) +
@@ -370,26 +370,26 @@ caret::confusionMatrix(y_hat, y_act, positive = &#39;1&#39;)</code></pre>
 ## 
 ##           Reference
 ## Prediction    0    1
-##          0  545   97
-##          1  171 1115
+##          0  545   99
+##          1  156 1128
 ##                                           
-##                Accuracy : 0.861           
-##                  95% CI : (0.8447, 0.8761)
-##     No Information Rate : 0.6286          
+##                Accuracy : 0.8677          
+##                  95% CI : (0.8518, 0.8826)
+##     No Information Rate : 0.6364          
 ##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16       
 ##                                           
-##                   Kappa : 0.6959          
+##                   Kappa : 0.7091          
 ##                                           
-##  Mcnemar&#39;s Test P-Value : 8.227e-06       
+##  Mcnemar&#39;s Test P-Value : 0.0004534       
 ##                                           
-##             Sensitivity : 0.9200          
-##             Specificity : 0.7612          
-##          Pos Pred Value : 0.8670          
-##          Neg Pred Value : 0.8489          
-##              Prevalence : 0.6286          
-##          Detection Rate : 0.5783          
-##    Detection Prevalence : 0.6670          
-##       Balanced Accuracy : 0.8406          
+##             Sensitivity : 0.9193          
+##             Specificity : 0.7775          
+##          Pos Pred Value : 0.8785          
+##          Neg Pred Value : 0.8463          
+##              Prevalence : 0.6364          
+##          Detection Rate : 0.5851          
+##    Detection Prevalence : 0.6660          
+##       Balanced Accuracy : 0.8484          
 ##                                           
 ##        &#39;Positive&#39; Class : 1               
 ## </code></pre>
@@ -410,26 +410,26 @@ caret::confusionMatrix(y_hat, y_act, positive = &#39;1&#39;)</code></pre>
 ## 
 ##           Reference
 ## Prediction   0   1
-##          0 173  38
-##          1  52 380
+##          0 184  44
+##          1  56 359
 ##                                           
-##                Accuracy : 0.86            
-##                  95% CI : (0.8308, 0.8859)
-##     No Information Rate : 0.6501          
+##                Accuracy : 0.8445          
+##                  95% CI : (0.8141, 0.8716)
+##     No Information Rate : 0.6267          
 ##     P-Value [Acc &gt; NIR] : &lt;2e-16          
 ##                                           
-##                   Kappa : 0.6879          
+##                   Kappa : 0.6642          
 ##                                           
-##  Mcnemar&#39;s Test P-Value : 0.1706          
+##  Mcnemar&#39;s Test P-Value : 0.2713          
 ##                                           
-##             Sensitivity : 0.9091          
-##             Specificity : 0.7689          
-##          Pos Pred Value : 0.8796          
-##          Neg Pred Value : 0.8199          
-##              Prevalence : 0.6501          
-##          Detection Rate : 0.5910          
-##    Detection Prevalence : 0.6719          
-##       Balanced Accuracy : 0.8390          
+##             Sensitivity : 0.8908          
+##             Specificity : 0.7667          
+##          Pos Pred Value : 0.8651          
+##          Neg Pred Value : 0.8070          
+##              Prevalence : 0.6267          
+##          Detection Rate : 0.5583          
+##    Detection Prevalence : 0.6454          
+##       Balanced Accuracy : 0.8287          
 ##                                           
 ##        &#39;Positive&#39; Class : 1               
 ## </code></pre>
@@ -476,16 +476,23 @@ engagement_df$ENG = factor(engagement_df$ENG)
 eng_split = initial_split(engagement_df)
 eng_train = training(eng_split)
 eng_test = testing(eng_split)</code></pre>
-<p>The Second step is to reate a recipe and a model:</p>
+<p>The Second step is to create a recipe and a model:</p>
 <pre class="r"><code>message(&#39;Create a Model================================================&#39;)</code></pre>
 <pre><code>## Create a Model================================================</code></pre>
 <pre class="r"><code>set.seed(1234)
+
+
 
 #Set up Engine
 logistic_model &lt;- logistic_reg(penalty = tune(), mixture = 1) %&gt;% 
   set_engine(&quot;glmnet&quot;)
 
-model_Q = ENG ~ P5 + P6 + P7 + P8 + P9 + P10 + P11 + P12 + P13 + P14 + P15 + P16 + P17 + P18 + P19 + P20 + P21 + P22 + P23 + P24 + P25 + P26 + P27 + P28 + P29 + P30 + P31 + P32 + P33 + P34 + P35 + P36 + P37 + P38 + P39 + P40 + P41 + P42 + P43 + P44 + P45 + P46 + P47 + P48 + P49 + P50 + P51 + P52 + P53 + P54 + P55
+#setup Workflow
+eng_wflow = workflow() %&gt;%
+  add_model(logistic_model)
+
+
+model_Q = ENG ~ P5 + P6 + P7 + P8 + P9 + P10 + P11 + P12 + P13 + P14 + P15 + P16 + P17 + P18 + P19 + P20 + P21 + P22 + P23 + P24 + P25 + P26 + P27 + P28 + P29 + P30 + P31 + P32 + P33 + P34 + P35 + P36 + P37 + P38 + P39 + P40 + P41 + P42 + P43 + P44 + P45 + P46 + P47 + P48 + P49 + P50 + P51 + P52 + P53 + P54 + P55 + Age_d + Gender
 
 #Create folds
 eng_cv = vfold_cv(eng_train, v = 10)
@@ -494,14 +501,16 @@ eng_cv = vfold_cv(eng_train, v = 10)
 message(&#39;Create a Recipe================================================&#39;)</code></pre>
 <pre><code>## Create a Recipe================================================</code></pre>
 <pre class="r"><code>eng_recipe = recipe(model_Q,
-                    data = eng_train,
-                    step_dummy(all_nominal_predictors()),
-                    step_center(all_numeric()),
-                    step_scale(all_numeric()))
+                    data = eng_train) %&gt;%
+                    step_center(all_numeric()) %&gt;%
+                    step_scale(all_numeric()) %&gt;%
+                    step_dummy(Gender, Age_d) %&gt;%
+  # estimate the means and standard deviations
+  prep(training = eng_train, retain = TRUE)
+
 
 #setup Workflow
-eng_wflow = workflow() %&gt;%
-  add_model(logistic_model) %&gt;%
+eng_wflow =eng_wflow %&gt;%
   add_recipe(eng_recipe)</code></pre>
 <p>Now we are ready to fit the model:</p>
 <pre class="r"><code>#Create a grid of potential values for lambda:
@@ -544,7 +553,7 @@ tidy(lasso_params) %&gt;%
   mutate(estimate = exp(estimate)) %&gt;%
   ggplot(aes(x = term, y = estimate)) +
   geom_col(fill = &#39;steelblue&#39;) +
-  coord_cartesian(ylim = c(0.8, 1.1)) +
+  coord_cartesian(ylim = c(0.8, 1.8)) +
   geom_text(aes(label = round(estimate, 2)), color = &#39;white&#39;, 
             vjust = 1.5, size = 2) +
   labs(title = &#39;Odds Ratio of Engagement&#39;) +
@@ -557,7 +566,7 @@ tidy(lasso_params) %&gt;%
 
 eng_lasso_final %&gt;%
   fit(eng_train) %&gt;%
-  pull_workflow_fit() %&gt;%
+  extract_fit_parsnip() %&gt;%
   vip::vi(lambda = max_accuracy$penalty) %&gt;%
   mutate(Importance = abs(Importance),
          Variable = fct_reorder(Variable, Importance)) %&gt;%
@@ -566,14 +575,12 @@ eng_lasso_final %&gt;%
   geom_col() +
   scale_x_continuous(expand = c(0, 0)) +
   labs(y = NULL)</code></pre>
-<pre><code>## Warning: `pull_workflow_fit()` was deprecated in workflows 0.2.3.
-## Please use `extract_fit_parsnip()` instead.</code></pre>
 <p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-18-2.png" width="672" /></p>
 <p>Now, instead of having 50 questions, we have around 19 questions to predict Engagement. Based on the <strong>Variable Importance Plot</strong> we figure of that P15, P48 and P117 are the top 3 Questions to focus.</p>
 <p>Let´s compute accuracy and recall:</p>
 <pre class="r"><code>#The last model
 lambda = max_accuracy$penalty
-eng_last_model = logistic_reg(penalty = 0.009102982, 
+eng_last_model = logistic_reg(penalty = 0.02329952, 
                               mixture = 1) %&gt;%
   set_engine(&#39;glmnet&#39;)
 
@@ -592,28 +599,87 @@ caret::confusionMatrix(fitdata$.pred_class, fitdata$ENG, positive = &#39;1&#39;)
 ## 
 ##           Reference
 ## Prediction   0   1
-##          0 179  35
-##          1  47 382
+##          0 173  27
+##          1  45 398
 ##                                           
-##                Accuracy : 0.8725          
-##                  95% CI : (0.8442, 0.8973)
-##     No Information Rate : 0.6485          
-##     P-Value [Acc &gt; NIR] : &lt;2e-16          
+##                Accuracy : 0.888           
+##                  95% CI : (0.8611, 0.9113)
+##     No Information Rate : 0.661           
+##     P-Value [Acc &gt; NIR] : &lt; 2e-16         
 ##                                           
-##                   Kappa : 0.7168          
+##                   Kappa : 0.745           
 ##                                           
-##  Mcnemar&#39;s Test P-Value : 0.2245          
+##  Mcnemar&#39;s Test P-Value : 0.04513         
 ##                                           
-##             Sensitivity : 0.9161          
-##             Specificity : 0.7920          
-##          Pos Pred Value : 0.8904          
-##          Neg Pred Value : 0.8364          
-##              Prevalence : 0.6485          
-##          Detection Rate : 0.5941          
-##    Detection Prevalence : 0.6672          
-##       Balanced Accuracy : 0.8541          
+##             Sensitivity : 0.9365          
+##             Specificity : 0.7936          
+##          Pos Pred Value : 0.8984          
+##          Neg Pred Value : 0.8650          
+##              Prevalence : 0.6610          
+##          Detection Rate : 0.6190          
+##    Detection Prevalence : 0.6890          
+##       Balanced Accuracy : 0.8650          
 ##                                           
 ##        &#39;Positive&#39; Class : 1               
 ## </code></pre>
-<p>Now it´s time for an action plan!!</p>
+</div>
+<div id="machine-learning-interpretability" class="section level1">
+<h1>Machine Learning Interpretability</h1>
+<p>There is no mathematical definition of interpretability. A (non-mathematical) definition I like by Miller (2017)¹⁰ is: Interpretability is the degree to which a human can understand the cause of a decision. Another one is: Interpretability is the degree to which a human can consistently predict the model’s result ¹¹. The higher the interpretability of a machine learning model, the easier it is for someone to comprehend why certain decisions or predictions have been made.</p>
+<p>A model is better interpretable than another model if its decisions are easier for a human to comprehend than decisions from the other model. I will use both the terms interpretable and explainable interchangeably.</p>
+<p>Methods for machine learning interpretability can be classified according to various criteria. Intrinsic or post hoc? This criteria distinguishes whether interpretability is achieved by restricting the complexity of the machine learning model (intrinsic) or by applying methods that analyze the model after training (post hoc).</p>
+<p>Intrinsic interpretability refers to machine learning models that are considered interpretable due to their simple structure, such as short decision trees or sparse linear models.</p>
+<p>Post hoc interpretability refers to the application of interpretation methods after model training. Permutation feature importance is, for example, a post hoc interpretation method. Post hoc methods can also be applied to intrinsically interpretable models. For example, permutation feature importance can be computed for decision trees.</p>
+<p>Result of the interpretation method The various interpretation methods can be roughly differentiated according to their results.</p>
+<ul>
+<li><p>Feature summary statistic: Many interpretation methods provide summary statistics for each feature. Some methods return a single number per feature, such as feature importance, or a more complex result, such as the pairwise feature interaction strengths, which consist of a number for each feature pair.</p></li>
+<li><p>Feature summary visualization: Most of the feature summary statistics can also be visualized. Some feature summaries are actually only meaningful if they are visualized and a table would be a wrong choice. The partial dependence of a feature is such a case. Partial dependence plots are curves that show a feature and the average predicted outcome. The best way to present partial dependences is to actually draw the curve instead of printing the coordinates.</p></li>
+<li><p>Model internals (e.g. learned weights): The interpretation of intrinsically interpretable models falls into this category. Examples are the weights in linear models or the learned tree structure (the features and thresholds used for the splits) of decision trees. The lines are blurred between model internals and feature summary statistic in, for example, linear models, because the weights are both model internals and summary statistics for the features at the same time.</p></li>
+<li><p>Data point: This category includes all methods that return data points (already existent or newly created) to make a model interpretable. One method is called counterfactual explanations. To explain the prediction of a data instance, the method finds a similar data point by changing some of the features for which the predicted outcome changes in a relevant way (e.g. a flip in the predicted class). Another example is the identification of prototypes of predicted classes. To be useful, interpretation methods that output new data points require that the data points themselves can be interpreted. This works well for images and texts, but is less useful for tabular data with hundreds of features.</p></li>
+<li><p>Intrinsically interpretable model: One solution to interpreting black box models is to approximate them (either globally or locally) with an interpretable model. The interpretable model itself is interpreted by looking at internal model parameters or feature summary statistics.</p></li>
+</ul>
+<pre class="r"><code>require(DALEXtra)</code></pre>
+<pre><code>## Loading required package: DALEXtra</code></pre>
+<pre><code>## Loading required package: DALEX</code></pre>
+<pre><code>## Welcome to DALEX (version: 2.4.1).
+## Find examples and detailed introduction at: http://ema.drwhy.ai/</code></pre>
+<pre><code>## 
+## Attaching package: &#39;DALEX&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:ggmosaic&#39;:
+## 
+##     titanic</code></pre>
+<pre><code>## The following object is masked from &#39;package:dplyr&#39;:
+## 
+##     explain</code></pre>
+<pre class="r"><code>set.seed(1234)
+
+#Set Variables on the Model
+vip_features &lt;- c(&#39;P5&#39;, &#39;P6&#39;, &#39;P7&#39;, &#39;P8&#39;, &#39;P9&#39;, &#39;P10&#39;, &#39;P11&#39;, &#39;P12&#39;, &#39;P13&#39;, &#39;P14&#39;, &#39;P16&#39;, &#39;P18&#39;, &#39;P19&#39;, &#39;P20&#39;, &#39;P21&#39;, &#39;P22&#39;, &#39;P23&#39;, &#39;P24&#39;, &#39;P25&#39;, &#39;P26&#39;, &#39;P27&#39;, &#39;P28&#39;, &#39;P29&#39;, &#39;P30&#39;, &#39;P31&#39;, &#39;P32&#39;, &#39;P33&#39;, &#39;P34&#39;, &#39;P35&#39;, &#39;P36&#39;, &#39;P37&#39;, &#39;P38&#39;, &#39;P39&#39;, &#39;P40&#39;, &#39;P41&#39;, &#39;P42&#39;, &#39;P43&#39;, &#39;P44&#39;, &#39;P45&#39;, &#39;P46&#39;, &#39;P47&#39;, &#39;P49&#39;, &#39;P50&#39;, &#39;P51&#39;, &#39;P52&#39;, &#39;P53&#39;, &#39;P54&#39;, &#39;P55&#39;, &#39;Age_d&#39;, &#39;Gender&#39;,&#39;P15&#39;, &#39;P17&#39;, &#39;P48&#39;)
+
+#Select variables
+vip_train &lt;- 
+  eng_train %&gt;% 
+  select(all_of(vip_features))
+
+#Fit the final model
+fitm = eng_lasso_final %&gt;%
+  fit(eng_train)
+
+
+#Get the explainer
+explainer_lm = explain_tidymodels(fitm, 
+                                  data = vip_train, 
+                                  y = eng_train$ENG,
+                                  label = &quot;1&quot;,
+                                  verbose = FALSE)</code></pre>
+<pre><code>## Warning in Ops.factor(y, predict_function(model, data)): &#39;-&#39; not meaningful for
+## factors</code></pre>
+<pre class="r"><code>#Select Individual #200
+manager &lt;- engagement_df[200, ]
+
+lm_breakdown = predict_parts(explainer = explainer_lm, 
+                             new_observation = manager)
+#Plot Results
+plot(lm_breakdown)</code></pre>
+<p><img src="{{< blogdown/postref >}}index_files/figure-html/unnamed-chunk-20-1.png" width="672" /></p>
 </div>
