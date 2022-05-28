@@ -234,7 +234,7 @@ obj.fun <- c(20, 25, 30, 40,
 
 
 #In this case, we have design the model Matrix in an excel spreadsheet
-data.truck = fread('https://raw.githubusercontent.com/eduardo0914/Rtutorials/main/content/post/2022-05-28-introduction-to-linear-programming/Truck%20Distribution%20Problem.csv')
+data.truck = read.csv('https://raw.githubusercontent.com/eduardo0914/Rtutorials/main/content/post/2022-05-28-introduction-to-linear-programming/Truck%20Distribution%20Problem.csv')
 
 data.truck
 
